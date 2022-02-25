@@ -1,2 +1,3 @@
-# rust-adextopa-core
+# Adextopa
+
 Advanced Extensible Token Parser (core) for Rust
