@@ -4,57 +4,44 @@ use std::rc::Rc;
 use super::parser::Parser;
 use super::source_range::SourceRange;
 
-pub type TokenRef<'a> = Rc<RefCell<Token<'a>>>;
+// Need + 'a or 'static is implied
+pub type TokenRefInner<'a> = dyn Token<'a> + 'a;
+pub type TokenRef<'a> = Rc<RefCell<Box<TokenRefInner<'a>>>>;
 
-#[derive(Debug)]
-pub struct Token<'a> {
-  pub value_range: SourceRange,
-  pub raw_range: SourceRange,
-  pub name: &'a str,
-  pub parent: Option<TokenRef<'a>>,
-  pub children: Vec<TokenRef<'a>>,
+impl<'a> core::fmt::Debug for Box<TokenRefInner<'a>> {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.debug_tuple("Box")
+      .field(&self.get_name())
+      .field(&self.get_value_range())
+      .field(&self.get_raw_range())
+      .finish()
+  }
 }
 
-impl<'a> PartialEq for Token<'a> {
+impl<'a> PartialEq for Box<TokenRefInner<'a>> {
   fn eq(&self, other: &Self) -> bool {
-    self.value_range == other.value_range && self.name == other.name
+    *self.get_name() == *other.get_name()
+      && *self.get_value_range() == *other.get_value_range()
+      && *self.get_raw_range() == *other.get_raw_range()
   }
 }
 
-impl Token<'_> {
-  pub fn to_string<'p>(&self, parser: &'p Parser) -> &'p str {
-    self.value_range.to_string(parser)
-  }
-
-  pub fn new<'a>(name: &'a str, value_range: SourceRange) -> TokenRef<'a> {
-    Rc::new(RefCell::new(Token {
-      value_range,
-      raw_range: value_range.clone(),
-      name,
-      parent: None,
-      children: Vec::new(),
-    }))
-  }
-
-  pub fn new_with_raw_range<'a>(
-    name: &'a str,
-    value_range: SourceRange,
-    raw_range: SourceRange,
-  ) -> TokenRef<'a> {
-    Rc::new(RefCell::new(Token {
-      value_range,
-      raw_range,
-      name,
-      parent: None,
-      children: Vec::new(),
-    }))
-  }
-
-  pub fn value<'a>(&self, parser: &'a Parser) -> &'a str {
-    &parser.source[self.value_range.start..self.value_range.end]
-  }
-
-  pub fn raw_value<'a>(&self, parser: &'a Parser) -> &'a str {
-    &parser.source[self.raw_range.start..self.raw_range.end]
-  }
+// Token<'a> is required because name: &'a str is required (name lives as long as the underlying struct)
+pub trait Token<'a> {
+  fn get_value_range(&self) -> &SourceRange;
+  fn get_value_range_mut(&mut self) -> &mut SourceRange;
+  fn set_value_range(&mut self, range: SourceRange);
+  fn get_raw_range(&self) -> &SourceRange;
+  fn get_raw_range_mut(&mut self) -> &mut SourceRange;
+  fn set_raw_range(&mut self, range: SourceRange);
+  fn get_name(&self) -> &str;
+  fn set_name(&mut self, name: &'a str);
+  fn get_parent(&self) -> Option<TokenRef<'a>>;
+  fn set_parent(&mut self, token: Option<crate::token::TokenRef<'a>>);
+  fn get_children<'b>(&'b self) -> &'b Vec<crate::token::TokenRef<'a>>;
+  fn get_children_mut<'b>(&'b mut self) -> &'b mut Vec<crate::token::TokenRef<'a>>;
+  fn set_children(&mut self, children: Vec<crate::token::TokenRef<'a>>);
+  fn to_string<'b>(&self, parser: &'b Parser) -> &'b str;
+  fn value<'b>(&self, parser: &'b Parser) -> &'b str;
+  fn raw_value<'b>(&self, parser: &'b Parser) -> &'b str;
 }

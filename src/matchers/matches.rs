@@ -1,8 +1,34 @@
+extern crate adextopa_base;
+use adextopa_base::Token;
 use core::panic;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 use crate::matcher::{Matcher, MatcherFailure, MatcherSuccess, Pattern};
 use crate::parser_context::ParserContext;
-use crate::token::Token;
+use crate::source_range::SourceRange;
+use crate::token::{Token, TokenRef};
+
+#[derive(Token)]
+struct MatchesToken<'a> {
+  pub value_range: SourceRange,
+  pub raw_range: SourceRange,
+  pub name: &'a str,
+  pub parent: Option<TokenRef<'a>>,
+  pub children: Vec<TokenRef<'a>>,
+}
+
+impl<'a> MatchesToken<'a> {
+  pub fn new(name: &'a str, value_range: SourceRange) -> TokenRef {
+    Rc::new(RefCell::new(Box::new(MatchesToken {
+      value_range,
+      raw_range: value_range.clone(),
+      name,
+      parent: None,
+      children: Vec::new(),
+    })))
+  }
+}
 
 pub struct MatchesPattern<'a> {
   pattern: Pattern<'a>,
@@ -30,14 +56,14 @@ impl<'a> Matcher for MatchesPattern<'a> {
     match self.pattern {
       Pattern::String(s) => {
         if let Some(range) = context.matches_str(s) {
-          Ok(MatcherSuccess::Token(Token::new(self.name, range)))
+          Ok(MatcherSuccess::Token(MatchesToken::new(self.name, range)))
         } else {
           Err(MatcherFailure::Fail)
         }
       }
       Pattern::RegExp(ref re) => {
         if let Some(range) = context.matches_regexp(re) {
-          Ok(MatcherSuccess::Token(Token::new(self.name, range)))
+          Ok(MatcherSuccess::Token(MatchesToken::new(self.name, range)))
         } else {
           Err(MatcherFailure::Fail)
         }
@@ -83,12 +109,12 @@ mod tests {
 
     if let Ok(MatcherSuccess::Token(token)) = matcher.exec(&parser_context) {
       let token = token.borrow();
-      assert_eq!(token.name, "Equals");
-      assert_eq!(token.value_range, SourceRange::new(0, 7));
+      assert_eq!(token.get_name(), "Equals");
+      assert_eq!(*token.get_value_range(), SourceRange::new(0, 7));
       assert_eq!(token.value(&parser), "Testing");
     } else {
       unreachable!("Test failed!");
-    }
+    };
   }
 
   #[test]
@@ -108,12 +134,12 @@ mod tests {
 
     if let Ok(MatcherSuccess::Token(token)) = matcher.exec(&parser_context) {
       let token = token.borrow();
-      assert_eq!(token.name, "Matches");
-      assert_eq!(token.value_range, SourceRange::new(0, 7));
+      assert_eq!(token.get_name(), "Matches");
+      assert_eq!(*token.get_value_range(), SourceRange::new(0, 7));
       assert_eq!(token.value(&parser), "Testing");
     } else {
       unreachable!("Test failed!");
-    }
+    };
   }
 
   #[test]
@@ -126,12 +152,12 @@ mod tests {
 
     if let Ok(MatcherSuccess::Token(token)) = matcher.exec(&parser_context) {
       let token = token.borrow();
-      assert_eq!(token.name, "Matches");
-      assert_eq!(token.value_range, SourceRange::new(8, 12));
+      assert_eq!(token.get_name(), "Matches");
+      assert_eq!(*token.get_value_range(), SourceRange::new(8, 12));
       assert_eq!(token.value(&parser), "1234");
     } else {
       unreachable!("Test failed!");
-    }
+    };
   }
 
   #[test]

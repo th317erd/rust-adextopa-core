@@ -16,7 +16,8 @@ impl Matcher for DiscardPattern {
     match self.matcher.exec(context) {
       Ok(success) => match success {
         MatcherSuccess::Token(token) => {
-          let offset: isize = token.borrow().raw_range.end as isize - context.offset.start as isize;
+          let offset: isize =
+            token.borrow().get_raw_range().end as isize - context.offset.start as isize;
           return Ok(MatcherSuccess::Skip(offset));
         }
         MatcherSuccess::Skip(offset) => Ok(MatcherSuccess::Skip(offset)),

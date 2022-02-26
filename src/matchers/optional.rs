@@ -51,12 +51,12 @@ mod tests {
 
     if let Ok(MatcherSuccess::Token(token)) = matcher.exec(&parser_context) {
       let token = token.borrow();
-      assert_eq!(token.name, "Equals");
-      assert_eq!(token.value_range, SourceRange::new(0, 7));
+      assert_eq!(token.get_name(), "Equals");
+      assert_eq!(*token.get_value_range(), SourceRange::new(0, 7));
       assert_eq!(token.value(&parser), "Testing");
     } else {
       unreachable!("Test failed!");
-    }
+    };
   }
 
   #[test]
