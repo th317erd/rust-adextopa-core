@@ -1,16 +1,18 @@
-extern crate adextopa_base;
-use adextopa_base::Token;
+extern crate adextopa_macros;
+use adextopa_macros::Token;
 use core::panic;
 use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::matcher::{Matcher, MatcherFailure, MatcherSuccess, Pattern};
-use crate::parser_context::ParserContext;
+use crate::parser::{Parser, ParserRef};
+use crate::parser_context::{ParserContext, ParserContextRef};
 use crate::source_range::SourceRange;
 use crate::token::{Token, TokenRef};
 
 #[derive(Token)]
 struct MatchesToken<'a> {
+  parser: ParserRef,
   pub value_range: SourceRange,
   pub raw_range: SourceRange,
   pub name: &'a str,
@@ -19,8 +21,9 @@ struct MatchesToken<'a> {
 }
 
 impl<'a> MatchesToken<'a> {
-  pub fn new(name: &'a str, value_range: SourceRange) -> TokenRef {
+  pub fn new(parser: &ParserRef, name: &'a str, value_range: SourceRange) -> TokenRef<'a> {
     Rc::new(RefCell::new(Box::new(MatchesToken {
+      parser: parser.clone(),
       value_range,
       raw_range: value_range.clone(),
       name,
@@ -49,21 +52,25 @@ impl<'a> MatchesPattern<'a> {
   pub fn new_with_name(pattern: Pattern<'a>, name: &'a str) -> MatchesPattern<'a> {
     Self { pattern, name }
   }
+
+  pub fn set_name(&mut self, name: &'a str) {
+    self.name = name;
+  }
 }
 
 impl<'a> Matcher for MatchesPattern<'a> {
-  fn exec(&self, context: &ParserContext) -> Result<MatcherSuccess, MatcherFailure> {
+  fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
     match self.pattern {
       Pattern::String(s) => {
-        if let Some(range) = context.matches_str(s) {
-          Ok(MatcherSuccess::Token(MatchesToken::new(self.name, range)))
+        if let Some(range) = context.borrow().matches_str(s) {
+          Ok(MatcherSuccess::Token(MatchesToken::new(&context.borrow().parser, self.name, range)))
         } else {
           Err(MatcherFailure::Fail)
         }
       }
       Pattern::RegExp(ref re) => {
-        if let Some(range) = context.matches_regexp(re) {
-          Ok(MatcherSuccess::Token(MatchesToken::new(self.name, range)))
+        if let Some(range) = context.borrow().matches_regexp(re) {
+          Ok(MatcherSuccess::Token(MatchesToken::new(&context.borrow().parser, self.name, range)))
         } else {
           Err(MatcherFailure::Fail)
         }
@@ -80,14 +87,24 @@ impl<'a> Matcher for MatchesPattern<'a> {
 #[macro_export]
 macro_rules! Equals {
   ($arg:expr) => {
-    crate::matchers::matches::MatchesPattern::new(crate::matcher::Pattern::String($arg))
+    $crate::matchers::matches::MatchesPattern::new($crate::matcher::Pattern::String($arg))
   };
 }
 
 #[macro_export]
 macro_rules! Matches {
+  ($name:expr; $arg:expr) => {{
+    let mut matcher = $crate::matchers::matches::MatchesPattern::new(
+      $crate::matcher::Pattern::RegExp(regex::Regex::new($arg).unwrap()),
+    );
+
+    matcher.set_name($name);
+
+    matcher
+  }};
+
   ($arg:expr) => {{
-    crate::matchers::matches::MatchesPattern::new(crate::matcher::Pattern::RegExp(
+    $crate::matchers::matches::MatchesPattern::new($crate::matcher::Pattern::RegExp(
       regex::Regex::new($arg).unwrap(),
     ))
   }};
@@ -107,11 +124,11 @@ mod tests {
     let parser_context = ParserContext::new(&parser);
     let matcher = Equals!("Testing");
 
-    if let Ok(MatcherSuccess::Token(token)) = matcher.exec(&parser_context) {
+    if let Ok(MatcherSuccess::Token(token)) = matcher.exec(parser_context.clone()) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Equals");
       assert_eq!(*token.get_value_range(), SourceRange::new(0, 7));
-      assert_eq!(token.value(&parser), "Testing");
+      assert_eq!(token.value(), "Testing");
     } else {
       unreachable!("Test failed!");
     };
@@ -123,7 +140,10 @@ mod tests {
     let parser_context = ParserContext::new(&parser);
     let matcher = Equals!("testing");
 
-    assert_eq!(matcher.exec(&parser_context), Err(MatcherFailure::Fail));
+    assert_eq!(
+      matcher.exec(parser_context.clone()),
+      Err(MatcherFailure::Fail)
+    );
   }
 
   #[test]
@@ -132,11 +152,11 @@ mod tests {
     let parser_context = ParserContext::new(&parser);
     let matcher = Matches!(r"\w+");
 
-    if let Ok(MatcherSuccess::Token(token)) = matcher.exec(&parser_context) {
+    if let Ok(MatcherSuccess::Token(token)) = matcher.exec(parser_context.clone()) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Matches");
       assert_eq!(*token.get_value_range(), SourceRange::new(0, 7));
-      assert_eq!(token.value(&parser), "Testing");
+      assert_eq!(token.value(), "Testing");
     } else {
       unreachable!("Test failed!");
     };
@@ -148,13 +168,13 @@ mod tests {
     let mut parser_context = ParserContext::new(&parser);
     let matcher = Matches!(r".+");
 
-    parser_context.offset.start = 8;
+    parser_context.borrow_mut().offset.start = 8;
 
-    if let Ok(MatcherSuccess::Token(token)) = matcher.exec(&parser_context) {
+    if let Ok(MatcherSuccess::Token(token)) = matcher.exec(parser_context.clone()) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Matches");
       assert_eq!(*token.get_value_range(), SourceRange::new(8, 12));
-      assert_eq!(token.value(&parser), "1234");
+      assert_eq!(token.value(), "1234");
     } else {
       unreachable!("Test failed!");
     };
@@ -169,6 +189,9 @@ mod tests {
     let t = Box::<i32>::new(20);
     Box::leak(t);
 
-    assert_eq!(matcher.exec(&parser_context), Err(MatcherFailure::Fail));
+    assert_eq!(
+      matcher.exec(parser_context.clone()),
+      Err(MatcherFailure::Fail)
+    );
   }
 }

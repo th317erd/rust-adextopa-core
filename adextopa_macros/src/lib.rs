@@ -16,6 +16,10 @@ pub fn token_derive(input: TokenStream) -> TokenStream {
   let name = &input.ident;
   let expanded = quote! {
     impl<'a> Token<'a> for #name<'a> {
+      fn get_parser(&self) -> crate::parser::ParserRef {
+        self.parser.clone()
+      }
+
       fn get_value_range(&self) -> &crate::source_range::SourceRange {
         &self.value_range
       }
@@ -71,16 +75,12 @@ pub fn token_derive(input: TokenStream) -> TokenStream {
         self.children = children;
       }
 
-      fn to_string<'p>(&self, parser: &'p crate::parser::Parser) -> &'p str {
-        self.value_range.to_string(parser)
+      fn value(&self) -> String {
+        self.value_range.to_string(&self.parser)
       }
 
-      fn value<'b>(&self, parser: &'b crate::parser::Parser) -> &'b str {
-        &parser.source[self.value_range.start..self.value_range.end]
-      }
-
-      fn raw_value<'b>(&self, parser: &'b crate::parser::Parser) -> &'b str {
-        &parser.source[self.raw_range.start..self.raw_range.end]
+      fn raw_value(&self) -> String {
+        self.raw_range.to_string(&self.parser)
       }
     }
   };

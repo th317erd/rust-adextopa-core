@@ -1,5 +1,5 @@
 use crate::matcher::{Matcher, MatcherFailure, MatcherSuccess};
-use crate::parser_context::ParserContext;
+use crate::parser_context::{ParserContext, ParserContextRef};
 
 pub struct BreakPattern<'a> {
   loop_name: &'a str,
@@ -12,7 +12,7 @@ impl<'a> BreakPattern<'a> {
 }
 
 impl<'a> Matcher for BreakPattern<'a> {
-  fn exec(&self, _: &ParserContext) -> Result<MatcherSuccess, MatcherFailure> {
+  fn exec(&self, _: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
     Ok(MatcherSuccess::Break((
       self.loop_name,
       Box::new(MatcherSuccess::None),
@@ -27,11 +27,11 @@ impl<'a> Matcher for BreakPattern<'a> {
 #[macro_export]
 macro_rules! Break {
   ($arg:expr) => {
-    crate::matchers::r#break::BreakPattern::new($arg)
+    $crate::matchers::r#break::BreakPattern::new($arg)
   };
 
   () => {
-    crate::matchers::r#break::BreakPattern::new("")
+    $crate::matchers::r#break::BreakPattern::new("")
   };
 }
 
@@ -51,7 +51,7 @@ mod tests {
     let matcher = Break!("Test");
 
     assert_eq!(
-      matcher.exec(&parser_context),
+      matcher.exec(parser_context.clone()),
       Ok(MatcherSuccess::Break((
         "Test",
         Box::new(MatcherSuccess::None),

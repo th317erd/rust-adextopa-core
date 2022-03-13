@@ -1,5 +1,5 @@
 use crate::matcher::{Matcher, MatcherFailure, MatcherSuccess};
-use crate::parser_context::ParserContext;
+use crate::parser_context::{ParserContext, ParserContextRef};
 
 pub struct NotPattern {
   matcher: Box<dyn Matcher>,
@@ -12,7 +12,7 @@ impl NotPattern {
 }
 
 impl Matcher for NotPattern {
-  fn exec(&self, context: &ParserContext) -> Result<MatcherSuccess, MatcherFailure> {
+  fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
     match self.matcher.exec(context) {
       Ok(success) => match success {
         // Fail on success
@@ -34,7 +34,7 @@ impl Matcher for NotPattern {
 #[macro_export]
 macro_rules! Not {
   ($arg:expr) => {
-    crate::matchers::not::NotPattern::new(Box::new($arg))
+    $crate::matchers::not::NotPattern::new(std::boxed::Box::new($arg))
   };
 }
 
@@ -53,7 +53,10 @@ mod tests {
     let parser_context = ParserContext::new(&parser);
     let matcher = Not!(Equals!("Testing"));
 
-    assert_eq!(Err(MatcherFailure::Fail), matcher.exec(&parser_context));
+    assert_eq!(
+      Err(MatcherFailure::Fail),
+      matcher.exec(parser_context.clone())
+    );
   }
 
   #[test]
@@ -62,6 +65,9 @@ mod tests {
     let parser_context = ParserContext::new(&parser);
     let matcher = Not!(Equals!("testing"));
 
-    assert_eq!(Ok(MatcherSuccess::Skip(0)), matcher.exec(&parser_context));
+    assert_eq!(
+      Ok(MatcherSuccess::Skip(0)),
+      matcher.exec(parser_context.clone())
+    );
   }
 }

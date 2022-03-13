@@ -8,4 +8,4 @@ edition = "2021"
 [dependencies]
 substring = "1.4.5"
 regex = "1.5.4"
-adextopa_base = { path = "./adextopa_base" }
+adextopa_macros = { path = "./adextopa_macros" }

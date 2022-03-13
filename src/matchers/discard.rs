@@ -1,5 +1,5 @@
 use crate::matcher::{Matcher, MatcherFailure, MatcherSuccess};
-use crate::parser_context::ParserContext;
+use crate::parser_context::{ParserContext, ParserContextRef};
 
 pub struct DiscardPattern {
   matcher: Box<dyn Matcher>,
@@ -12,12 +12,12 @@ impl DiscardPattern {
 }
 
 impl Matcher for DiscardPattern {
-  fn exec(&self, context: &ParserContext) -> Result<MatcherSuccess, MatcherFailure> {
-    match self.matcher.exec(context) {
+  fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
+    match self.matcher.exec(context.clone()) {
       Ok(success) => match success {
         MatcherSuccess::Token(token) => {
           let offset: isize =
-            token.borrow().get_raw_range().end as isize - context.offset.start as isize;
+            token.borrow().get_raw_range().end as isize - context.borrow().offset.start as isize;
           return Ok(MatcherSuccess::Skip(offset));
         }
         MatcherSuccess::Skip(offset) => Ok(MatcherSuccess::Skip(offset)),
@@ -35,7 +35,7 @@ impl Matcher for DiscardPattern {
 #[macro_export]
 macro_rules! Discard {
   ($arg:expr) => {
-    crate::matchers::discard::DiscardPattern::new(Box::new($arg))
+    $crate::matchers::discard::DiscardPattern::new(std::boxed::Box::new($arg))
   };
 }
 
@@ -54,7 +54,10 @@ mod tests {
     let parser_context = ParserContext::new(&parser);
     let matcher = Discard!(Equals!("Testing"));
 
-    assert_eq!(Ok(MatcherSuccess::Skip(7)), matcher.exec(&parser_context));
+    assert_eq!(
+      Ok(MatcherSuccess::Skip(7)),
+      matcher.exec(parser_context.clone())
+    );
   }
 
   #[test]
@@ -63,6 +66,9 @@ mod tests {
     let parser_context = ParserContext::new(&parser);
     let matcher = Discard!(Equals!("testing"));
 
-    assert_eq!(Err(MatcherFailure::Fail), matcher.exec(&parser_context));
+    assert_eq!(
+      Err(MatcherFailure::Fail),
+      matcher.exec(parser_context.clone())
+    );
   }
 }

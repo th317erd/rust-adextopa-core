@@ -1,12 +1,13 @@
-extern crate adextopa_base;
-use adextopa_base::Token;
+extern crate adextopa_macros;
+use adextopa_macros::Token;
 
 use std::cell::RefCell;
 use std::ops::{Bound, Range, RangeBounds};
 use std::rc::Rc;
 
 use crate::matcher::{Matcher, MatcherFailure, MatcherSuccess};
-use crate::parser_context::ParserContext;
+use crate::parser::{Parser, ParserRef};
+use crate::parser_context::{self, ParserContext, ParserContextRef};
 use crate::source_range::SourceRange;
 use crate::token::{Token, TokenRef};
 
@@ -29,6 +30,7 @@ where
 
 #[derive(Token)]
 struct ProgramToken<'a> {
+  parser: ParserRef,
   pub value_range: SourceRange,
   pub raw_range: SourceRange,
   pub name: &'a str,
@@ -37,8 +39,9 @@ struct ProgramToken<'a> {
 }
 
 impl<'a> ProgramToken<'a> {
-  pub fn new(name: &'a str, value_range: SourceRange) -> TokenRef {
+  pub fn new(parser: &ParserRef, name: &'a str, value_range: SourceRange) -> TokenRef<'a> {
     let token = ProgramToken {
+      parser: parser.clone(),
       value_range,
       raw_range: value_range.clone(),
       name,
@@ -120,6 +123,14 @@ impl<'a> ProgramPattern<'a> {
       iterate_range: Some(get_range(r)),
     }
   }
+
+  pub fn add_pattern(&mut self, pattern: Box<dyn Matcher>) {
+    self.patterns.push(pattern);
+  }
+
+  pub fn set_name(&mut self, name: &'a str) {
+    self.name = name;
+  }
 }
 
 fn contain_source_range(tsr: &mut SourceRange, ssr: &SourceRange) {
@@ -154,7 +165,7 @@ fn finalize_program_token<'a>(
 
 fn add_token_to_children<'a>(
   program_token: &TokenRef<'a>,
-  context: &mut ParserContext,
+  context: &ParserContextRef,
   children: &mut Vec<TokenRef<'a>>,
   value_range: &mut SourceRange,
   raw_range: &mut SourceRange,
@@ -163,12 +174,12 @@ fn add_token_to_children<'a>(
   {
     let token = token.borrow();
     // Ensure that we are moving forward, and that the token doesn't have a zero width
-    assert!(token.get_raw_range().end != context.offset.start);
+    assert!(token.get_raw_range().end != context.borrow_mut().offset.start);
 
     contain_source_range(value_range, &token.get_value_range());
     contain_source_range(raw_range, &token.get_raw_range());
 
-    context.set_start(token.get_raw_range().end);
+    context.borrow_mut().set_start(token.get_raw_range().end);
   }
 
   {
@@ -180,9 +191,13 @@ fn add_token_to_children<'a>(
 }
 
 impl<'a> Matcher for ProgramPattern<'a> {
-  fn exec(&self, context: &ParserContext) -> Result<MatcherSuccess, MatcherFailure> {
-    let mut sub_context = context.clone();
-    let program_token = ProgramToken::new(self.name, SourceRange::new_blank());
+  fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
+    let mut sub_context = std::rc::Rc::new(std::cell::RefCell::new(context.borrow().clone()));
+    let program_token = ProgramToken::new(
+      &sub_context.borrow().parser,
+      self.name,
+      SourceRange::new_blank(),
+    );
     let mut children = Vec::<TokenRef>::with_capacity(self.patterns.len());
     let mut value_range = SourceRange::new(usize::MAX, 0);
     let mut raw_range = SourceRange::new(usize::MAX, 0);
@@ -190,23 +205,23 @@ impl<'a> Matcher for ProgramPattern<'a> {
       Some(_) => true,
       None => false,
     };
-    let mut iterate_range = match &self.iterate_range {
+    let iterate_range = match &self.iterate_range {
       Some(range) => range.clone(),
       None => (0..1),
     };
-    let mut iteration_result: Option<MatcherSuccess> = None;
+    let mut iteration_result: Option<MatcherSuccess>;
 
-    for index in iterate_range {
+    for _ in iterate_range {
       iteration_result = None;
 
       for pattern in &self.patterns {
-        let result = pattern.exec(&sub_context);
+        let result = pattern.exec(sub_context.clone());
         match result {
           Ok(success) => match success {
             MatcherSuccess::Token(token) => {
               add_token_to_children(
                 &program_token,
-                &mut sub_context,
+                &sub_context,
                 &mut children,
                 &mut value_range,
                 &mut raw_range,
@@ -214,7 +229,8 @@ impl<'a> Matcher for ProgramPattern<'a> {
               );
             }
             MatcherSuccess::Skip(amount) => {
-              sub_context.set_start(sub_context.offset.start + amount as usize);
+              let new_offset = sub_context.borrow().offset.start + amount as usize;
+              sub_context.borrow_mut().set_start(new_offset);
               continue;
             }
             _ => {
@@ -325,11 +341,11 @@ impl<'a> Matcher for ProgramPattern<'a> {
 macro_rules! Program {
   ($name:expr; $($args:expr),+ $(,)?) => {
     {
-      let mut program = crate::matchers::program::ProgramPattern::new_blank_program();
-      program.name = $name;
+      let mut program = $crate::matchers::program::ProgramPattern::new_blank_program();
+      program.set_name($name);
 
       $(
-        program.patterns.push(Box::new($args));
+        program.add_pattern(std::boxed::Box::new($args));
       )*
       program
     }
@@ -337,24 +353,24 @@ macro_rules! Program {
 
   ($($args:expr),+ $(,)?) => {
     {
-      let mut program = crate::matchers::program::ProgramPattern::new_blank_program();
+      let mut program = $crate::matchers::program::ProgramPattern::new_blank_program();
       $(
-        program.patterns.push(Box::new($args));
+        program.add_pattern(std::boxed::Box::new($args));
       )*
       program
     }
-  }
+  };
 }
 
 #[macro_export]
 macro_rules! Loop {
   ($range:expr; $name:expr; $($args:expr),+ $(,)?) => {
     {
-      let mut loop_program = crate::matchers::program::ProgramPattern::new_blank_loop($range);
-      loop_program.name = $name;
+      let mut loop_program = $crate::matchers::program::ProgramPattern::new_blank_loop($range);
+      loop_program.set_name($name);
 
       $(
-        loop_program.patterns.push(Box::new($args));
+        loop_program.add_pattern(std::boxed::Box::new($args));
       )*
       loop_program
     }
@@ -362,11 +378,11 @@ macro_rules! Loop {
 
   ($name:expr; $($args:expr),+ $(,)?) => {
     {
-      let mut loop_program = crate::matchers::program::ProgramPattern::new_blank_loop(0..);
-      loop_program.name = $name;
+      let mut loop_program = $crate::matchers::program::ProgramPattern::new_blank_loop(0..);
+      loop_program.set_name($name);
 
       $(
-        loop_program.patterns.push(Box::new($args));
+        loop_program.add_pattern(std::boxed::Box::new($args));
       )*
       loop_program
     }
@@ -374,192 +390,182 @@ macro_rules! Loop {
 
   ($($args:expr),+ $(,)?) => {
     {
-      let mut loop_program = crate::matchers::program::ProgramPattern::new_blank_loop(0..);
+      let mut loop_program = $crate::matchers::program::ProgramPattern::new_blank_loop(0..);
 
       $(
-        loop_program.patterns.push(Box::new($args));
+        loop_program.add_pattern(std::boxed::Box::new($args));
       )*
       loop_program
     }
   };
 }
 
-// mod tests {
-//   use crate::{
-//     matcher::{Matcher, MatcherFailure, MatcherSuccess},
-//     parser::Parser,
-//     parser_context::ParserContext,
-//     source_range::SourceRange,
-//     Break, Equals, Matches, Optional,
-//   };
+mod tests {
+  use crate::{
+    matcher::{Matcher, MatcherFailure, MatcherSuccess},
+    parser::Parser,
+    parser_context::ParserContext,
+    source_range::SourceRange,
+    Break, Equals, Matches, Optional,
+  };
 
-//   #[test]
-//   fn it_matches_against_a_simple_program() {
-//     let parser = Parser::new("Testing 1234");
-//     let parser_context = ParserContext::new(&parser);
-//     let matcher = Program!(Equals!("Testing"), Equals!(" "), Matches!(r"\d+"));
+  #[test]
+  fn it_matches_against_a_simple_program() {
+    let parser = Parser::new("Testing 1234");
+    let parser_context = ParserContext::new(&parser);
+    let matcher = Program!(Equals!("Testing"), Equals!(" "), Matches!(r"\d+"));
 
-//     if let Ok(MatcherSuccess::Token(token)) = matcher.exec(&parser_context) {
-//       let token = token.borrow();
-//       assert_eq!(token.get_name(), "Program");
-//       assert_eq!(*token.get_value_range(), SourceRange::new(0, 12));
-//       assert_eq!(token.value(&parser), parser.source);
-//     } else {
-//       unreachable!("Test failed!");
-//     }
-//   }
+    if let Ok(MatcherSuccess::Token(token)) = matcher.exec(parser_context.clone()) {
+      let token = token.borrow();
+      assert_eq!(token.get_name(), "Program");
+      assert_eq!(*token.get_value_range(), SourceRange::new(0, 12));
+      assert_eq!(token.value(), parser.borrow().source);
+    } else {
+      unreachable!("Test failed!");
+    };
+  }
 
-//   #[test]
-//   fn it_fails_matching_against_a_simple_program() {
-//     let parser = Parser::new("Testing 1234");
-//     let parser_context = ParserContext::new(&parser);
-//     let matcher = Program!(Equals!("Testing"), Matches!(r"\d+"));
+  #[test]
+  fn it_fails_matching_against_a_simple_program() {
+    let parser = Parser::new("Testing 1234");
+    let parser_context = ParserContext::new(&parser);
+    let matcher = Program!(Equals!("Testing"), Matches!(r"\d+"));
 
-//     assert_eq!(Err(MatcherFailure::Fail), matcher.exec(&parser_context));
-//   }
+    assert_eq!(
+      Err(MatcherFailure::Fail),
+      matcher.exec(parser_context.clone())
+    );
+  }
 
-//   #[test]
-//   fn it_matches_against_a_loop() {
-//     let parser = Parser::new("A B C D E F ");
-//     let parser_context = ParserContext::new(&parser);
-//     let matcher = Loop!(Matches!(r"\w"), Equals!(" "));
+  #[test]
+  fn it_matches_against_a_loop() {
+    let parser = Parser::new("A B C D E F ");
+    let parser_context = ParserContext::new(&parser);
+    let matcher = Loop!(Matches!(r"\w"), Equals!(" "));
 
-//     if let Ok(MatcherSuccess::Token(token)) = matcher.exec(&parser_context) {
-//       let token = token.borrow();
-//       assert_eq!(token.get_name(), "Loop");
-//       assert_eq!(*token.get_value_range(), SourceRange::new(0, 12));
-//       assert_eq!(token.value(&parser), parser.source);
+    if let Ok(MatcherSuccess::Token(token)) = matcher.exec(parser_context.clone()) {
+      let token = token.borrow();
+      assert_eq!(token.get_name(), "Loop");
+      assert_eq!(*token.get_value_range(), SourceRange::new(0, 12));
+      assert_eq!(token.value(), parser.borrow().source);
 
-//       assert_eq!(token.get_children().len(), 12);
+      assert_eq!(token.get_children().len(), 12);
 
-//       let parts = vec!["A", "B", "C", "D", "E", "F"];
+      let parts = vec!["A", "B", "C", "D", "E", "F"];
 
-//       for index in 0..parts.len() {
-//         assert_eq!(
-//           token.get_children()[index * 2].borrow().get_name(),
-//           "Matches"
-//         );
-//         assert_eq!(
-//           token.get_children()[index * 2].borrow().value(&parser),
-//           parts[index]
-//         );
-//         assert_eq!(
-//           token.get_children()[index * 2 + 1].borrow().get_name(),
-//           "Equals"
-//         );
-//         assert_eq!(
-//           token.get_children()[index * 2 + 1].borrow().value(&parser),
-//           " "
-//         );
-//       }
-//     } else {
-//       unreachable!("Test failed!");
-//     }
-//   }
+      for index in 0..parts.len() {
+        assert_eq!(
+          token.get_children()[index * 2].borrow().get_name(),
+          "Matches"
+        );
+        assert_eq!(
+          token.get_children()[index * 2].borrow().value(),
+          parts[index]
+        );
+        assert_eq!(
+          token.get_children()[index * 2 + 1].borrow().get_name(),
+          "Equals"
+        );
+        assert_eq!(token.get_children()[index * 2 + 1].borrow().value(), " ");
+      }
+    } else {
+      unreachable!("Test failed!");
+    };
+  }
 
-//   #[test]
-//   fn it_matches_against_a_loop_with_a_program() {
-//     let parser = Parser::new("A B C D E F ");
-//     let parser_context = ParserContext::new(&parser);
-//     let matcher = Loop!(Program!(Matches!(r"\w"), Equals!(" ")));
+  #[test]
+  fn it_matches_against_a_loop_with_a_program() {
+    let parser = Parser::new("A B C D E F ");
+    let parser_context = ParserContext::new(&parser);
+    let matcher = Loop!(Program!(Matches!(r"\w"), Equals!(" ")));
 
-//     if let Ok(MatcherSuccess::Token(token)) = matcher.exec(&parser_context) {
-//       let token = token.borrow();
-//       assert_eq!(token.get_name(), "Loop");
-//       assert_eq!(*token.get_value_range(), SourceRange::new(0, 12));
-//       assert_eq!(token.value(&parser), parser.source);
+    if let Ok(MatcherSuccess::Token(token)) = matcher.exec(parser_context.clone()) {
+      let token = token.borrow();
+      assert_eq!(token.get_name(), "Loop");
+      assert_eq!(*token.get_value_range(), SourceRange::new(0, 12));
+      assert_eq!(token.value(), parser.borrow().source);
 
-//       assert_eq!(token.get_children().len(), 6);
+      assert_eq!(token.get_children().len(), 6);
 
-//       let parts = vec!["A", "B", "C", "D", "E", "F"];
+      let parts = vec!["A", "B", "C", "D", "E", "F"];
 
-//       for index in 0..parts.len() {
-//         let program_token = &token.get_children()[index];
+      for index in 0..parts.len() {
+        let program_token = &token.get_children()[index];
 
-//         assert_eq!(
-//           program_token.borrow().get_children()[0].borrow().get_name(),
-//           "Matches"
-//         );
-//         assert_eq!(
-//           program_token.borrow().get_children()[0]
-//             .borrow()
-//             .value(&parser),
-//           parts[index]
-//         );
-//         assert_eq!(
-//           program_token.borrow().get_children()[1].borrow().get_name(),
-//           "Equals"
-//         );
-//         assert_eq!(
-//           program_token.borrow().get_children()[1]
-//             .borrow()
-//             .value(&parser),
-//           " "
-//         );
-//       }
-//     } else {
-//       unreachable!("Test failed!");
-//     }
-//   }
+        assert_eq!(
+          program_token.borrow().get_children()[0].borrow().get_name(),
+          "Matches"
+        );
+        assert_eq!(
+          program_token.borrow().get_children()[0].borrow().value(),
+          parts[index]
+        );
+        assert_eq!(
+          program_token.borrow().get_children()[1].borrow().get_name(),
+          "Equals"
+        );
+        assert_eq!(
+          program_token.borrow().get_children()[1].borrow().value(),
+          " "
+        );
+      }
+    } else {
+      unreachable!("Test failed!");
+    };
+  }
 
-//   #[test]
-//   fn it_can_break_from_a_loop() {
-//     let parser = Parser::new("A B C break D E F ");
-//     let parser_context = ParserContext::new(&parser);
-//     let capture = Program!(Matches!(r"\w"), Equals!(" "));
-//     let brk = Optional!(Program!(Equals!("break"), Break!()));
-//     let matcher = Loop!(0..10; "Loop"; brk, capture);
+  #[test]
+  fn it_can_break_from_a_loop() {
+    let parser = Parser::new("A B C break D E F ");
+    let parser_context = ParserContext::new(&parser);
+    let capture = Program!(Matches!(r"\w"), Equals!(" "));
+    let brk = Optional!(Program!(Equals!("break"), Break!()));
+    let matcher = Loop!(0..10; "Loop"; brk, capture);
 
-//     if let Ok(MatcherSuccess::Token(token)) = matcher.exec(&parser_context) {
-//       let token = token.borrow();
-//       assert_eq!(token.get_name(), "Loop");
-//       assert_eq!(*token.get_value_range(), SourceRange::new(0, 11));
-//       assert_eq!(token.value(&parser), "A B C break");
+    if let Ok(MatcherSuccess::Token(token)) = matcher.exec(parser_context.clone()) {
+      let token = token.borrow();
+      assert_eq!(token.get_name(), "Loop");
+      assert_eq!(*token.get_value_range(), SourceRange::new(0, 11));
+      assert_eq!(token.value(), "A B C break");
 
-//       assert_eq!(token.get_children().len(), 4);
+      assert_eq!(token.get_children().len(), 4);
 
-//       let parts = vec!["A", "B", "C"];
+      let parts = vec!["A", "B", "C"];
 
-//       for index in 0..parts.len() {
-//         let program_token = &token.get_children()[index];
+      for index in 0..parts.len() {
+        let program_token = &token.get_children()[index];
 
-//         assert_eq!(
-//           program_token.borrow().get_children()[0].borrow().get_name(),
-//           "Matches"
-//         );
-//         assert_eq!(
-//           program_token.borrow().get_children()[0]
-//             .borrow()
-//             .value(&parser),
-//           parts[index]
-//         );
-//         assert_eq!(
-//           program_token.borrow().get_children()[1].borrow().get_name(),
-//           "Equals"
-//         );
-//         assert_eq!(
-//           program_token.borrow().get_children()[1]
-//             .borrow()
-//             .value(&parser),
-//           " "
-//         );
-//       }
+        assert_eq!(
+          program_token.borrow().get_children()[0].borrow().get_name(),
+          "Matches"
+        );
+        assert_eq!(
+          program_token.borrow().get_children()[0].borrow().value(),
+          parts[index]
+        );
+        assert_eq!(
+          program_token.borrow().get_children()[1].borrow().get_name(),
+          "Equals"
+        );
+        assert_eq!(
+          program_token.borrow().get_children()[1].borrow().value(),
+          " "
+        );
+      }
 
-//       let program_token = &token.get_children()[3];
-//       assert_eq!(program_token.borrow().get_name(), "Program");
-//       assert_eq!(program_token.borrow().get_children().len(), 1);
-//       assert_eq!(
-//         program_token.borrow().get_children()[0].borrow().get_name(),
-//         "Equals"
-//       );
-//       assert_eq!(
-//         program_token.borrow().get_children()[0]
-//           .borrow()
-//           .value(&parser),
-//         "break"
-//       );
-//     } else {
-//       unreachable!("Test failed!");
-//     }
-//   }
-// }
+      let program_token = &token.get_children()[3];
+      assert_eq!(program_token.borrow().get_name(), "Program");
+      assert_eq!(program_token.borrow().get_children().len(), 1);
+      assert_eq!(
+        program_token.borrow().get_children()[0].borrow().get_name(),
+        "Equals"
+      );
+      assert_eq!(
+        program_token.borrow().get_children()[0].borrow().value(),
+        "break"
+      );
+    } else {
+      unreachable!("Test failed!");
+    };
+  }
+}

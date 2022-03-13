@@ -1,3 +1,5 @@
+use crate::parser_context::ParserContextRef;
+
 use super::parser_context::ParserContext;
 use super::token::TokenRef;
 use regex::Regex;
@@ -26,6 +28,6 @@ pub enum Pattern<'a> {
 }
 
 pub trait Matcher {
-  fn exec(&self, context: &ParserContext) -> Result<MatcherSuccess, MatcherFailure>;
+  fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure>;
   fn get_name(&self) -> &str;
 }

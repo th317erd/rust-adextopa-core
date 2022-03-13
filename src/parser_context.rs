@@ -1,24 +1,29 @@
 use regex::Regex;
 
-use super::parser::Parser;
 use super::source_range::SourceRange;
+use crate::parser::ParserRef;
 
-#[derive(Clone, Copy)]
-pub struct ParserContext<'a> {
+pub type ParserContextRef = std::rc::Rc<std::cell::RefCell<ParserContext>>;
+
+#[derive(Clone)]
+pub struct ParserContext {
   pub offset: SourceRange,
-  pub parser: &'a Parser,
+  pub parser: ParserRef,
 }
 
-impl<'a> ParserContext<'a> {
-  pub fn new<'b>(parser: &'b Parser) -> ParserContext<'b> {
-    ParserContext {
-      offset: SourceRange::new(0, parser.source.len()),
-      parser,
-    }
+impl ParserContext {
+  pub fn new(parser: &ParserRef) -> ParserContextRef {
+    std::rc::Rc::new(std::cell::RefCell::new(ParserContext {
+      offset: SourceRange::new(0, parser.borrow().source.len()),
+      parser: parser.clone(),
+    }))
   }
 
-  pub fn new_with_offset<'b>(parser: &'b Parser, offset: SourceRange) -> ParserContext<'b> {
-    ParserContext { offset, parser }
+  pub fn new_with_offset(parser: &ParserRef, offset: SourceRange) -> ParserContextRef {
+    std::rc::Rc::new(std::cell::RefCell::new(ParserContext {
+      offset,
+      parser: parser.clone(),
+    }))
   }
 
   pub fn set_start(&mut self, start: usize) {
@@ -34,7 +39,7 @@ impl<'a> ParserContext<'a> {
   }
 
   pub fn matches_str(&self, pattern: &str) -> Option<SourceRange> {
-    let chunk = &self.parser.source[self.offset.start..self.offset.end];
+    let chunk = &self.parser.borrow().source[self.offset.start..self.offset.end];
 
     if chunk.starts_with(pattern) {
       Some(self.offset.clone_with_len(pattern.len()))
@@ -44,7 +49,7 @@ impl<'a> ParserContext<'a> {
   }
 
   pub fn matches_regexp(&self, pattern: &Regex) -> Option<SourceRange> {
-    let chunk = &self.parser.source[self.offset.start..self.offset.end];
+    let chunk = &self.parser.borrow().source[self.offset.start..self.offset.end];
 
     match pattern.find(chunk) {
       Some(m) => {

@@ -1,6 +1,8 @@
 use substring::Substring;
 
-use super::parser::Parser;
+use crate::parser::Parser;
+
+use super::parser::ParserRef;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct SourceRange {
@@ -17,8 +19,12 @@ impl SourceRange {
     Self { start: 0, end: 0 }
   }
 
-  pub fn to_string<'a>(&self, parser: &'a Parser) -> &'a str {
-    &parser.source.substring(self.start, self.end)
+  pub fn to_string<'a>(&self, parser: &ParserRef) -> String {
+    parser
+      .borrow()
+      .source
+      .substring(self.start, self.end)
+      .to_string()
   }
 
   pub fn clone_with_len(&self, len: usize) -> Self {
@@ -37,6 +43,7 @@ impl std::fmt::Display for SourceRange {
 
 mod tests {
   use super::*;
+  use crate::parser::Parser;
 
   #[test]
   fn it_can_be_cloned() {
