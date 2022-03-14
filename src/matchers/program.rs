@@ -28,6 +28,11 @@ where
   range
 }
 
+pub enum MatchAction {
+  Continue,
+  Stop,
+}
+
 #[derive(Token)]
 struct ProgramToken<'a> {
   parser: ParserRef,
@@ -57,14 +62,21 @@ pub struct ProgramPattern<'a> {
   patterns: Vec<Box<dyn Matcher>>,
   name: &'a str,
   pub(self) iterate_range: Option<Range<usize>>,
+  pub(self) stop_on_first: MatchAction,
 }
 
 impl<'a> ProgramPattern<'a> {
-  pub fn new_blank_program() -> Self {
+  pub fn new_blank_program(stop_on_first: MatchAction) -> Self {
+    let name = match stop_on_first {
+      MatchAction::Stop => "Switch",
+      MatchAction::Continue => "Program",
+    };
+
     Self {
       patterns: Vec::new(),
-      name: "Program",
       iterate_range: None,
+      name,
+      stop_on_first,
     }
   }
 
@@ -76,14 +88,21 @@ impl<'a> ProgramPattern<'a> {
       patterns: Vec::new(),
       name: "Loop",
       iterate_range: Some(get_range(r)),
+      stop_on_first: MatchAction::Continue,
     }
   }
 
-  pub fn new_program(patterns: Vec<Box<dyn Matcher>>) -> Self {
+  pub fn new_program(patterns: Vec<Box<dyn Matcher>>, stop_on_first: MatchAction) -> Self {
+    let name = match stop_on_first {
+      MatchAction::Stop => "Switch",
+      MatchAction::Continue => "Program",
+    };
+
     Self {
       patterns,
-      name: "Program",
       iterate_range: None,
+      name,
+      stop_on_first,
     }
   }
 
@@ -95,17 +114,20 @@ impl<'a> ProgramPattern<'a> {
       patterns,
       name: "Loop",
       iterate_range: Some(get_range(r)),
+      stop_on_first: MatchAction::Continue,
     }
   }
 
   pub fn new_program_with_name(
     patterns: Vec<Box<dyn Matcher>>,
     name: &'a str,
+    stop_on_first: MatchAction,
   ) -> ProgramPattern<'a> {
     Self {
       patterns,
       name,
       iterate_range: None,
+      stop_on_first,
     }
   }
 
@@ -121,6 +143,7 @@ impl<'a> ProgramPattern<'a> {
       patterns,
       name,
       iterate_range: Some(get_range(r)),
+      stop_on_first: MatchAction::Continue,
     }
   }
 
@@ -227,6 +250,13 @@ impl<'a> Matcher for ProgramPattern<'a> {
                 &mut raw_range,
                 &token,
               );
+
+              match self.stop_on_first {
+                MatchAction::Stop => {
+                  return finalize_program_token(program_token, children, value_range, raw_range);
+                }
+                _ => {}
+              }
             }
             MatcherSuccess::Skip(amount) => {
               let new_offset = sub_context.borrow().offset.start + amount as usize;
@@ -242,7 +272,19 @@ impl<'a> Matcher for ProgramPattern<'a> {
             if is_loop {
               return finalize_program_token(program_token, children, value_range, raw_range);
             } else {
-              return Err(failure);
+              match failure {
+                MatcherFailure::Fail => match self.stop_on_first {
+                  MatchAction::Stop => {
+                    continue;
+                  }
+                  _ => {
+                    return Err(MatcherFailure::Fail);
+                  }
+                },
+                MatcherFailure::Error(error) => {
+                  return Err(MatcherFailure::Error(error));
+                }
+              }
             }
           }
         }
@@ -251,24 +293,24 @@ impl<'a> Matcher for ProgramPattern<'a> {
       match iteration_result {
         Some(action) => match action {
           MatcherSuccess::Break((loop_name, data)) => {
-            let data = match &*data {
-              MatcherSuccess::Token(token) => {
-                // Add token to myself, and then continue propagating
-                add_token_to_children(
-                  &program_token,
-                  &mut sub_context,
-                  &mut children,
-                  &mut value_range,
-                  &mut raw_range,
-                  &token,
-                );
-
-                Box::new(MatcherSuccess::None)
-              }
-              _ => data,
-            };
-
             if is_loop && (loop_name == self.name || loop_name == "") {
+              match &*data {
+                MatcherSuccess::Token(token) => {
+                  // Add token to myself, and then continue propagating
+                  add_token_to_children(
+                    &program_token,
+                    &mut sub_context,
+                    &mut children,
+                    &mut value_range,
+                    &mut raw_range,
+                    &token,
+                  );
+
+                  Box::new(MatcherSuccess::None)
+                }
+                _ => data,
+              };
+
               // This is the loop that should break, so cease propagating the Break
               return finalize_program_token(program_token, children, value_range, raw_range);
             } else {
@@ -287,25 +329,25 @@ impl<'a> Matcher for ProgramPattern<'a> {
             }
           }
           MatcherSuccess::Continue((loop_name, data)) => {
-            let data = match &*data {
-              MatcherSuccess::Token(token) => {
-                // Add token to myself, and then continue propagating
-                add_token_to_children(
-                  &program_token,
-                  &mut sub_context,
-                  &mut children,
-                  &mut value_range,
-                  &mut raw_range,
-                  &token,
-                );
-
-                Box::new(MatcherSuccess::None)
-              }
-              _ => data,
-            };
-
             // This is not the correct Loop, or is a Program, so propagate Continue
-            if !(is_loop && (loop_name == self.name || loop_name == "")) {
+            if is_loop && (loop_name == self.name || loop_name == "") {
+              match &*data {
+                MatcherSuccess::Token(token) => {
+                  // Add token to myself, and then continue propagating
+                  add_token_to_children(
+                    &program_token,
+                    &mut sub_context,
+                    &mut children,
+                    &mut value_range,
+                    &mut raw_range,
+                    &token,
+                  );
+
+                  Box::new(MatcherSuccess::None)
+                }
+                _ => data,
+              };
+            } else {
               if children.len() == 0 {
                 return Ok(MatcherSuccess::Continue((loop_name, data)));
               }
@@ -341,7 +383,7 @@ impl<'a> Matcher for ProgramPattern<'a> {
 macro_rules! Program {
   ($name:expr; $($args:expr),+ $(,)?) => {
     {
-      let mut program = $crate::matchers::program::ProgramPattern::new_blank_program();
+      let mut program = $crate::matchers::program::ProgramPattern::new_blank_program($crate::matchers::program::MatchAction::Continue);
       program.set_name($name);
 
       $(
@@ -353,7 +395,32 @@ macro_rules! Program {
 
   ($($args:expr),+ $(,)?) => {
     {
-      let mut program = $crate::matchers::program::ProgramPattern::new_blank_program();
+      let mut program = $crate::matchers::program::ProgramPattern::new_blank_program($crate::matchers::program::MatchAction::Continue);
+      $(
+        program.add_pattern(std::boxed::Box::new($args));
+      )*
+      program
+    }
+  };
+}
+
+#[macro_export]
+macro_rules! Switch {
+  ($name:expr; $($args:expr),+ $(,)?) => {
+    {
+      let mut program = $crate::matchers::program::ProgramPattern::new_blank_program($crate::matchers::program::MatchAction::Stop);
+      program.set_name($name);
+
+      $(
+        program.add_pattern(std::boxed::Box::new($args));
+      )*
+      program
+    }
+  };
+
+  ($($args:expr),+ $(,)?) => {
+    {
+      let mut program = $crate::matchers::program::ProgramPattern::new_blank_program($crate::matchers::program::MatchAction::Stop);
       $(
         program.add_pattern(std::boxed::Box::new($args));
       )*
@@ -435,6 +502,22 @@ mod tests {
       Err(MatcherFailure::Fail),
       matcher.exec(parser_context.clone())
     );
+  }
+
+  #[test]
+  fn it_matches_against_a_simple_switch() {
+    let parser = Parser::new("Testing 1234");
+    let parser_context = ParserContext::new(&parser);
+    let matcher = Switch!(Equals!(" "), Matches!(r"\d+"), Equals!("Testing"));
+
+    if let Ok(MatcherSuccess::Token(token)) = matcher.exec(parser_context.clone()) {
+      let token = token.borrow();
+      assert_eq!(token.get_name(), "Switch");
+      assert_eq!(*token.get_value_range(), SourceRange::new(0, 7));
+      assert_eq!(token.value(), "Testing");
+    } else {
+      unreachable!("Test failed!");
+    };
   }
 
   #[test]

@@ -1,0 +1,159 @@
+use crate::matcher::{Matcher, MatcherFailure, MatcherSuccess};
+use crate::matchers::matches::MatchesToken;
+use crate::parser_context::ParserContextRef;
+use crate::source_range::{self, SourceRange};
+
+pub struct SequencePattern<'a> {
+  start: &'a str,
+  end: &'a str,
+  escape: &'a str,
+  name: &'a str,
+}
+
+impl<'a> SequencePattern<'a> {
+  pub fn new(start: &'a str, end: &'a str, escape: &'a str) -> Self {
+    if start.len() == 0 {
+      panic!("Sequence start pattern of \"\" makes no sense");
+    }
+
+    if end.len() == 0 {
+      panic!("Sequence end pattern of \"\" makes no sense");
+    }
+
+    Self {
+      name: "Sequence",
+      start,
+      end,
+      escape,
+    }
+  }
+
+  pub fn new_with_name(
+    name: &'a str,
+    start: &'a str,
+    end: &'a str,
+    escape: &'a str,
+  ) -> SequencePattern<'a> {
+    if start.len() == 0 {
+      panic!("Sequence start pattern of \"\" makes no sense");
+    }
+
+    if end.len() == 0 {
+      panic!("Sequence end pattern of \"\" makes no sense");
+    }
+
+    Self {
+      name,
+      start,
+      end,
+      escape,
+    }
+  }
+
+  pub fn set_name(&mut self, name: &'a str) {
+    self.name = name;
+  }
+}
+
+impl<'a> Matcher for SequencePattern<'a> {
+  fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
+    let start = context.borrow().offset.start;
+    let end = context.borrow().offset.end;
+    let scan_start;
+
+    if let Some(source_range) = context.borrow().matches_str(self.start) {
+      scan_start = source_range.end;
+    } else {
+      return Err(MatcherFailure::Fail);
+    }
+
+    if scan_start >= end {
+      return Err(MatcherFailure::Fail);
+    }
+
+    let mut index = scan_start;
+
+    loop {
+      if index >= end {
+        return Err(MatcherFailure::Fail);
+      }
+
+      let result = context.borrow().matches_str_at_offset(self.end, index);
+      if let Some(source_range) = result {
+        context.borrow_mut().set_start(source_range.end);
+        return Ok(MatcherSuccess::Token(MatchesToken::new_with_raw_range(
+          &context.borrow().parser,
+          self.name,
+          SourceRange::new(start + self.start.len(), index),
+          SourceRange::new(start, source_range.end),
+        )));
+      } else {
+        let result = context.borrow().matches_str_at_offset(self.escape, index);
+        if let Some(source_range) = result {
+          index = source_range.end + 1;
+          continue;
+        } else {
+          index += 1;
+          continue;
+        }
+      }
+    }
+  }
+
+  fn get_name(&self) -> &str {
+    self.name
+  }
+}
+
+#[macro_export]
+macro_rules! Sequence {
+  ($name:expr; $start:expr, $end:expr, $escape:expr) => {
+    $crate::matchers::sequence::SequencePattern::new_with_name($name, $start, $end, $escape)
+  };
+
+  ($start:expr, $end:expr, $escape:expr) => {
+    $crate::matchers::sequence::SequencePattern::new($start, $end, $escape)
+  };
+}
+
+mod tests {
+  use crate::{
+    matcher::{Matcher, MatcherFailure, MatcherSuccess},
+    parser::Parser,
+    parser_context::ParserContext,
+    source_range::SourceRange,
+  };
+
+  #[test]
+  fn it_matches_against_a_sequence() {
+    let parser = Parser::new("\"This is a \\\"cool\\\\beans\\\" string!\" stuff after string");
+    let parser_context = ParserContext::new(&parser);
+    let matcher = Sequence!("\"", "\"", "\\");
+
+    if let Ok(MatcherSuccess::Token(token)) = matcher.exec(parser_context.clone()) {
+      let token = token.borrow();
+      assert_eq!(token.get_name(), "Sequence");
+      assert_eq!(*token.get_value_range(), SourceRange::new(1, 34));
+      assert_eq!(*token.get_raw_range(), SourceRange::new(0, 35));
+      assert_eq!(token.value(), "This is a \\\"cool\\\\beans\\\" string!");
+      assert_eq!(
+        token.raw_value(),
+        "\"This is a \\\"cool\\\\beans\\\" string!\""
+      );
+    } else {
+      unreachable!("Test failed!");
+    };
+  }
+
+  #[test]
+  fn it_fails_to_match_against_a_sequence() {
+    let parser = Parser::new("\"Testing 1234");
+    let parser_context = ParserContext::new(&parser);
+    let matcher = Sequence!("\"", "\"", "\\");
+
+    assert_eq!(
+      matcher.exec(parser_context.clone()),
+      Err(MatcherFailure::Fail)
+    );
+  }
+}

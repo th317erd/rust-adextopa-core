@@ -4,3 +4,4 @@ pub mod matches;
 pub mod not;
 pub mod optional;
 pub mod program;
+pub mod sequence;

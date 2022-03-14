@@ -11,7 +11,7 @@ use crate::source_range::SourceRange;
 use crate::token::{Token, TokenRef};
 
 #[derive(Token)]
-struct MatchesToken<'a> {
+pub struct MatchesToken<'a> {
   parser: ParserRef,
   pub value_range: SourceRange,
   pub raw_range: SourceRange,
@@ -26,6 +26,22 @@ impl<'a> MatchesToken<'a> {
       parser: parser.clone(),
       value_range,
       raw_range: value_range.clone(),
+      name,
+      parent: None,
+      children: Vec::new(),
+    })))
+  }
+
+  pub fn new_with_raw_range(
+    parser: &ParserRef,
+    name: &'a str,
+    value_range: SourceRange,
+    raw_range: SourceRange,
+  ) -> TokenRef<'a> {
+    Rc::new(RefCell::new(Box::new(MatchesToken {
+      parser: parser.clone(),
+      value_range,
+      raw_range,
       name,
       parent: None,
       children: Vec::new(),
@@ -49,7 +65,7 @@ impl<'a> MatchesPattern<'a> {
     Self { pattern, name }
   }
 
-  pub fn new_with_name(pattern: Pattern<'a>, name: &'a str) -> MatchesPattern<'a> {
+  pub fn new_with_name(name: &'a str, pattern: Pattern<'a>) -> MatchesPattern<'a> {
     Self { pattern, name }
   }
 
@@ -86,6 +102,15 @@ impl<'a> Matcher for MatchesPattern<'a> {
 
 #[macro_export]
 macro_rules! Equals {
+  ($name:expr; $arg:expr) => {{
+    $crate::matchers::matches::MatchesPattern::new(
+      $crate::matchers::matches::MatchesPattern::new_with_name(
+        $name,
+        $crate::matcher::Pattern::String($arg),
+      ),
+    )
+  }};
+
   ($arg:expr) => {
     $crate::matchers::matches::MatchesPattern::new($crate::matcher::Pattern::String($arg))
   };
@@ -94,13 +119,10 @@ macro_rules! Equals {
 #[macro_export]
 macro_rules! Matches {
   ($name:expr; $arg:expr) => {{
-    let mut matcher = $crate::matchers::matches::MatchesPattern::new(
+    $crate::matchers::matches::MatchesPattern::new_with_name(
+      $name,
       $crate::matcher::Pattern::RegExp(regex::Regex::new($arg).unwrap()),
-    );
-
-    matcher.set_name($name);
-
-    matcher
+    )
   }};
 
   ($arg:expr) => {{

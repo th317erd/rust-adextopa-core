@@ -1,7 +1,7 @@
 use regex::Regex;
 
 use super::source_range::SourceRange;
-use crate::parser::ParserRef;
+use crate::{parser::ParserRef, source_range};
 
 pub type ParserContextRef = std::rc::Rc<std::cell::RefCell<ParserContext>>;
 
@@ -43,6 +43,24 @@ impl ParserContext {
 
     if chunk.starts_with(pattern) {
       Some(self.offset.clone_with_len(pattern.len()))
+    } else {
+      None
+    }
+  }
+
+  pub fn matches_str_at_offset(&self, pattern: &str, offset: usize) -> Option<SourceRange> {
+    if offset >= self.offset.end {
+      if pattern.len() == 0 {
+        return Some(SourceRange::new(offset, offset));
+      } else {
+        return None;
+      }
+    }
+
+    let chunk = &self.parser.borrow().source[offset..self.offset.end];
+
+    if chunk.starts_with(pattern) {
+      Some(SourceRange::new(offset, offset + pattern.len()))
     } else {
       None
     }
