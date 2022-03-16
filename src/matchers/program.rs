@@ -237,7 +237,7 @@ impl<'a> Matcher for ProgramPattern<'a> {
             MatcherSuccess::ExtractChildren(token) => {
               match self.stop_on_first {
                 MatchAction::Stop => {
-                  return Ok(MatcherSuccess::Token(token.clone()));
+                  return Ok(MatcherSuccess::ExtractChildren(token.clone()));
                 }
                 _ => {}
               }
@@ -255,6 +255,9 @@ impl<'a> Matcher for ProgramPattern<'a> {
                   &child,
                 );
               }
+
+              contain_source_range(&mut value_range, &token.get_raw_range());
+              contain_source_range(&mut raw_range, &token.get_raw_range());
             }
             MatcherSuccess::Skip(amount) => {
               let new_offset = sub_context.borrow().offset.start + amount as usize;
@@ -327,6 +330,9 @@ impl<'a> Matcher for ProgramPattern<'a> {
                     );
                   }
 
+                  contain_source_range(&mut value_range, &token.get_raw_range());
+                  contain_source_range(&mut raw_range, &token.get_raw_range());
+
                   Box::new(MatcherSuccess::None)
                 }
                 _ => data,
@@ -335,9 +341,9 @@ impl<'a> Matcher for ProgramPattern<'a> {
               // This is the loop that should break, so cease propagating the Break
               return finalize_program_token(program_token, children, value_range, raw_range);
             } else {
-              if children.len() == 0 {
-                return Ok(MatcherSuccess::Break((loop_name, data)));
-              }
+              // if children.len() == 0 {
+              //   return Ok(MatcherSuccess::Break((loop_name, data)));
+              // }
 
               match finalize_program_token(program_token, children, value_range, raw_range) {
                 Ok(final_token) => {
@@ -381,14 +387,17 @@ impl<'a> Matcher for ProgramPattern<'a> {
                     );
                   }
 
+                  contain_source_range(&mut value_range, &token.get_raw_range());
+                  contain_source_range(&mut raw_range, &token.get_raw_range());
+
                   Box::new(MatcherSuccess::None)
                 }
                 _ => data,
               };
             } else {
-              if children.len() == 0 {
-                return Ok(MatcherSuccess::Continue((loop_name, data)));
-              }
+              // if children.len() == 0 {
+              //   return Ok(MatcherSuccess::Continue((loop_name, data)));
+              // }
 
               match finalize_program_token(program_token, children, value_range, raw_range) {
                 Ok(final_token) => {
