@@ -1,5 +1,5 @@
 use crate::matcher::{Matcher, MatcherFailure, MatcherSuccess};
-use crate::parser_context::{ParserContext, ParserContextRef};
+use crate::parser_context::ParserContextRef;
 
 pub struct NotPattern {
   matcher: Box<dyn Matcher>,
@@ -38,12 +38,12 @@ macro_rules! Not {
   };
 }
 
+#[cfg(test)]
 mod tests {
   use crate::{
     matcher::{Matcher, MatcherFailure, MatcherSuccess},
     parser::Parser,
     parser_context::ParserContext,
-    source_range::SourceRange,
     Equals,
   };
 

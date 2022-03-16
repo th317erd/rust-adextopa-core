@@ -1,53 +1,9 @@
 extern crate adextopa_macros;
-use adextopa_macros::Token;
 use core::panic;
-use std::cell::RefCell;
-use std::rc::Rc;
 
 use crate::matcher::{Matcher, MatcherFailure, MatcherSuccess, Pattern};
-use crate::parser::{Parser, ParserRef};
-use crate::parser_context::{ParserContext, ParserContextRef};
-use crate::source_range::SourceRange;
-use crate::token::{Token, TokenRef};
-
-#[derive(Token)]
-pub struct MatchesToken<'a> {
-  parser: ParserRef,
-  pub value_range: SourceRange,
-  pub raw_range: SourceRange,
-  pub name: &'a str,
-  pub parent: Option<TokenRef<'a>>,
-  pub children: Vec<TokenRef<'a>>,
-}
-
-impl<'a> MatchesToken<'a> {
-  pub fn new(parser: &ParserRef, name: &'a str, value_range: SourceRange) -> TokenRef<'a> {
-    Rc::new(RefCell::new(Box::new(MatchesToken {
-      parser: parser.clone(),
-      value_range,
-      raw_range: value_range.clone(),
-      name,
-      parent: None,
-      children: Vec::new(),
-    })))
-  }
-
-  pub fn new_with_raw_range(
-    parser: &ParserRef,
-    name: &'a str,
-    value_range: SourceRange,
-    raw_range: SourceRange,
-  ) -> TokenRef<'a> {
-    Rc::new(RefCell::new(Box::new(MatchesToken {
-      parser: parser.clone(),
-      value_range,
-      raw_range,
-      name,
-      parent: None,
-      children: Vec::new(),
-    })))
-  }
-}
+use crate::parser_context::ParserContextRef;
+use crate::token::StandardToken;
 
 pub struct MatchesPattern<'a> {
   pattern: Pattern<'a>,
@@ -78,15 +34,24 @@ impl<'a> Matcher for MatchesPattern<'a> {
   fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
     match self.pattern {
       Pattern::String(s) => {
+        // println!("Attempting to EQUAL against: {:?} [{}]", s, context.borrow().debug_range(10));
         if let Some(range) = context.borrow().matches_str(s) {
-          Ok(MatcherSuccess::Token(MatchesToken::new(&context.borrow().parser, self.name, range)))
+          Ok(MatcherSuccess::Token(StandardToken::new(&context.borrow().parser, self.name, range)))
         } else {
           Err(MatcherFailure::Fail)
         }
       }
       Pattern::RegExp(ref re) => {
+        // println!("Attempting to MATCH against: {:?} [{}]", re, context.borrow().debug_range(10));
+
         if let Some(range) = context.borrow().matches_regexp(re) {
-          Ok(MatcherSuccess::Token(MatchesToken::new(&context.borrow().parser, self.name, range)))
+          // We got a match, but it has zero length
+          // In this case, respond with a "Skip"
+          if range.start == range.end {
+            return Ok(MatcherSuccess::Skip(0));
+          }
+
+          Ok(MatcherSuccess::Token(StandardToken::new(&context.borrow().parser, self.name, range)))
         } else {
           Err(MatcherFailure::Fail)
         }
@@ -102,14 +67,14 @@ impl<'a> Matcher for MatchesPattern<'a> {
 
 #[macro_export]
 macro_rules! Equals {
-  ($name:expr; $arg:expr) => {{
+  ($name:expr; $arg:expr) => {
     $crate::matchers::matches::MatchesPattern::new(
       $crate::matchers::matches::MatchesPattern::new_with_name(
         $name,
         $crate::matcher::Pattern::String($arg),
       ),
     )
-  }};
+  };
 
   ($arg:expr) => {
     $crate::matchers::matches::MatchesPattern::new($crate::matcher::Pattern::String($arg))
@@ -118,20 +83,21 @@ macro_rules! Equals {
 
 #[macro_export]
 macro_rules! Matches {
-  ($name:expr; $arg:expr) => {{
+  ($name:expr; $arg:expr) => {
     $crate::matchers::matches::MatchesPattern::new_with_name(
       $name,
       $crate::matcher::Pattern::RegExp(regex::Regex::new($arg).unwrap()),
     )
-  }};
+  };
 
-  ($arg:expr) => {{
+  ($arg:expr) => {
     $crate::matchers::matches::MatchesPattern::new($crate::matcher::Pattern::RegExp(
       regex::Regex::new($arg).unwrap(),
     ))
-  }};
+  };
 }
 
+#[cfg(test)]
 mod tests {
   use crate::{
     matcher::{Matcher, MatcherFailure, MatcherSuccess},
@@ -187,7 +153,7 @@ mod tests {
   #[test]
   fn it_fails_to_match_against_a_regexp_with_a_non_zero_offset() {
     let parser = Parser::new("Testing 1234");
-    let mut parser_context = ParserContext::new(&parser);
+    let parser_context = ParserContext::new(&parser);
     let matcher = Matches!(r".+");
 
     parser_context.borrow_mut().offset.start = 8;

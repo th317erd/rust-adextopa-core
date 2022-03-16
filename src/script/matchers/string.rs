@@ -1,5 +1,9 @@
 #[macro_export]
 macro_rules! ScriptString {
+  ($name:expr) => {
+    $crate::Sequence!($name; "'", "'", "\\")
+  };
+
   () => {
     $crate::Sequence!("String"; "'", "'", "\\")
   };
@@ -25,7 +29,7 @@ mod tests {
       assert_eq!(token.get_name(), "String");
       assert_eq!(*token.get_value_range(), SourceRange::new(1, 19));
       assert_eq!(*token.get_raw_range(), SourceRange::new(0, 20));
-      assert_eq!(token.value(), "A \\'test\\' string!");
+      assert_eq!(token.value(), "A 'test' string!");
       assert_eq!(token.raw_value(), "'A \\'test\\' string!'");
     } else {
       unreachable!("Test failed!");

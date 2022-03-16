@@ -1,7 +1,7 @@
 use crate::matcher::{Matcher, MatcherFailure, MatcherSuccess};
-use crate::matchers::matches::MatchesToken;
 use crate::parser_context::ParserContextRef;
-use crate::source_range::{self, SourceRange};
+use crate::source_range::SourceRange;
+use crate::token::StandardToken;
 
 pub struct SequencePattern<'a> {
   start: &'a str,
@@ -60,6 +60,8 @@ impl<'a> Matcher for SequencePattern<'a> {
     let start = context.borrow().offset.start;
     let end = context.borrow().offset.end;
     let scan_start;
+    let source_copy = context.borrow().parser.borrow().source.clone();
+    let source = source_copy.as_str();
 
     if let Some(source_range) = context.borrow().matches_str(self.start) {
       scan_start = source_range.end;
@@ -72,6 +74,8 @@ impl<'a> Matcher for SequencePattern<'a> {
     }
 
     let mut index = scan_start;
+    let mut previous_index = scan_start;
+    let mut parts: Vec<&str> = Vec::new();
 
     loop {
       if index >= end {
@@ -80,17 +84,36 @@ impl<'a> Matcher for SequencePattern<'a> {
 
       let result = context.borrow().matches_str_at_offset(self.end, index);
       if let Some(source_range) = result {
-        context.borrow_mut().set_start(source_range.end);
-        return Ok(MatcherSuccess::Token(MatchesToken::new_with_raw_range(
+        if previous_index < index {
+          parts.push(&source[previous_index..index]);
+        }
+
+        index = source_range.end;
+
+        context.borrow_mut().set_start(index);
+
+        let token = StandardToken::new_with_raw_range(
           &context.borrow().parser,
           self.name,
-          SourceRange::new(start + self.start.len(), index),
-          SourceRange::new(start, source_range.end),
-        )));
+          SourceRange::new(start + self.start.len(), index - self.end.len()),
+          SourceRange::new(start, index),
+        );
+
+        token
+          .borrow_mut()
+          .set_attribute("__value".to_string(), parts.join("").to_string());
+
+        return Ok(MatcherSuccess::Token(token));
       } else {
         let result = context.borrow().matches_str_at_offset(self.escape, index);
         if let Some(source_range) = result {
+          if previous_index < index {
+            parts.push(&source[previous_index..index]);
+          }
+
           index = source_range.end + 1;
+          previous_index = index - 1;
+
           continue;
         } else {
           index += 1;
@@ -116,6 +139,7 @@ macro_rules! Sequence {
   };
 }
 
+#[cfg(test)]
 mod tests {
   use crate::{
     matcher::{Matcher, MatcherFailure, MatcherSuccess},
@@ -135,7 +159,7 @@ mod tests {
       assert_eq!(token.get_name(), "Sequence");
       assert_eq!(*token.get_value_range(), SourceRange::new(1, 34));
       assert_eq!(*token.get_raw_range(), SourceRange::new(0, 35));
-      assert_eq!(token.value(), "This is a \\\"cool\\\\beans\\\" string!");
+      assert_eq!(token.value(), "This is a \"cool\\beans\" string!");
       assert_eq!(
         token.raw_value(),
         "\"This is a \\\"cool\\\\beans\\\" string!\""

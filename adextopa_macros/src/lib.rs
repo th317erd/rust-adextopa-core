@@ -76,11 +76,39 @@ pub fn token_derive(input: TokenStream) -> TokenStream {
       }
 
       fn value(&self) -> String {
+        // Value override via attribute
+        match self.get_attribute("__value".to_string()) {
+          Some(value) => {
+            return value.clone();
+          },
+          None => {}
+        }
+
         self.value_range.to_string(&self.parser)
       }
 
       fn raw_value(&self) -> String {
+        // Value override via attribute
+        match self.get_attribute("__raw_value".to_string()) {
+          Some(value) => {
+            return value.clone();
+          },
+          None => {}
+        }
+
         self.raw_range.to_string(&self.parser)
+      }
+
+      fn get_attributes<'b>(&'b self) -> &'b std::collections::HashMap<String, String> {
+        &self.attributes
+      }
+
+      fn get_attribute<'b>(&'b self, name: String) -> Option<&'b String> {
+        self.attributes.get(&name)
+      }
+
+      fn set_attribute(&mut self, name: String, value: String) -> Option<String> {
+        self.attributes.insert(name, value)
       }
     }
   };

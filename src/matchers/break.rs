@@ -1,5 +1,5 @@
 use crate::matcher::{Matcher, MatcherFailure, MatcherSuccess};
-use crate::parser_context::{ParserContext, ParserContextRef};
+use crate::parser_context::ParserContextRef;
 
 pub struct BreakPattern<'a> {
   loop_name: &'a str,
@@ -35,12 +35,12 @@ macro_rules! Break {
   };
 }
 
+#[cfg(test)]
 mod tests {
   use crate::{
     matcher::{Matcher, MatcherSuccess},
     parser::Parser,
     parser_context::ParserContext,
-    source_range::SourceRange,
     Break,
   };
 

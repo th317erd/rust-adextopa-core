@@ -1,15 +1,10 @@
 extern crate adextopa_macros;
-use adextopa_macros::Token;
-
-use std::cell::RefCell;
-use std::ops::{Bound, Range, RangeBounds};
-use std::rc::Rc;
 
 use crate::matcher::{Matcher, MatcherFailure, MatcherSuccess};
-use crate::parser::{Parser, ParserRef};
-use crate::parser_context::{self, ParserContext, ParserContextRef};
+use crate::parser_context::ParserContextRef;
 use crate::source_range::SourceRange;
-use crate::token::{Token, TokenRef};
+use crate::token::{StandardToken, TokenRef};
+use std::ops::{Bound, Range, RangeBounds};
 
 fn get_range<T>(r: T) -> Range<usize>
 where
@@ -31,31 +26,6 @@ where
 pub enum MatchAction {
   Continue,
   Stop,
-}
-
-#[derive(Token)]
-struct ProgramToken<'a> {
-  parser: ParserRef,
-  pub value_range: SourceRange,
-  pub raw_range: SourceRange,
-  pub name: &'a str,
-  pub parent: Option<TokenRef<'a>>,
-  pub children: Vec<TokenRef<'a>>,
-}
-
-impl<'a> ProgramToken<'a> {
-  pub fn new(parser: &ParserRef, name: &'a str, value_range: SourceRange) -> TokenRef<'a> {
-    let token = ProgramToken {
-      parser: parser.clone(),
-      value_range,
-      raw_range: value_range.clone(),
-      name,
-      parent: None,
-      children: Vec::new(),
-    };
-
-    Rc::new(RefCell::new(Box::new(token)))
-  }
 }
 
 pub struct ProgramPattern<'a> {
@@ -199,7 +169,9 @@ fn add_token_to_children<'a>(
     // Ensure that we are moving forward, and that the token doesn't have a zero width
     assert!(token.get_raw_range().end != context.borrow_mut().offset.start);
 
-    contain_source_range(value_range, &token.get_value_range());
+    // value_range is set to raw_range because the program
+    // should always span the range of all child tokens
+    contain_source_range(value_range, &token.get_raw_range());
     contain_source_range(raw_range, &token.get_raw_range());
 
     context.borrow_mut().set_start(token.get_raw_range().end);
@@ -216,7 +188,8 @@ fn add_token_to_children<'a>(
 impl<'a> Matcher for ProgramPattern<'a> {
   fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
     let mut sub_context = std::rc::Rc::new(std::cell::RefCell::new(context.borrow().clone()));
-    let program_token = ProgramToken::new(
+    let start_offset = sub_context.borrow().offset.start;
+    let program_token = StandardToken::new(
       &sub_context.borrow().parser,
       self.name,
       SourceRange::new_blank(),
@@ -238,7 +211,10 @@ impl<'a> Matcher for ProgramPattern<'a> {
       iteration_result = None;
 
       for pattern in &self.patterns {
-        let result = pattern.exec(sub_context.clone());
+        let result = pattern.exec(std::rc::Rc::new(std::cell::RefCell::new(
+          sub_context.borrow().clone(),
+        )));
+
         match result {
           Ok(success) => match success {
             MatcherSuccess::Token(token) => {
@@ -261,6 +237,12 @@ impl<'a> Matcher for ProgramPattern<'a> {
             MatcherSuccess::Skip(amount) => {
               let new_offset = sub_context.borrow().offset.start + amount as usize;
               sub_context.borrow_mut().set_start(new_offset);
+
+              let range = SourceRange::new(start_offset, new_offset);
+
+              contain_source_range(&mut value_range, &range);
+              contain_source_range(&mut raw_range, &range);
+
               continue;
             }
             _ => {
@@ -467,6 +449,7 @@ macro_rules! Loop {
   };
 }
 
+#[cfg(test)]
 mod tests {
   use crate::{
     matcher::{Matcher, MatcherFailure, MatcherSuccess},

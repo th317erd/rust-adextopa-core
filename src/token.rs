@@ -123,4 +123,49 @@ pub trait Token<'a> {
   fn set_children(&mut self, children: Vec<crate::token::TokenRef<'a>>);
   fn value(&self) -> String;
   fn raw_value(&self) -> String;
+  fn get_attributes<'b>(&'b self) -> &'b std::collections::HashMap<String, String>;
+  fn get_attribute<'b>(&'b self, name: String) -> Option<&'b String>;
+  fn set_attribute(&mut self, name: String, value: String) -> Option<String>;
+}
+
+#[derive(adextopa_macros::Token)]
+pub struct StandardToken<'a> {
+  parser: ParserRef,
+  pub value_range: SourceRange,
+  pub raw_range: SourceRange,
+  pub name: &'a str,
+  pub parent: Option<TokenRef<'a>>,
+  pub children: Vec<TokenRef<'a>>,
+  pub attributes: std::collections::HashMap<String, String>,
+}
+
+impl<'a> StandardToken<'a> {
+  pub fn new(parser: &ParserRef, name: &'a str, value_range: SourceRange) -> TokenRef<'a> {
+    Rc::new(RefCell::new(Box::new(StandardToken {
+      parser: parser.clone(),
+      value_range,
+      raw_range: value_range.clone(),
+      name,
+      parent: None,
+      children: Vec::new(),
+      attributes: std::collections::HashMap::new(),
+    })))
+  }
+
+  pub fn new_with_raw_range(
+    parser: &ParserRef,
+    name: &'a str,
+    value_range: SourceRange,
+    raw_range: SourceRange,
+  ) -> TokenRef<'a> {
+    Rc::new(RefCell::new(Box::new(StandardToken {
+      parser: parser.clone(),
+      value_range,
+      raw_range,
+      name,
+      parent: None,
+      children: Vec::new(),
+      attributes: std::collections::HashMap::new(),
+    })))
+  }
 }

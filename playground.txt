@@ -3,6 +3,7 @@
   # {Program1, Program2}: Multiple patterns in one
   # /RegExp/: Regular expressions
   # ="value": Equals
+  # ['\''; '\''; '\\']: Sequence
   # !<pattern>: Invert pattern: i.e.: {!="value"}
   # <optional>?: Optional expression
   # <expr>*: Loop zero or more times

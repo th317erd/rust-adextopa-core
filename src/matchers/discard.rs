@@ -1,5 +1,5 @@
 use crate::matcher::{Matcher, MatcherFailure, MatcherSuccess};
-use crate::parser_context::{ParserContext, ParserContextRef};
+use crate::parser_context::ParserContextRef;
 
 pub struct DiscardPattern {
   matcher: Box<dyn Matcher>,
@@ -13,17 +13,21 @@ impl DiscardPattern {
 
 impl Matcher for DiscardPattern {
   fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
-    match self.matcher.exec(context.clone()) {
+    let sub_context = std::rc::Rc::new(std::cell::RefCell::new(context.borrow().clone()));
+    let current_offset = context.borrow().offset.start;
+
+    match self.matcher.exec(sub_context.clone()) {
       Ok(success) => match success {
         MatcherSuccess::Token(token) => {
-          let offset: isize =
-            token.borrow().get_raw_range().end as isize - context.borrow().offset.start as isize;
+          let offset: isize = token.borrow().get_raw_range().end as isize - current_offset as isize;
           return Ok(MatcherSuccess::Skip(offset));
         }
         MatcherSuccess::Skip(offset) => Ok(MatcherSuccess::Skip(offset)),
         _ => Ok(success),
       },
-      Err(failure) => return Err(failure),
+      Err(failure) => {
+        return Err(failure);
+      }
     }
   }
 
@@ -39,12 +43,12 @@ macro_rules! Discard {
   };
 }
 
+#[cfg(test)]
 mod tests {
   use crate::{
     matcher::{Matcher, MatcherFailure, MatcherSuccess},
     parser::Parser,
     parser_context::ParserContext,
-    source_range::SourceRange,
     Equals,
   };
 

@@ -1,7 +1,7 @@
 use regex::Regex;
 
 use super::source_range::SourceRange;
-use crate::{parser::ParserRef, source_range};
+use crate::{parser::ParserRef, token::Token};
 
 pub type ParserContextRef = std::rc::Rc<std::cell::RefCell<ParserContext>>;
 
@@ -39,6 +39,10 @@ impl ParserContext {
   }
 
   pub fn matches_str(&self, pattern: &str) -> Option<SourceRange> {
+    if pattern.len() == 0 {
+      return None;
+    }
+
     let chunk = &self.parser.borrow().source[self.offset.start..self.offset.end];
 
     if chunk.starts_with(pattern) {
@@ -49,12 +53,8 @@ impl ParserContext {
   }
 
   pub fn matches_str_at_offset(&self, pattern: &str, offset: usize) -> Option<SourceRange> {
-    if offset >= self.offset.end {
-      if pattern.len() == 0 {
-        return Some(SourceRange::new(offset, offset));
-      } else {
-        return None;
-      }
+    if offset >= self.offset.end || pattern.len() == 0 {
+      return None;
     }
 
     let chunk = &self.parser.borrow().source[offset..self.offset.end];
@@ -82,5 +82,16 @@ impl ParserContext {
       }
       None => None,
     }
+  }
+
+  pub fn debug_range(&self, max_len: usize) -> String {
+    let parser = self.parser.borrow();
+    let mut end_offset = self.offset.start + max_len;
+
+    if end_offset > self.offset.end {
+      end_offset = self.offset.end;
+    }
+
+    parser.source[self.offset.start..end_offset].to_string()
   }
 }

@@ -1,7 +1,5 @@
 use substring::Substring;
 
-use crate::parser::Parser;
-
 use super::parser::ParserRef;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -41,6 +39,7 @@ impl std::fmt::Display for SourceRange {
   }
 }
 
+#[cfg(test)]
 mod tests {
   use super::*;
   use crate::parser::Parser;

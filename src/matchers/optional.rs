@@ -1,5 +1,5 @@
 use crate::matcher::{Matcher, MatcherFailure, MatcherSuccess};
-use crate::parser_context::{ParserContext, ParserContextRef};
+use crate::parser_context::ParserContextRef;
 
 pub struct OptionalPattern {
   matcher: Box<dyn Matcher>,
@@ -34,6 +34,7 @@ macro_rules! Optional {
   };
 }
 
+#[cfg(test)]
 mod tests {
   use crate::{
     matcher::{Matcher, MatcherSuccess},
