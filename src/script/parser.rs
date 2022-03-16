@@ -19,6 +19,10 @@ pub fn compile_script(source: &str) -> Result<Box<dyn Matcher>, String> {
         let token = token.borrow();
         println!("{:?}", token);
       }
+      MatcherSuccess::ExtractChildren(token) => {
+        let token = token.borrow();
+        println!("{:?}", token);
+      }
       MatcherSuccess::Skip(_) => {
         return Err("Internal Error(Skip): Invalid syntax".to_string());
       }

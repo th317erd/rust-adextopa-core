@@ -218,6 +218,13 @@ impl<'a> Matcher for ProgramPattern<'a> {
         match result {
           Ok(success) => match success {
             MatcherSuccess::Token(token) => {
+              match self.stop_on_first {
+                MatchAction::Stop => {
+                  return Ok(MatcherSuccess::Token(token.clone()));
+                }
+                _ => {}
+              }
+
               add_token_to_children(
                 &program_token,
                 &sub_context,
@@ -226,12 +233,27 @@ impl<'a> Matcher for ProgramPattern<'a> {
                 &mut raw_range,
                 &token,
               );
-
+            }
+            MatcherSuccess::ExtractChildren(token) => {
               match self.stop_on_first {
                 MatchAction::Stop => {
-                  return finalize_program_token(program_token, children, value_range, raw_range);
+                  return Ok(MatcherSuccess::Token(token.clone()));
                 }
                 _ => {}
+              }
+
+              let token = token.borrow();
+              let target_children = token.get_children();
+
+              for child in target_children {
+                add_token_to_children(
+                  &program_token,
+                  &sub_context,
+                  &mut children,
+                  &mut value_range,
+                  &mut raw_range,
+                  &child,
+                );
               }
             }
             MatcherSuccess::Skip(amount) => {
@@ -290,6 +312,23 @@ impl<'a> Matcher for ProgramPattern<'a> {
 
                   Box::new(MatcherSuccess::None)
                 }
+                MatcherSuccess::ExtractChildren(token) => {
+                  let token = token.borrow();
+                  let target_children = token.get_children();
+
+                  for child in target_children {
+                    add_token_to_children(
+                      &program_token,
+                      &sub_context,
+                      &mut children,
+                      &mut value_range,
+                      &mut raw_range,
+                      &child,
+                    );
+                  }
+
+                  Box::new(MatcherSuccess::None)
+                }
                 _ => data,
               };
 
@@ -324,6 +363,23 @@ impl<'a> Matcher for ProgramPattern<'a> {
                     &mut raw_range,
                     &token,
                   );
+
+                  Box::new(MatcherSuccess::None)
+                }
+                MatcherSuccess::ExtractChildren(token) => {
+                  let token = token.borrow();
+                  let target_children = token.get_children();
+
+                  for child in target_children {
+                    add_token_to_children(
+                      &program_token,
+                      &sub_context,
+                      &mut children,
+                      &mut value_range,
+                      &mut raw_range,
+                      &child,
+                    );
+                  }
 
                   Box::new(MatcherSuccess::None)
                 }
@@ -371,6 +427,7 @@ macro_rules! Program {
       $(
         program.add_pattern(std::boxed::Box::new($args));
       )*
+
       program
     }
   };
@@ -381,6 +438,7 @@ macro_rules! Program {
       $(
         program.add_pattern(std::boxed::Box::new($args));
       )*
+
       program
     }
   };
@@ -396,6 +454,7 @@ macro_rules! Switch {
       $(
         program.add_pattern(std::boxed::Box::new($args));
       )*
+
       program
     }
   };
@@ -403,9 +462,11 @@ macro_rules! Switch {
   ($($args:expr),+ $(,)?) => {
     {
       let mut program = $crate::matchers::program::ProgramPattern::new_blank_program($crate::matchers::program::MatchAction::Stop);
+
       $(
         program.add_pattern(std::boxed::Box::new($args));
       )*
+
       program
     }
   };
@@ -421,6 +482,7 @@ macro_rules! Loop {
       $(
         loop_program.add_pattern(std::boxed::Box::new($args));
       )*
+
       loop_program
     }
   };
@@ -433,6 +495,7 @@ macro_rules! Loop {
       $(
         loop_program.add_pattern(std::boxed::Box::new($args));
       )*
+
       loop_program
     }
   };
@@ -444,6 +507,7 @@ macro_rules! Loop {
       $(
         loop_program.add_pattern(std::boxed::Box::new($args));
       )*
+
       loop_program
     }
   };
@@ -495,7 +559,7 @@ mod tests {
 
     if let Ok(MatcherSuccess::Token(token)) = matcher.exec(parser_context.clone()) {
       let token = token.borrow();
-      assert_eq!(token.get_name(), "Switch");
+      assert_eq!(token.get_name(), "Equals");
       assert_eq!(*token.get_value_range(), SourceRange::new(0, 7));
       assert_eq!(token.value(), "Testing");
     } else {

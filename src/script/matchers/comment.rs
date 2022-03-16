@@ -60,24 +60,21 @@ mod tests {
       assert_eq!(token.raw_value(), r"1234 # Testing");
       assert_eq!(token.get_children().len(), 3);
 
-      let switch = token.get_children()[0].borrow();
-      let first = switch.get_children()[0].borrow();
+      let first = token.get_children()[0].borrow();
       assert_eq!(first.get_name(), "Number");
       assert_eq!(*first.get_value_range(), SourceRange::new(0, 4));
       assert_eq!(*first.get_raw_range(), SourceRange::new(0, 4));
       assert_eq!(first.value(), r"1234");
       assert_eq!(first.raw_value(), r"1234");
 
-      let switch = token.get_children()[1].borrow();
-      let second = switch.get_children()[0].borrow();
+      let second = token.get_children()[1].borrow();
       assert_eq!(second.get_name(), "Whitespace");
       assert_eq!(*second.get_value_range(), SourceRange::new(4, 5));
       assert_eq!(*second.get_raw_range(), SourceRange::new(4, 5));
       assert_eq!(second.value(), r" ");
       assert_eq!(second.raw_value(), r" ");
 
-      let switch = token.get_children()[2].borrow();
-      let second = switch.get_children()[0].borrow();
+      let second = token.get_children()[2].borrow();
       assert_eq!(second.get_name(), "Comment");
       assert_eq!(*second.get_value_range(), SourceRange::new(5, 14));
       assert_eq!(*second.get_raw_range(), SourceRange::new(5, 14));

@@ -7,6 +7,7 @@ use regex::Regex;
 #[derive(Debug, PartialEq)]
 pub enum MatcherSuccess<'a> {
   Token(TokenRef<'a>),
+  ExtractChildren(TokenRef<'a>),
   Skip(isize),
   Break((&'a str, Box<MatcherSuccess<'a>>)),
   Continue((&'a str, Box<MatcherSuccess<'a>>)),
