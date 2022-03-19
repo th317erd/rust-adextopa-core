@@ -21,7 +21,9 @@ impl<'a> FlattenPattern<'a> {
 
 impl<'a> Matcher for FlattenPattern<'a> {
   fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
-    let result = self.matcher.exec(context.clone());
+    let result = self
+      .matcher
+      .exec(context.borrow().clone_with_name(self.get_name()));
 
     match result {
       Ok(MatcherSuccess::Token(token)) => Ok(MatcherSuccess::ExtractChildren(token.clone())),
@@ -72,7 +74,7 @@ mod tests {
   #[test]
   fn it_works() {
     let parser = Parser::new("Testing 1234");
-    let parser_context = ParserContext::new(&parser);
+    let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Loop!(
       "Loop";
       Flatten!(Loop!(

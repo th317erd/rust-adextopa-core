@@ -13,7 +13,10 @@ impl OptionalPattern {
 
 impl Matcher for OptionalPattern {
   fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
-    match self.matcher.exec(context) {
+    match self
+      .matcher
+      .exec(context.borrow().clone_with_name(self.get_name()))
+    {
       Ok(success) => Ok(success),
       Err(failure) => match failure {
         MatcherFailure::Fail => Ok(MatcherSuccess::Skip(0)),
@@ -47,7 +50,7 @@ mod tests {
   #[test]
   fn it_matches_against_a_string() {
     let parser = Parser::new("Testing 1234");
-    let parser_context = ParserContext::new(&parser);
+    let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Optional!(Equals!("Testing"));
 
     if let Ok(MatcherSuccess::Token(token)) = matcher.exec(parser_context.clone()) {
@@ -63,7 +66,7 @@ mod tests {
   #[test]
   fn it_fails_to_match_against_a_string() {
     let parser = Parser::new("Testing 1234");
-    let parser_context = ParserContext::new(&parser);
+    let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Optional!(Equals!("testing"));
 
     assert_eq!(

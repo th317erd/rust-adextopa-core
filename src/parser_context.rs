@@ -3,27 +3,55 @@ use regex::Regex;
 use super::source_range::SourceRange;
 use crate::parser::ParserRef;
 
-pub type ParserContextRef = std::rc::Rc<std::cell::RefCell<ParserContext>>;
+pub type ParserContextRef<'a> = std::rc::Rc<std::cell::RefCell<ParserContext<'a>>>;
 
 #[derive(Clone)]
-pub struct ParserContext {
+pub struct ParserContext<'a> {
+  debug_mode: usize,
   pub offset: SourceRange,
   pub parser: ParserRef,
+  pub name: &'a str,
 }
 
-impl ParserContext {
-  pub fn new(parser: &ParserRef) -> ParserContextRef {
+impl<'a> ParserContext<'a> {
+  pub fn new<'b>(parser: &ParserRef, name: &'b str) -> ParserContextRef<'b> {
     std::rc::Rc::new(std::cell::RefCell::new(ParserContext {
       offset: SourceRange::new(0, parser.borrow().source.len()),
       parser: parser.clone(),
+      debug_mode: 0,
+      name,
     }))
   }
 
-  pub fn new_with_offset(parser: &ParserRef, offset: SourceRange) -> ParserContextRef {
+  pub fn new_with_offset<'b>(
+    parser: &ParserRef,
+    offset: SourceRange,
+    name: &'b str,
+  ) -> ParserContextRef<'b> {
     std::rc::Rc::new(std::cell::RefCell::new(ParserContext {
       offset,
       parser: parser.clone(),
+      debug_mode: 0,
+      name,
     }))
+  }
+
+  pub fn clone_with_name<'b>(&'b self, name: &'b str) -> ParserContextRef<'b> {
+    let mut c = self.clone();
+    c.name = name;
+    std::rc::Rc::new(std::cell::RefCell::new(c))
+  }
+
+  pub fn is_debug_mode(&self) -> bool {
+    self.debug_mode > 0
+  }
+
+  pub fn debug_mode_level(&self) -> usize {
+    self.debug_mode
+  }
+
+  pub fn set_debug_mode(&mut self, value: usize) {
+    self.debug_mode = value;
   }
 
   pub fn set_start(&mut self, start: usize) {

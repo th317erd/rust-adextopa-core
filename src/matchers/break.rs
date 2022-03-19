@@ -47,7 +47,7 @@ mod tests {
   #[test]
   fn it_works() {
     let parser = Parser::new("Testing 1234");
-    let parser_context = ParserContext::new(&parser);
+    let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Break!("Test");
 
     assert_eq!(

@@ -6,7 +6,7 @@ use crate::{
 
 pub fn compile_script(source: &str) -> Result<Box<dyn Matcher>, String> {
   let parser = Parser::new_from_file("./tests/uulang/test01.uu").unwrap();
-  let parser_context = ParserContext::new(&parser);
+  let parser_context = ParserContext::new(&parser, "Script");
   let pattern = crate::ScriptProgram!();
   let mut program = crate::matchers::program::ProgramPattern::new_blank_program(
     crate::matchers::program::MatchAction::Continue,

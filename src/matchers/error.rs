@@ -15,8 +15,7 @@ impl<'a> ErrorPattern<'a> {
 
 impl<'a> Matcher for ErrorPattern<'a> {
   fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
-    let value_range =
-      SourceRange::new(context.borrow().offset.start, context.borrow().offset.start);
+    let value_range = SourceRange::new(usize::MAX, usize::MAX);
     let token = StandardToken::new(&context.borrow().parser, "Error", value_range);
 
     {
@@ -53,7 +52,7 @@ mod tests {
   #[test]
   fn it_can_record_an_error() {
     let parser = Parser::new("Testing 1234");
-    let parser_context = ParserContext::new(&parser);
+    let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Program!(
       Matches!(r"\w+"),
       Error!("There was an error!"),

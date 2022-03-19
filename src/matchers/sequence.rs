@@ -151,7 +151,7 @@ mod tests {
   #[test]
   fn it_matches_against_a_sequence() {
     let parser = Parser::new("\"This is a \\\"cool\\\\beans\\\" string!\" stuff after string");
-    let parser_context = ParserContext::new(&parser);
+    let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Sequence!("\"", "\"", "\\");
 
     if let Ok(MatcherSuccess::Token(token)) = matcher.exec(parser_context.clone()) {
@@ -172,7 +172,7 @@ mod tests {
   #[test]
   fn it_fails_to_match_against_a_sequence() {
     let parser = Parser::new("\"Testing 1234");
-    let parser_context = ParserContext::new(&parser);
+    let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Sequence!("\"", "\"", "\\");
 
     assert_eq!(

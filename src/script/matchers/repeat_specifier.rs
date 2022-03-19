@@ -21,7 +21,7 @@ mod tests {
   #[test]
   fn it_works1() {
     let parser = Parser::new(r"+*{}");
-    let parser_context = ParserContext::new(&parser);
+    let parser_context = ParserContext::new(&parser, "Test");
     let matcher = ScriptRepeatSpecifier!();
 
     let result = matcher.exec(parser_context.clone());
@@ -42,7 +42,7 @@ mod tests {
   #[test]
   fn it_works2() {
     let parser = Parser::new(r"*+{}");
-    let parser_context = ParserContext::new(&parser);
+    let parser_context = ParserContext::new(&parser, "Test");
     let matcher = ScriptRepeatSpecifier!();
 
     let result = matcher.exec(parser_context.clone());
@@ -63,7 +63,7 @@ mod tests {
   #[test]
   fn it_works3() {
     let parser = Parser::new(r"{10,}*+");
-    let parser_context = ParserContext::new(&parser);
+    let parser_context = ParserContext::new(&parser, "Test");
     let matcher = ScriptRepeatSpecifier!();
 
     let result = matcher.exec(parser_context.clone());
@@ -84,7 +84,7 @@ mod tests {
   #[test]
   fn it_fails1() {
     let parser = Parser::new(" +");
-    let parser_context = ParserContext::new(&parser);
+    let parser_context = ParserContext::new(&parser, "Test");
     let matcher = ScriptRepeatSpecifier!();
 
     if let Err(MatcherFailure::Fail) = matcher.exec(parser_context.clone()) {

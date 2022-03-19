@@ -20,7 +20,7 @@ mod tests {
   #[test]
   fn it_works1() {
     let parser = Parser::new("='test'");
-    let parser_context = ParserContext::new(&parser);
+    let parser_context = ParserContext::new(&parser, "Test");
     let matcher = ScriptEqualsMatcher!();
 
     let result = matcher.exec(parser_context.clone());
@@ -41,7 +41,7 @@ mod tests {
   #[test]
   fn it_fails1() {
     let parser = Parser::new("Testing");
-    let parser_context = ParserContext::new(&parser);
+    let parser_context = ParserContext::new(&parser, "Test");
     let matcher = ScriptEqualsMatcher!();
 
     if let Err(MatcherFailure::Fail) = matcher.exec(parser_context.clone()) {

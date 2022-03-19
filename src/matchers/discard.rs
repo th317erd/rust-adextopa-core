@@ -34,8 +34,9 @@ fn collect_errors<'a, 'b>(error_token: TokenRef<'a>, walk_token: TokenRef<'a>) {
 
 impl Matcher for DiscardPattern {
   fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
-    let sub_context = std::rc::Rc::new(std::cell::RefCell::new(context.borrow().clone()));
-    let start_offset = context.borrow().offset.start;
+    let context = context.borrow();
+    let sub_context = context.clone_with_name(self.get_name());
+    let start_offset = context.offset.start;
 
     match self.matcher.exec(sub_context.clone()) {
       Ok(success) => match success {
@@ -46,7 +47,7 @@ impl Matcher for DiscardPattern {
           // Check to see if any errors are in the result
           // If there are, continue to proxy them upstream
           let error_token = StandardToken::new(
-            &context.borrow().parser,
+            &context.parser,
             "Error",
             SourceRange::new(start_offset, end_offset),
           );
@@ -92,7 +93,7 @@ mod tests {
   #[test]
   fn it_matches_against_a_string() {
     let parser = Parser::new("Testing 1234");
-    let parser_context = ParserContext::new(&parser);
+    let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Discard!(Equals!("Testing"));
 
     assert_eq!(
@@ -104,7 +105,7 @@ mod tests {
   #[test]
   fn it_properly_returns_error_tokens() {
     let parser = Parser::new("Testing 1234");
-    let parser_context = ParserContext::new(&parser);
+    let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Discard!(Program!(Equals!("Testing"), Error!("This is an error")));
 
     if let Ok(MatcherSuccess::Token(token)) = matcher.exec(parser_context.clone()) {
@@ -136,7 +137,7 @@ mod tests {
   #[test]
   fn it_fails_to_match_against_a_string() {
     let parser = Parser::new("Testing 1234");
-    let parser_context = ParserContext::new(&parser);
+    let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Discard!(Equals!("testing"));
 
     assert_eq!(

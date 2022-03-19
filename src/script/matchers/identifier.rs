@@ -17,7 +17,7 @@ mod tests {
   #[test]
   fn it_works1() {
     let parser = Parser::new("_Testing");
-    let parser_context = ParserContext::new(&parser);
+    let parser_context = ParserContext::new(&parser, "Test");
     let matcher = ScriptIdentifier!();
 
     if let Ok(MatcherSuccess::Token(token)) = matcher.exec(parser_context.clone()) {
@@ -33,7 +33,7 @@ mod tests {
   #[test]
   fn it_works2() {
     let parser = Parser::new("$Test_ing");
-    let parser_context = ParserContext::new(&parser);
+    let parser_context = ParserContext::new(&parser, "Test");
     let matcher = ScriptIdentifier!();
 
     if let Ok(MatcherSuccess::Token(token)) = matcher.exec(parser_context.clone()) {
@@ -49,7 +49,7 @@ mod tests {
   #[test]
   fn it_fails1() {
     let parser = Parser::new("0Testing");
-    let parser_context = ParserContext::new(&parser);
+    let parser_context = ParserContext::new(&parser, "Test");
     let matcher = ScriptIdentifier!();
 
     if let Err(MatcherFailure::Fail) = matcher.exec(parser_context.clone()) {

@@ -40,7 +40,7 @@ mod tests {
   #[test]
   fn it_can_throw_a_fatal_error() {
     let parser = Parser::new("Testing 1234");
-    let parser_context = ParserContext::new(&parser);
+    let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Program!(
       Matches!(r"\w+"),
       Fatal!("There was an error!"),

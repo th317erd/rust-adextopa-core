@@ -3,37 +3,49 @@ use crate::parser_context::ParserContextRef;
 
 pub struct DebugPattern {
   matcher: Option<Box<dyn Matcher>>,
+  debug_mode: usize,
 }
 
 impl DebugPattern {
   pub fn new(matcher: Option<Box<dyn Matcher>>) -> Self {
-    Self { matcher }
+    Self {
+      matcher,
+      debug_mode: 1,
+    }
+  }
+
+  pub fn new_with_debug_mode(matcher: Option<Box<dyn Matcher>>, debug_mode: usize) -> Self {
+    Self {
+      matcher,
+      debug_mode,
+    }
   }
 }
 
 impl Matcher for DebugPattern {
   fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
-    let sub_context = std::rc::Rc::new(std::cell::RefCell::new(context.borrow().clone()));
+    let context = context.borrow();
+    let sub_context = context.clone_with_name(self.get_name());
+
+    sub_context.borrow_mut().set_debug_mode(self.debug_mode);
 
     match &self.matcher {
       Some(matcher) => {
         let result = matcher.exec(sub_context.clone());
-        let context = context.borrow();
+        let sub_context = sub_context.borrow();
 
         println!(
           "'{}' matcher at: -->|{}|--> @[{}-{}]: {:?}",
           matcher.get_name(),
-          context.debug_range(10),
-          context.offset.start,
-          context.offset.start + 10,
+          sub_context.debug_range(10),
+          sub_context.offset.start,
+          sub_context.offset.start + 10,
           result,
         );
 
         result
       }
       None => {
-        let context = context.borrow();
-
         println!(
           "{{Context}}: -->|{}|--> @[{}-{}], start: {}, end: {}",
           context.debug_range(10),
@@ -55,6 +67,17 @@ impl Matcher for DebugPattern {
 
 #[macro_export]
 macro_rules! Debug {
+  ($mode:expr; $arg:expr) => {
+    $crate::matchers::debug::DebugPattern::new_with_debug_mode(
+      Some(std::boxed::Box::new($arg)),
+      $mode,
+    )
+  };
+
+  ($mode:expr;) => {
+    $crate::matchers::debug::DebugPattern::new_with_debug_mode(None, $mode)
+  };
+
   ($arg:expr) => {
     $crate::matchers::debug::DebugPattern::new(Some(std::boxed::Box::new($arg)))
   };
@@ -77,7 +100,7 @@ mod tests {
   #[test]
   fn it_matches_against_a_string() {
     let parser = Parser::new("Testing 1234");
-    let parser_context = ParserContext::new(&parser);
+    let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Debug!(Equals!("Testing"));
 
     if let Ok(MatcherSuccess::Token(token)) = matcher.exec(parser_context.clone()) {

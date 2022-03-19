@@ -13,7 +13,10 @@ impl NotPattern {
 
 impl Matcher for NotPattern {
   fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
-    match self.matcher.exec(context) {
+    match self
+      .matcher
+      .exec(context.borrow().clone_with_name(self.get_name()))
+    {
       Ok(success) => match success {
         // Fail on success
         MatcherSuccess::Token(_) => return Err(MatcherFailure::Fail),
@@ -61,7 +64,7 @@ mod tests {
   #[test]
   fn it_matches_against_a_string() {
     let parser = Parser::new("Testing 1234");
-    let parser_context = ParserContext::new(&parser);
+    let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Not!(Equals!("Testing"));
 
     assert_eq!(
@@ -73,7 +76,7 @@ mod tests {
   #[test]
   fn it_fails_to_match_against_a_string() {
     let parser = Parser::new("Testing 1234");
-    let parser_context = ParserContext::new(&parser);
+    let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Not!(Equals!("testing"));
 
     assert_eq!(

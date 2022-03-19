@@ -37,7 +37,7 @@ mod tests {
   #[test]
   fn it_works1() {
     let parser = Parser::new(r"/test\/[chars/\]]stuff/i>");
-    let parser_context = ParserContext::new(&parser);
+    let parser_context = ParserContext::new(&parser, "Test");
     let matcher = ScriptRegexMatcher!();
 
     let result = matcher.exec(parser_context.clone());
@@ -93,7 +93,7 @@ mod tests {
   #[test]
   fn it_fails1() {
     let parser = Parser::new("Testing");
-    let parser_context = ParserContext::new(&parser);
+    let parser_context = ParserContext::new(&parser, "Test");
     let matcher = ScriptRegexMatcher!();
 
     if let Err(MatcherFailure::Fail) = matcher.exec(parser_context.clone()) {

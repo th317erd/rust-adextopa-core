@@ -107,7 +107,7 @@ mod tests {
   #[test]
   fn it_matches_against_a_string() {
     let parser = Parser::new("Testing 1234");
-    let parser_context = ParserContext::new(&parser);
+    let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Equals!("Testing");
 
     if let Ok(MatcherSuccess::Token(token)) = matcher.exec(parser_context.clone()) {
@@ -123,7 +123,7 @@ mod tests {
   #[test]
   fn it_fails_to_match_against_a_string() {
     let parser = Parser::new("Testing 1234");
-    let parser_context = ParserContext::new(&parser);
+    let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Equals!("testing");
 
     assert_eq!(
@@ -135,7 +135,7 @@ mod tests {
   #[test]
   fn it_matches_against_a_regexp() {
     let parser = Parser::new("Testing 1234");
-    let parser_context = ParserContext::new(&parser);
+    let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Matches!(r"\w+");
 
     if let Ok(MatcherSuccess::Token(token)) = matcher.exec(parser_context.clone()) {
@@ -151,7 +151,7 @@ mod tests {
   #[test]
   fn it_fails_to_match_against_a_regexp_with_a_non_zero_offset() {
     let parser = Parser::new("Testing 1234");
-    let parser_context = ParserContext::new(&parser);
+    let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Matches!(r".+");
 
     parser_context.borrow_mut().offset.start = 8;
@@ -169,7 +169,7 @@ mod tests {
   #[test]
   fn it_fails_to_match_against_a_regexp() {
     let parser = Parser::new("Testing 1234");
-    let parser_context = ParserContext::new(&parser);
+    let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Matches!(r"\d+");
 
     let t = Box::<i32>::new(20);
