@@ -16,7 +16,18 @@ impl Matcher for NotPattern {
     match self.matcher.exec(context) {
       Ok(success) => match success {
         // Fail on success
-        _ => return Err(MatcherFailure::Fail),
+        MatcherSuccess::Token(_) => return Err(MatcherFailure::Fail),
+        MatcherSuccess::ExtractChildren(_) => return Err(MatcherFailure::Fail),
+        MatcherSuccess::Skip(amount) => {
+          // If Skip value is anything but zero, then fail
+          if amount != 0 {
+            return Err(MatcherFailure::Fail);
+          }
+
+          return Ok(success);
+        }
+        // For other success types (Skip, Stop, Break, Continue, None) succeed
+        _ => return Ok(success),
       },
       Err(failure) => match failure {
         // Succeed on fail

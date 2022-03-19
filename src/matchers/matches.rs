@@ -68,11 +68,9 @@ impl<'a> Matcher for MatchesPattern<'a> {
 #[macro_export]
 macro_rules! Equals {
   ($name:expr; $arg:expr) => {
-    $crate::matchers::matches::MatchesPattern::new(
-      $crate::matchers::matches::MatchesPattern::new_with_name(
-        $name,
-        $crate::matcher::Pattern::String($arg),
-      ),
+    $crate::matchers::matches::MatchesPattern::new_with_name(
+      $name,
+      $crate::matcher::Pattern::String($arg),
     )
   };
 

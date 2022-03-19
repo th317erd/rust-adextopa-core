@@ -165,16 +165,39 @@ fn add_token_to_children<'a>(
   token: &TokenRef<'a>,
 ) {
   {
-    let token = token.borrow();
-    // Ensure that we are moving forward, and that the token doesn't have a zero width
-    assert!(token.get_raw_range().end != context.borrow_mut().offset.start);
+    if token.borrow().get_name() != "Error" {
+      let token = token.borrow();
+      // Ensure that we are moving forward, and that the token doesn't have a zero width
+      assert!(token.get_raw_range().end != context.borrow_mut().offset.start);
 
-    // value_range is set to raw_range because the program
-    // should always span the range of all child tokens
-    contain_source_range(value_range, &token.get_raw_range());
-    contain_source_range(raw_range, &token.get_raw_range());
+      // value_range is set to raw_range because the program
+      // should always span the range of all child tokens
+      contain_source_range(value_range, &token.get_raw_range());
+      contain_source_range(raw_range, &token.get_raw_range());
+    } else {
+      let mut source_range = SourceRange::new_blank();
 
-    context.borrow_mut().set_start(token.get_raw_range().end);
+      if value_range.start == usize::MAX {
+        source_range.start = context.borrow().offset.start;
+      } else {
+        source_range.start = value_range.start;
+      }
+
+      source_range.end = context.borrow().offset.start;
+
+      let mut token = token.borrow_mut();
+      token.set_value_range(source_range);
+      token.set_raw_range(source_range);
+
+      // value_range is set to raw_range because the program
+      // should always span the range of all child tokens
+      contain_source_range(value_range, &token.get_raw_range());
+      contain_source_range(raw_range, &token.get_raw_range());
+    }
+
+    context
+      .borrow_mut()
+      .set_start(token.borrow().get_raw_range().end);
   }
 
   {
@@ -256,11 +279,31 @@ impl<'a> Matcher for ProgramPattern<'a> {
                 );
               }
 
+              println!(
+                "'{}' Setting to offset to: {} -> {}",
+                self.get_name(),
+                sub_context.borrow().offset.start,
+                token.get_raw_range().end
+              );
+
+              sub_context
+                .borrow_mut()
+                .set_start(token.get_raw_range().end);
+
               contain_source_range(&mut value_range, &token.get_raw_range());
               contain_source_range(&mut raw_range, &token.get_raw_range());
             }
             MatcherSuccess::Skip(amount) => {
               let new_offset = sub_context.borrow().offset.start + amount as usize;
+
+              println!(
+                "'{}' Skipping: {} + {} -> {}",
+                self.get_name(),
+                sub_context.borrow().offset.start,
+                amount,
+                new_offset
+              );
+
               sub_context.borrow_mut().set_start(new_offset);
 
               let range = SourceRange::new(start_offset, new_offset);
@@ -330,6 +373,10 @@ impl<'a> Matcher for ProgramPattern<'a> {
                     );
                   }
 
+                  sub_context
+                    .borrow_mut()
+                    .set_start(token.get_raw_range().end);
+
                   contain_source_range(&mut value_range, &token.get_raw_range());
                   contain_source_range(&mut raw_range, &token.get_raw_range());
 
@@ -386,6 +433,10 @@ impl<'a> Matcher for ProgramPattern<'a> {
                       &child,
                     );
                   }
+
+                  sub_context
+                    .borrow_mut()
+                    .set_start(token.get_raw_range().end);
 
                   contain_source_range(&mut value_range, &token.get_raw_range());
                   contain_source_range(&mut raw_range, &token.get_raw_range());

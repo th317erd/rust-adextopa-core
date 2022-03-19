@@ -1,28 +1,42 @@
 use crate::matcher::{Matcher, MatcherFailure, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
 
-pub struct FlattenPattern {
+pub struct FlattenPattern<'a> {
   matcher: Box<dyn Matcher>,
+  name: &'a str,
 }
 
-impl FlattenPattern {
+impl<'a> FlattenPattern<'a> {
   pub fn new(matcher: Box<dyn Matcher>) -> Self {
-    FlattenPattern { matcher }
+    FlattenPattern {
+      matcher,
+      name: "Flatten",
+    }
+  }
+
+  pub fn new_with_name(matcher: Box<dyn Matcher>, name: &'a str) -> Self {
+    FlattenPattern { matcher, name }
   }
 }
 
-impl Matcher for FlattenPattern {
+impl<'a> Matcher for FlattenPattern<'a> {
   fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
     let result = self.matcher.exec(context.clone());
 
     match result {
       Ok(MatcherSuccess::Token(token)) => Ok(MatcherSuccess::ExtractChildren(token.clone())),
       Ok(MatcherSuccess::Break((loop_name, value))) => match *value {
-        MatcherSuccess::Token(token) => Ok(MatcherSuccess::ExtractChildren(token.clone())),
+        MatcherSuccess::Token(token) => Ok(MatcherSuccess::Break((
+          loop_name,
+          Box::new(MatcherSuccess::ExtractChildren(token.clone())),
+        ))),
         _ => Ok(MatcherSuccess::Break((loop_name, value))),
       },
       Ok(MatcherSuccess::Continue((loop_name, value))) => match *value {
-        MatcherSuccess::Token(token) => Ok(MatcherSuccess::ExtractChildren(token.clone())),
+        MatcherSuccess::Token(token) => Ok(MatcherSuccess::Continue((
+          loop_name,
+          Box::new(MatcherSuccess::ExtractChildren(token.clone())),
+        ))),
         _ => Ok(MatcherSuccess::Continue((loop_name, value))),
       },
       _ => result,
@@ -30,12 +44,16 @@ impl Matcher for FlattenPattern {
   }
 
   fn get_name(&self) -> &str {
-    "Flatten"
+    self.name
   }
 }
 
 #[macro_export]
 macro_rules! Flatten {
+  ($name:expr; $arg:expr) => {
+    $crate::matchers::flatten::FlattenPattern::new_with_name(std::boxed::Box::new($arg), $name)
+  };
+
   ($arg:expr) => {
     $crate::matchers::flatten::FlattenPattern::new(std::boxed::Box::new($arg))
   };

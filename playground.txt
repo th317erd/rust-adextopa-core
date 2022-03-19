@@ -1,18 +1,20 @@
 {
   # Comment
-  # {Program1, Program2}: Multiple patterns in one
-  # /RegExp/: Regular expressions
-  # ="value": Equals
-  # ['\''; '\''; '\\']: Sequence
-  # !<pattern>: Invert pattern: i.e.: {!="value"}
-  # <optional>?: Optional expression
+  # <{<Program1><Program2>}>: Multiple patterns in one
+  # <[<switch1>, <switch2>]>: Select first matching
+  # </RegExp/>: Regular expressions
+  # <="value">: Equals
+  # <%"'","'","\\">: Sequence
+  # <!pattern>: Invert pattern: i.e.: <!="value">
+  # <?optional>: Optional expression
+  # <?optional>: Optional expression
   # <expr>*: Loop zero or more times
   # <expr>+: Loop one or more times
   # <expr>{1, 5} Loop one to five times
-  # <switch1, switch2>
+  # (<pattern>): Capture pattern (default is to discard)
 
   Identifier = {value=(/[a-zA-Z$_-][a-zA-Z0-9$_-]*/)}
-  AssignmentExpression = {(?'identifier'<Identifier attr1="true">), <Whitespace>, /=/, (?'program'<Program>)}
+  AssignmentExpression = {(?'identifier'<Identifier attr1="true">), <?Whitespace>, /=/, (?'program'<Program>)}
 }{(?'program'<Program root="true">)}
 
 \s*<Identifier>

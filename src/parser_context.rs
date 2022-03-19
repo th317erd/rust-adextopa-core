@@ -1,7 +1,7 @@
 use regex::Regex;
 
 use super::source_range::SourceRange;
-use crate::{parser::ParserRef, token::Token};
+use crate::parser::ParserRef;
 
 pub type ParserContextRef = std::rc::Rc<std::cell::RefCell<ParserContext>>;
 

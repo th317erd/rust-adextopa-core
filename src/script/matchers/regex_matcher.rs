@@ -1,8 +1,7 @@
 #[macro_export]
 macro_rules! ScriptRegexMatcher {
   () => {
-    $crate::Program!(
-      "RegexMatcher";
+    $crate::Program!("RegexMatcher";
       $crate::Discard!($crate::Equals!("/")),
       $crate::Flatten!($crate::Loop!(
         "RegexCaptureLoop";
@@ -37,7 +36,7 @@ mod tests {
 
   #[test]
   fn it_works1() {
-    let parser = Parser::new(r"/test\/[chars/\]]stuff/i");
+    let parser = Parser::new(r"/test\/[chars/\]]stuff/i>");
     let parser_context = ParserContext::new(&parser);
     let matcher = ScriptRegexMatcher!();
 

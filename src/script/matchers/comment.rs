@@ -1,8 +1,7 @@
 #[macro_export]
 macro_rules! ScriptComment {
   () => {
-    $crate::Program!(
-      "Comment";
+    $crate::Program!("Comment";
       $crate::Matches!("Comment"; r"#.*$"),
     )
   };
