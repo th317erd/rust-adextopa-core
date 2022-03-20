@@ -3,10 +3,10 @@ macro_rules! ScriptAssignmentExpression {
   () => {
     $crate::Program!("AssignmentExpression";
       $crate::ScriptIdentifier!(),
-      $crate::Discard!($crate::Matches!(r"\s*")),
+      $crate::ScriptWSN0!(?),
       $crate::Discard!($crate::Equals!("=")),
-      $crate::Discard!($crate::Matches!(r"\s*")),
-      $crate::ScriptIdentifier!(),
+      $crate::ScriptWSN0!(?),
+      $crate::ScriptPattern!(),
     )
   };
 }

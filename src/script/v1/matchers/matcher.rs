@@ -5,6 +5,7 @@ macro_rules! ScriptMatcher {
       $crate::ScriptRegexMatcher!(),
       $crate::ScriptEqualsMatcher!(),
       $crate::ScriptSequenceMatcher!(),
+      $crate::ScriptCustomMatcher!(),
     )
   };
 }
@@ -21,7 +22,7 @@ mod tests {
 
   #[test]
   fn it_works1() {
-    let parser = Parser::new("='test'%'[',']',''/test/i");
+    let parser = Parser::new("='test'%'[',']',''/test/icustom");
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Loop!(ScriptMatcher!());
 
@@ -30,11 +31,11 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Loop");
-      assert_eq!(*token.get_value_range(), SourceRange::new(0, 25));
-      assert_eq!(*token.get_raw_range(), SourceRange::new(0, 25));
-      assert_eq!(token.value(), "='test'%'[',']',''/test/i");
-      assert_eq!(token.raw_value(), "='test'%'[',']',''/test/i");
-      assert_eq!(token.get_children().len(), 3);
+      assert_eq!(*token.get_value_range(), SourceRange::new(0, 31));
+      assert_eq!(*token.get_raw_range(), SourceRange::new(0, 31));
+      assert_eq!(token.value(), "='test'%'[',']',''/test/icustom");
+      assert_eq!(token.raw_value(), "='test'%'[',']',''/test/icustom");
+      assert_eq!(token.get_children().len(), 4);
 
       let first = token.get_children()[0].borrow();
       assert_eq!(first.get_name(), "EqualsMatcher");
@@ -56,6 +57,13 @@ mod tests {
       assert_eq!(*third.get_raw_range(), SourceRange::new(18, 25));
       assert_eq!(third.value(), "/test/i");
       assert_eq!(third.raw_value(), "/test/i");
+
+      let forth = token.get_children()[3].borrow();
+      assert_eq!(forth.get_name(), "CustomMatcher");
+      assert_eq!(*forth.get_value_range(), SourceRange::new(25, 31));
+      assert_eq!(*forth.get_raw_range(), SourceRange::new(25, 31));
+      assert_eq!(forth.value(), "custom");
+      assert_eq!(forth.raw_value(), "custom");
     } else {
       unreachable!("Test failed!");
     };
@@ -83,7 +91,7 @@ mod tests {
 
   #[test]
   fn it_fails1() {
-    let parser = Parser::new("Testing");
+    let parser = Parser::new("!");
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = ScriptMatcher!();
 

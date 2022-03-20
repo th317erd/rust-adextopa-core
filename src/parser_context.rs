@@ -1,21 +1,37 @@
-use regex::Regex;
-
 use super::source_range::SourceRange;
-use crate::parser::ParserRef;
+use crate::{matcher::Matcher, parser::ParserRef};
+use regex::Regex;
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-pub type ParserContextRef<'a> = std::rc::Rc<std::cell::RefCell<ParserContext<'a>>>;
+pub type ParserContextRef<'a> = Rc<RefCell<ParserContext<'a>>>;
 
-#[derive(Clone)]
 pub struct ParserContext<'a> {
   debug_mode: usize,
+  matcher_reference_map: Rc<RefCell<HashMap<String, Box<dyn Matcher>>>>,
+  variable_context: Rc<RefCell<HashMap<String, String>>>,
   pub offset: SourceRange,
   pub parser: ParserRef,
   pub name: &'a str,
 }
 
+impl<'a> Clone for ParserContext<'a> {
+  fn clone(&self) -> Self {
+    Self {
+      debug_mode: self.debug_mode.clone(),
+      offset: self.offset.clone(),
+      parser: self.parser.clone(),
+      name: self.name.clone(),
+      matcher_reference_map: self.matcher_reference_map.clone(),
+      variable_context: self.variable_context.clone(),
+    }
+  }
+}
+
 impl<'a> ParserContext<'a> {
   pub fn new<'b>(parser: &ParserRef, name: &'b str) -> ParserContextRef<'b> {
     std::rc::Rc::new(std::cell::RefCell::new(ParserContext {
+      matcher_reference_map: Rc::new(RefCell::new(HashMap::new())),
+      variable_context: Rc::new(RefCell::new(HashMap::new())),
       offset: SourceRange::new(0, parser.borrow().source.len()),
       parser: parser.clone(),
       debug_mode: 0,
@@ -29,6 +45,8 @@ impl<'a> ParserContext<'a> {
     name: &'b str,
   ) -> ParserContextRef<'b> {
     std::rc::Rc::new(std::cell::RefCell::new(ParserContext {
+      matcher_reference_map: Rc::new(RefCell::new(HashMap::new())),
+      variable_context: Rc::new(RefCell::new(HashMap::new())),
       offset,
       parser: parser.clone(),
       debug_mode: 0,

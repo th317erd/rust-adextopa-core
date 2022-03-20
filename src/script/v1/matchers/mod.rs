@@ -1,8 +1,10 @@
 pub mod assignment_expression;
+pub mod matcher;
+// pub mod base_switch_matcher;
 pub mod comment;
+pub mod custom_matcher;
 pub mod equals_matcher;
 pub mod identifier;
-pub mod matcher;
 pub mod matcher_name;
 pub mod pattern;
 pub mod pattern_definition;

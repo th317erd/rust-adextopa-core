@@ -1,22 +1,30 @@
 use crate::matcher::{Matcher, MatcherFailure, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 pub struct DebugPattern {
-  matcher: Option<Box<dyn Matcher>>,
+  matcher: Option<Rc<RefCell<Box<dyn Matcher>>>>,
   debug_mode: usize,
 }
 
 impl DebugPattern {
   pub fn new(matcher: Option<Box<dyn Matcher>>) -> Self {
     Self {
-      matcher,
+      matcher: match matcher {
+        Some(matcher) => Some(Rc::new(RefCell::new(matcher))),
+        None => None,
+      },
       debug_mode: 1,
     }
   }
 
   pub fn new_with_debug_mode(matcher: Option<Box<dyn Matcher>>, debug_mode: usize) -> Self {
     Self {
-      matcher,
+      matcher: match matcher {
+        Some(matcher) => Some(Rc::new(RefCell::new(matcher))),
+        None => None,
+      },
       debug_mode,
     }
   }
@@ -29,8 +37,9 @@ impl Matcher for DebugPattern {
 
     sub_context.borrow_mut().set_debug_mode(self.debug_mode);
 
-    match &self.matcher {
-      Some(matcher) => {
+    match self.matcher {
+      Some(ref matcher) => {
+        let matcher = RefCell::borrow(matcher);
         let result = matcher.exec(sub_context.clone());
         let sub_context = sub_context.borrow();
 
