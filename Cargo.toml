@@ -3,7 +3,9 @@ name = "adextopa-core"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+v1 = []
+default = ["v1"]
 
 [dependencies]
 substring = "1.4.5"

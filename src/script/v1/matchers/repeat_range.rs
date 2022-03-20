@@ -3,13 +3,13 @@ macro_rules! ScriptRepeatRange {
   () => {
     $crate::Program!("RepeatRange";
       $crate::Discard!($crate::Equals!("{")),
-      $crate::Discard!($crate::Matches!(r"\s*")),
+      $crate::ScriptWS0!(?),
       $crate::Matches!("Minimum"; r"\d+"),
-      $crate::Discard!($crate::Matches!(r"\s*")),
+      $crate::ScriptWS0!(?),
       $crate::Optional!($crate::Equals!("Sep"; ",")),
-      $crate::Discard!($crate::Matches!(r"\s*")),
+      $crate::ScriptWS0!(?),
       $crate::Optional!($crate::Matches!("Maximum"; r"\d+")),
-      $crate::Discard!($crate::Matches!(r"\s*")),
+      $crate::ScriptWS0!(?),
       $crate::Discard!($crate::Equals!("}")),
     )
   };

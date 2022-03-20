@@ -1,4 +1,4 @@
-{
+<!--[adextopa:v1]
   # Comment
   # <{<Program1><Program2>}>: Multiple patterns in one
   # <[<switch1>, <switch2>]>: Select first matching
@@ -15,6 +15,16 @@
 
   Identifier = {value=(/[a-zA-Z$_-][a-zA-Z0-9$_-]*/)}
   AssignmentExpression = {(?'identifier'<Identifier attr1="true">), <?Whitespace>, /=/, (?'program'<Program>)}
-}{(?'program'<Program root="true">)}
+-->
 
-\s*<Identifier>
+# The following doesn't trim
+<!--[test]hello world!-->
+
+# The following does trim
+<!--[test!]
+# comments are removed
+\#literal comments are not removed
+hello world!
+-->
+
+<patterns><go><here>
