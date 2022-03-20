@@ -4,7 +4,7 @@ use super::parser_context::ParserContext;
 use super::token::TokenRef;
 use regex::Regex;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum MatcherSuccess<'a> {
   Token(TokenRef<'a>),
   ExtractChildren(TokenRef<'a>),
@@ -15,7 +15,7 @@ pub enum MatcherSuccess<'a> {
   Stop,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum MatcherFailure<'a> {
   Fail,
   Error(&'a str),
