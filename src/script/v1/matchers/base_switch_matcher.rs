@@ -36,7 +36,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = ScriptBaseSwitchMatcher!();
 
-    let result = matcher.exec(parser_context.clone());
+    let result = matcher.borrow().exec(parser_context.clone());
 
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
@@ -56,7 +56,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = ScriptBaseSwitchMatcher!();
 
-    if let Err(MatcherFailure::Fail) = matcher.exec(parser_context.clone()) {
+    if let Err(MatcherFailure::Fail) = matcher.borrow().exec(parser_context.clone()) {
     } else {
       unreachable!("Test failed!");
     };

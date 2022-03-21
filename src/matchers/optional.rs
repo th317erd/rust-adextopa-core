@@ -1,20 +1,23 @@
-use crate::matcher::{Matcher, MatcherFailure, MatcherSuccess};
+use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
+use std::cell::RefCell;
+use std::rc::Rc;
 
-pub struct OptionalPattern {
-  matcher: Box<dyn Matcher>,
+pub struct OptionalPattern<'a> {
+  matcher: MatcherRef<'a>,
 }
 
-impl OptionalPattern {
-  pub fn new(matcher: Box<dyn Matcher>) -> Self {
-    Self { matcher }
+impl<'a> OptionalPattern<'a> {
+  pub fn new(matcher: MatcherRef<'a>) -> MatcherRef<'a> {
+    Rc::new(RefCell::new(Box::new(Self { matcher })))
   }
 }
 
-impl Matcher for OptionalPattern {
+impl<'a> Matcher<'a> for OptionalPattern<'a> {
   fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
     match self
       .matcher
+      .borrow()
       .exec(context.borrow().clone_with_name(self.get_name()))
     {
       Ok(success) => Ok(success),
@@ -28,23 +31,32 @@ impl Matcher for OptionalPattern {
   fn get_name(&self) -> &str {
     "Optional"
   }
+
+  fn set_name(&mut self, _: &'a str) {
+    panic!("Can not set 'name' on a Optional pattern");
+  }
+
+  fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {
+    Some(vec![self.matcher.clone()])
+  }
+
+  fn add_pattern(&mut self, _: MatcherRef<'a>) {
+    panic!("Can not add a pattern to a Optional pattern");
+  }
 }
 
 #[macro_export]
 macro_rules! Optional {
   ($arg:expr) => {
-    $crate::matchers::optional::OptionalPattern::new(std::boxed::Box::new($arg))
+    $crate::matchers::optional::OptionalPattern::new($arg.clone())
   };
 }
 
 #[cfg(test)]
 mod tests {
   use crate::{
-    matcher::{Matcher, MatcherSuccess},
-    parser::Parser,
-    parser_context::ParserContext,
-    source_range::SourceRange,
-    Equals,
+    matcher::MatcherSuccess, parser::Parser, parser_context::ParserContext,
+    source_range::SourceRange, Equals,
   };
 
   #[test]
@@ -53,7 +65,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Optional!(Equals!("Testing"));
 
-    if let Ok(MatcherSuccess::Token(token)) = matcher.exec(parser_context.clone()) {
+    if let Ok(MatcherSuccess::Token(token)) = matcher.borrow().exec(parser_context.clone()) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Equals");
       assert_eq!(*token.get_value_range(), SourceRange::new(0, 7));
@@ -71,7 +83,7 @@ mod tests {
 
     assert_eq!(
       Ok(MatcherSuccess::Skip(0)),
-      matcher.exec(parser_context.clone())
+      matcher.borrow().exec(parser_context.clone())
     );
   }
 }

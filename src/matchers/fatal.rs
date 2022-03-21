@@ -1,4 +1,7 @@
-use crate::matcher::{Matcher, MatcherFailure, MatcherSuccess};
+use std::cell::RefCell;
+use std::rc::Rc;
+
+use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
 
 pub struct FatalPattern<'a> {
@@ -6,18 +9,30 @@ pub struct FatalPattern<'a> {
 }
 
 impl<'a> FatalPattern<'a> {
-  pub fn new(message: &'a str) -> Self {
-    Self { message }
+  pub fn new(message: &'a str) -> MatcherRef<'a> {
+    Rc::new(RefCell::new(Box::new(Self { message })))
   }
 }
 
-impl<'a> Matcher for FatalPattern<'a> {
+impl<'a> Matcher<'a> for FatalPattern<'a> {
   fn exec(&self, _: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
-    Err(MatcherFailure::Error(self.message))
+    Err(MatcherFailure::Error(self.message.to_string()))
   }
 
   fn get_name(&self) -> &str {
     "Error"
+  }
+
+  fn set_name(&mut self, _: &'a str) {
+    panic!("Can not set 'name' on a Fatal pattern");
+  }
+
+  fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {
+    None
+  }
+
+  fn add_pattern(&mut self, _: MatcherRef<'a>) {
+    panic!("Can not add a pattern to a Fatal pattern");
   }
 }
 
@@ -31,10 +46,8 @@ macro_rules! Fatal {
 #[cfg(test)]
 mod tests {
   use crate::{
-    matcher::{Matcher, MatcherFailure},
-    parser::Parser,
-    parser_context::ParserContext,
-    Discard, Matches, Program,
+    matcher::MatcherFailure, parser::Parser, parser_context::ParserContext, Discard, Matches,
+    Program,
   };
 
   #[test]
@@ -48,7 +61,7 @@ mod tests {
       Matches!(r"\d+")
     );
 
-    if let Err(MatcherFailure::Error(message)) = matcher.exec(parser_context.clone()) {
+    if let Err(MatcherFailure::Error(message)) = matcher.borrow().exec(parser_context.clone()) {
       assert_eq!(message, "There was an error!");
     } else {
       unreachable!("Test failed!");

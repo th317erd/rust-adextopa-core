@@ -6,8 +6,8 @@ use crate::parser::ParserRef;
 use super::source_range::SourceRange;
 
 // Need + 'a or 'static is implied
-pub type TokenRefInner<'a> = dyn Token<'a> + 'a;
-pub type TokenRef<'a> = Rc<RefCell<Box<TokenRefInner<'a>>>>;
+pub type TokenRefInner = dyn Token;
+pub type TokenRef = Rc<RefCell<Box<TokenRefInner>>>;
 
 fn get_parent_path_for_debug<'a>(token: Box<&dyn Token>) -> String {
   match token.get_parent() {
@@ -43,7 +43,7 @@ fn get_tab_depth_for_debug(token: Box<&dyn Token>) -> String {
   parts.join("")
 }
 
-impl<'a> core::fmt::Debug for TokenRefInner<'a> {
+impl core::fmt::Debug for TokenRefInner {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     let tabs = get_tab_depth_for_debug(Box::new(self));
     let tab_minus_one = &tabs[2..];
@@ -91,13 +91,13 @@ impl<'a> core::fmt::Debug for TokenRefInner<'a> {
   }
 }
 
-impl<'a> std::fmt::Display for TokenRefInner<'a> {
+impl std::fmt::Display for TokenRefInner {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     write!(f, "{:?}", self)
   }
 }
 
-impl<'a> PartialEq for TokenRefInner<'a> {
+impl PartialEq for TokenRefInner {
   fn eq(&self, other: &Self) -> bool {
     *self.get_name() == *other.get_name()
       && *self.get_value_range() == *other.get_value_range()
@@ -106,7 +106,7 @@ impl<'a> PartialEq for TokenRefInner<'a> {
 }
 
 // Token<'a> is required because name: &'a str is required (name lives as long as the underlying struct)
-pub trait Token<'a> {
+pub trait Token {
   fn get_parser(&self) -> ParserRef;
   fn get_value_range(&self) -> &SourceRange;
   fn get_value_range_mut(&mut self) -> &mut SourceRange;
@@ -114,13 +114,13 @@ pub trait Token<'a> {
   fn get_raw_range(&self) -> &SourceRange;
   fn get_raw_range_mut(&mut self) -> &mut SourceRange;
   fn set_raw_range(&mut self, range: SourceRange);
-  fn get_name(&self) -> &str;
-  fn set_name(&mut self, name: &'a str);
-  fn get_parent(&self) -> Option<TokenRef<'a>>;
-  fn set_parent(&mut self, token: Option<crate::token::TokenRef<'a>>);
-  fn get_children<'b>(&'b self) -> &'b Vec<crate::token::TokenRef<'a>>;
-  fn get_children_mut<'b>(&'b mut self) -> &'b mut Vec<crate::token::TokenRef<'a>>;
-  fn set_children(&mut self, children: Vec<crate::token::TokenRef<'a>>);
+  fn get_name(&self) -> &String;
+  fn set_name(&mut self, name: String);
+  fn get_parent(&self) -> Option<TokenRef>;
+  fn set_parent(&mut self, token: Option<crate::token::TokenRef>);
+  fn get_children<'b>(&'b self) -> &'b Vec<crate::token::TokenRef>;
+  fn get_children_mut<'b>(&'b mut self) -> &'b mut Vec<crate::token::TokenRef>;
+  fn set_children(&mut self, children: Vec<crate::token::TokenRef>);
   fn value(&self) -> String;
   fn raw_value(&self) -> String;
   fn get_attributes<'b>(&'b self) -> &'b std::collections::HashMap<String, String>;
@@ -129,18 +129,18 @@ pub trait Token<'a> {
 }
 
 #[derive(adextopa_macros::Token)]
-pub struct StandardToken<'a> {
+pub struct StandardToken {
   parser: ParserRef,
   pub value_range: SourceRange,
   pub raw_range: SourceRange,
-  pub name: &'a str,
-  pub parent: Option<TokenRef<'a>>,
-  pub children: Vec<TokenRef<'a>>,
+  pub name: String,
+  pub parent: Option<TokenRef>,
+  pub children: Vec<TokenRef>,
   pub attributes: std::collections::HashMap<String, String>,
 }
 
-impl<'a> StandardToken<'a> {
-  pub fn new(parser: &ParserRef, name: &'a str, value_range: SourceRange) -> TokenRef<'a> {
+impl StandardToken {
+  pub fn new(parser: &ParserRef, name: String, value_range: SourceRange) -> TokenRef {
     Rc::new(RefCell::new(Box::new(StandardToken {
       parser: parser.clone(),
       value_range,
@@ -154,10 +154,10 @@ impl<'a> StandardToken<'a> {
 
   pub fn new_with_raw_range(
     parser: &ParserRef,
-    name: &'a str,
+    name: String,
     value_range: SourceRange,
     raw_range: SourceRange,
-  ) -> TokenRef<'a> {
+  ) -> TokenRef {
     Rc::new(RefCell::new(Box::new(StandardToken {
       parser: parser.clone(),
       value_range,

@@ -1,34 +1,31 @@
-use crate::parser_context::ParserContextRef;
-
-use super::parser_context::ParserContext;
 use super::token::TokenRef;
-use regex::Regex;
+use crate::parser_context::ParserContextRef;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum MatcherSuccess<'a> {
-  Token(TokenRef<'a>),
-  ExtractChildren(TokenRef<'a>),
+pub enum MatcherSuccess {
+  Token(TokenRef),
+  ExtractChildren(TokenRef),
   Skip(isize),
-  Break((&'a str, Box<MatcherSuccess<'a>>)),
-  Continue((&'a str, Box<MatcherSuccess<'a>>)),
+  Break((String, Box<MatcherSuccess>)),
+  Continue((String, Box<MatcherSuccess>)),
   None,
   Stop,
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum MatcherFailure<'a> {
+pub enum MatcherFailure {
   Fail,
-  Error(&'a str),
+  Error(String),
 }
 
-pub enum Pattern<'a> {
-  String(&'a str),
-  RegExp(Regex),
-  Matcher(&'a dyn Matcher),
-  Func(&'a dyn Fn(&'a ParserContext) -> Result<MatcherSuccess<'a>, MatcherFailure<'a>>),
-}
+pub type MatcherRef<'a> = Rc<RefCell<Box<dyn Matcher<'a> + 'a>>>;
 
-pub trait Matcher {
+pub trait Matcher<'a> {
   fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure>;
   fn get_name(&self) -> &str;
+  fn set_name(&mut self, name: &'a str);
+  fn add_pattern(&mut self, pattern: MatcherRef<'a>);
+  fn get_children(&self) -> Option<Vec<MatcherRef<'a>>>;
 }

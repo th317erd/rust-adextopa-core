@@ -1,10 +1,12 @@
 extern crate adextopa_macros;
 
-use crate::matcher::{Matcher, MatcherFailure, MatcherSuccess};
+use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
 use crate::source_range::SourceRange;
 use crate::token::{StandardToken, TokenRef};
+use std::cell::RefCell;
 use std::ops::{Bound, Range, RangeBounds};
+use std::rc::Rc;
 
 fn get_range<T>(r: T) -> Range<usize>
 where
@@ -29,100 +31,88 @@ pub enum MatchAction {
 }
 
 pub struct ProgramPattern<'a> {
-  patterns: Vec<Box<dyn Matcher>>,
+  patterns: Vec<MatcherRef<'a>>,
   name: &'a str,
   pub(self) iterate_range: Option<Range<usize>>,
   pub(self) stop_on_first: MatchAction,
 }
 
 impl<'a> ProgramPattern<'a> {
-  pub fn new_blank_program(stop_on_first: MatchAction) -> Self {
+  pub fn new_blank_program(stop_on_first: MatchAction) -> MatcherRef<'a> {
     let name = match stop_on_first {
       MatchAction::Stop => "Switch",
       MatchAction::Continue => "Program",
     };
 
-    Self {
+    Rc::new(RefCell::new(Box::new(Self {
       patterns: Vec::new(),
       iterate_range: None,
       name,
       stop_on_first,
-    }
+    })))
   }
 
-  pub fn new_blank_loop<T>(r: T) -> Self
+  pub fn new_blank_loop<T>(r: T) -> MatcherRef<'a>
   where
     T: RangeBounds<usize>,
   {
-    Self {
+    Rc::new(RefCell::new(Box::new(Self {
       patterns: Vec::new(),
       name: "Loop",
       iterate_range: Some(get_range(r)),
       stop_on_first: MatchAction::Continue,
-    }
+    })))
   }
 
-  pub fn new_program(patterns: Vec<Box<dyn Matcher>>, stop_on_first: MatchAction) -> Self {
+  pub fn new_program(patterns: Vec<MatcherRef<'a>>, stop_on_first: MatchAction) -> MatcherRef<'a> {
     let name = match stop_on_first {
       MatchAction::Stop => "Switch",
       MatchAction::Continue => "Program",
     };
 
-    Self {
+    Rc::new(RefCell::new(Box::new(Self {
       patterns,
       iterate_range: None,
       name,
       stop_on_first,
-    }
+    })))
   }
 
-  pub fn new_loop<T>(patterns: Vec<Box<dyn Matcher>>, r: T) -> Self
+  pub fn new_loop<T>(patterns: Vec<MatcherRef<'a>>, r: T) -> MatcherRef<'a>
   where
     T: RangeBounds<usize>,
   {
-    Self {
+    Rc::new(RefCell::new(Box::new(Self {
       patterns,
       name: "Loop",
       iterate_range: Some(get_range(r)),
       stop_on_first: MatchAction::Continue,
-    }
+    })))
   }
 
   pub fn new_program_with_name(
-    patterns: Vec<Box<dyn Matcher>>,
+    patterns: Vec<MatcherRef<'a>>,
     name: &'a str,
     stop_on_first: MatchAction,
-  ) -> ProgramPattern<'a> {
-    Self {
+  ) -> MatcherRef<'a> {
+    Rc::new(RefCell::new(Box::new(Self {
       patterns,
       name,
       iterate_range: None,
       stop_on_first,
-    }
+    })))
   }
 
-  pub fn new_loop_with_name<T>(
-    patterns: Vec<Box<dyn Matcher>>,
-    name: &'a str,
-    r: T,
-  ) -> ProgramPattern<'a>
+  pub fn new_loop_with_name<T>(patterns: Vec<MatcherRef<'a>>, name: &'a str, r: T) -> MatcherRef<'a>
   where
     T: RangeBounds<usize>,
   {
-    Self {
+    Rc::new(RefCell::new(Box::new(Self {
       patterns,
       name,
       iterate_range: Some(get_range(r)),
       stop_on_first: MatchAction::Continue,
-    }
-  }
-
-  pub fn add_pattern(&mut self, pattern: Box<dyn Matcher>) {
-    self.patterns.push(pattern);
-  }
-
-  pub fn set_name(&mut self, name: &'a str) {
-    self.name = name;
+    })))
   }
 }
 
@@ -137,11 +127,11 @@ fn contain_source_range(tsr: &mut SourceRange, ssr: &SourceRange) {
 }
 
 fn finalize_program_token<'a>(
-  program_token: TokenRef<'a>,
-  children: Vec<TokenRef<'a>>,
+  program_token: TokenRef,
+  children: Vec<TokenRef>,
   value_range: SourceRange,
   raw_range: SourceRange,
-) -> Result<MatcherSuccess<'a>, MatcherFailure<'a>> {
+) -> Result<MatcherSuccess, MatcherFailure> {
   if value_range.start == usize::MAX || raw_range.start == usize::MAX {
     return Err(MatcherFailure::Fail);
   }
@@ -157,12 +147,12 @@ fn finalize_program_token<'a>(
 }
 
 fn add_token_to_children<'a>(
-  program_token: &TokenRef<'a>,
+  program_token: &TokenRef,
   context: &ParserContextRef,
-  children: &mut Vec<TokenRef<'a>>,
+  children: &mut Vec<TokenRef>,
   value_range: &mut SourceRange,
   raw_range: &mut SourceRange,
-  token: &TokenRef<'a>,
+  token: &TokenRef,
   assert_moving_forward: bool,
 ) {
   {
@@ -216,14 +206,14 @@ fn add_token_to_children<'a>(
   children.push(token.clone());
 }
 
-impl<'a> Matcher for ProgramPattern<'a> {
+impl<'a> Matcher<'a> for ProgramPattern<'a> {
   fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
     let context = context.borrow();
     let mut sub_context = context.clone_with_name(self.get_name());
     let start_offset = sub_context.borrow().offset.start;
     let program_token = StandardToken::new(
       &sub_context.borrow().parser,
-      self.name,
+      self.name.to_string(),
       SourceRange::new_blank(),
     );
     let mut children = Vec::<TokenRef>::with_capacity(self.patterns.len());
@@ -243,9 +233,11 @@ impl<'a> Matcher for ProgramPattern<'a> {
       iteration_result = None;
 
       for pattern in &self.patterns {
-        let result = pattern.exec(std::rc::Rc::new(std::cell::RefCell::new(
-          sub_context.borrow().clone(),
-        )));
+        let result = pattern
+          .borrow()
+          .exec(std::rc::Rc::new(std::cell::RefCell::new(
+            sub_context.borrow().clone(),
+          )));
 
         match result {
           Ok(success) => match success {
@@ -720,18 +712,34 @@ impl<'a> Matcher for ProgramPattern<'a> {
   fn get_name(&self) -> &str {
     self.name
   }
+
+  fn set_name(&mut self, name: &'a str) {
+    self.name = name;
+  }
+
+  fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {
+    Some(self.patterns.clone())
+  }
+
+  fn add_pattern(&mut self, pattern: MatcherRef<'a>) {
+    self.patterns.push(pattern);
+  }
 }
 
 #[macro_export]
 macro_rules! Program {
   ($name:expr; $($args:expr),+ $(,)?) => {
     {
-      let mut program = $crate::matchers::program::ProgramPattern::new_blank_program($crate::matchers::program::MatchAction::Continue);
-      program.set_name($name);
+      let program = $crate::matchers::program::ProgramPattern::new_blank_program($crate::matchers::program::MatchAction::Continue);
 
-      $(
-        program.add_pattern(std::boxed::Box::new($args));
-      )*
+      {
+        let mut pm = program.borrow_mut();
+        pm.set_name($name);
+
+        $(
+          pm.add_pattern($args.clone());
+        )*
+      }
 
       program
     }
@@ -739,10 +747,15 @@ macro_rules! Program {
 
   ($($args:expr),+ $(,)?) => {
     {
-      let mut program = $crate::matchers::program::ProgramPattern::new_blank_program($crate::matchers::program::MatchAction::Continue);
-      $(
-        program.add_pattern(std::boxed::Box::new($args));
-      )*
+      let program = $crate::matchers::program::ProgramPattern::new_blank_program($crate::matchers::program::MatchAction::Continue);
+
+      {
+        let mut pm = program.borrow_mut();
+
+        $(
+          pm.add_pattern($args.clone());
+        )*
+      }
 
       program
     }
@@ -753,12 +766,16 @@ macro_rules! Program {
 macro_rules! Switch {
   ($name:expr; $($args:expr),+ $(,)?) => {
     {
-      let mut program = $crate::matchers::program::ProgramPattern::new_blank_program($crate::matchers::program::MatchAction::Stop);
-      program.set_name($name);
+      let program = $crate::matchers::program::ProgramPattern::new_blank_program($crate::matchers::program::MatchAction::Stop);
 
-      $(
-        program.add_pattern(std::boxed::Box::new($args));
-      )*
+      {
+        let mut pm = program.borrow_mut();
+        pm.set_name($name);
+
+        $(
+          pm.add_pattern($args.clone());
+        )*
+      }
 
       program
     }
@@ -766,11 +783,15 @@ macro_rules! Switch {
 
   ($($args:expr),+ $(,)?) => {
     {
-      let mut program = $crate::matchers::program::ProgramPattern::new_blank_program($crate::matchers::program::MatchAction::Stop);
+      let program = $crate::matchers::program::ProgramPattern::new_blank_program($crate::matchers::program::MatchAction::Stop);
 
-      $(
-        program.add_pattern(std::boxed::Box::new($args));
-      )*
+      {
+        let mut pm = program.borrow_mut();
+
+        $(
+          pm.add_pattern($args.clone());
+        )*
+      }
 
       program
     }
@@ -781,12 +802,16 @@ macro_rules! Switch {
 macro_rules! Loop {
   ($range:expr; $name:expr; $($args:expr),+ $(,)?) => {
     {
-      let mut loop_program = $crate::matchers::program::ProgramPattern::new_blank_loop($range);
-      loop_program.set_name($name);
+      let loop_program = $crate::matchers::program::ProgramPattern::new_blank_loop($range);
 
-      $(
-        loop_program.add_pattern(std::boxed::Box::new($args));
-      )*
+      {
+        let mut lm = loop_program.borrow_mut();
+        lm.set_name($name);
+
+        $(
+          lm.add_pattern($args.clone());
+        )*
+      }
 
       loop_program
     }
@@ -794,12 +819,16 @@ macro_rules! Loop {
 
   ($name:expr; $($args:expr),+ $(,)?) => {
     {
-      let mut loop_program = $crate::matchers::program::ProgramPattern::new_blank_loop(0..);
-      loop_program.set_name($name);
+      let loop_program = $crate::matchers::program::ProgramPattern::new_blank_loop(0..);
 
-      $(
-        loop_program.add_pattern(std::boxed::Box::new($args));
-      )*
+      {
+        let mut lm = loop_program.borrow_mut();
+        lm.set_name($name);
+
+        $(
+          lm.add_pattern($args.clone());
+        )*
+      }
 
       loop_program
     }
@@ -807,11 +836,15 @@ macro_rules! Loop {
 
   ($($args:expr),+ $(,)?) => {
     {
-      let mut loop_program = $crate::matchers::program::ProgramPattern::new_blank_loop(0..);
+      let loop_program = $crate::matchers::program::ProgramPattern::new_blank_loop(0..);
 
-      $(
-        loop_program.add_pattern(std::boxed::Box::new($args));
-      )*
+      {
+        let mut lm = loop_program.borrow_mut();
+
+        $(
+          lm.add_pattern($args.clone());
+        )*
+      }
 
       loop_program
     }
@@ -821,7 +854,7 @@ macro_rules! Loop {
 #[cfg(test)]
 mod tests {
   use crate::{
-    matcher::{Matcher, MatcherFailure, MatcherSuccess},
+    matcher::{MatcherFailure, MatcherSuccess},
     parser::Parser,
     parser_context::ParserContext,
     source_range::SourceRange,
@@ -834,7 +867,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Program!(Equals!("Testing"), Equals!(" "), Matches!(r"\d+"));
 
-    if let Ok(MatcherSuccess::Token(token)) = matcher.exec(parser_context.clone()) {
+    if let Ok(MatcherSuccess::Token(token)) = matcher.borrow().exec(parser_context.clone()) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Program");
       assert_eq!(*token.get_value_range(), SourceRange::new(0, 12));
@@ -852,7 +885,7 @@ mod tests {
 
     assert_eq!(
       Err(MatcherFailure::Fail),
-      matcher.exec(parser_context.clone())
+      matcher.borrow().exec(parser_context.clone())
     );
   }
 
@@ -862,7 +895,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Switch!(Equals!(" "), Matches!(r"\d+"), Equals!("Testing"));
 
-    if let Ok(MatcherSuccess::Token(token)) = matcher.exec(parser_context.clone()) {
+    if let Ok(MatcherSuccess::Token(token)) = matcher.borrow().exec(parser_context.clone()) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Equals");
       assert_eq!(*token.get_value_range(), SourceRange::new(0, 7));
@@ -878,7 +911,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Loop!(Matches!(r"\w"), Equals!(" "));
 
-    if let Ok(MatcherSuccess::Token(token)) = matcher.exec(parser_context.clone()) {
+    if let Ok(MatcherSuccess::Token(token)) = matcher.borrow().exec(parser_context.clone()) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Loop");
       assert_eq!(*token.get_value_range(), SourceRange::new(0, 12));
@@ -914,7 +947,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Loop!(Program!(Matches!(r"\w"), Equals!(" ")));
 
-    if let Ok(MatcherSuccess::Token(token)) = matcher.exec(parser_context.clone()) {
+    if let Ok(MatcherSuccess::Token(token)) = matcher.borrow().exec(parser_context.clone()) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Loop");
       assert_eq!(*token.get_value_range(), SourceRange::new(0, 12));
@@ -957,7 +990,7 @@ mod tests {
     let brk = Optional!(Program!(Equals!("break"), Break!()));
     let matcher = Loop!(0..10; "Loop"; brk, capture);
 
-    if let Ok(MatcherSuccess::Token(token)) = matcher.exec(parser_context.clone()) {
+    if let Ok(MatcherSuccess::Token(token)) = matcher.borrow().exec(parser_context.clone()) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Loop");
       assert_eq!(*token.get_value_range(), SourceRange::new(0, 11));

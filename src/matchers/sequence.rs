@@ -1,4 +1,7 @@
-use crate::matcher::{Matcher, MatcherFailure, MatcherSuccess};
+use std::cell::RefCell;
+use std::rc::Rc;
+
+use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
 use crate::source_range::SourceRange;
 use crate::token::StandardToken;
@@ -11,7 +14,7 @@ pub struct SequencePattern<'a> {
 }
 
 impl<'a> SequencePattern<'a> {
-  pub fn new(start: &'a str, end: &'a str, escape: &'a str) -> Self {
+  pub fn new(start: &'a str, end: &'a str, escape: &'a str) -> MatcherRef<'a> {
     if start.len() == 0 {
       panic!("Sequence start pattern of \"\" makes no sense");
     }
@@ -20,12 +23,12 @@ impl<'a> SequencePattern<'a> {
       panic!("Sequence end pattern of \"\" makes no sense");
     }
 
-    Self {
+    Rc::new(RefCell::new(Box::new(Self {
       name: "Sequence",
       start,
       end,
       escape,
-    }
+    })))
   }
 
   pub fn new_with_name(
@@ -33,7 +36,7 @@ impl<'a> SequencePattern<'a> {
     start: &'a str,
     end: &'a str,
     escape: &'a str,
-  ) -> SequencePattern<'a> {
+  ) -> MatcherRef<'a> {
     if start.len() == 0 {
       panic!("Sequence start pattern of \"\" makes no sense");
     }
@@ -42,20 +45,16 @@ impl<'a> SequencePattern<'a> {
       panic!("Sequence end pattern of \"\" makes no sense");
     }
 
-    Self {
+    Rc::new(RefCell::new(Box::new(Self {
       name,
       start,
       end,
       escape,
-    }
-  }
-
-  pub fn set_name(&mut self, name: &'a str) {
-    self.name = name;
+    })))
   }
 }
 
-impl<'a> Matcher for SequencePattern<'a> {
+impl<'a> Matcher<'a> for SequencePattern<'a> {
   fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
     let start = context.borrow().offset.start;
     let end = context.borrow().offset.end;
@@ -94,7 +93,7 @@ impl<'a> Matcher for SequencePattern<'a> {
 
         let token = StandardToken::new_with_raw_range(
           &context.borrow().parser,
-          self.name,
+          self.name.to_string(),
           SourceRange::new(start + self.start.len(), index - self.end.len()),
           SourceRange::new(start, index),
         );
@@ -126,6 +125,18 @@ impl<'a> Matcher for SequencePattern<'a> {
   fn get_name(&self) -> &str {
     self.name
   }
+
+  fn set_name(&mut self, name: &'a str) {
+    self.name = name;
+  }
+
+  fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {
+    None
+  }
+
+  fn add_pattern(&mut self, _: MatcherRef<'a>) {
+    panic!("Can not add a pattern to a Sequence pattern");
+  }
 }
 
 #[macro_export]
@@ -142,7 +153,7 @@ macro_rules! Sequence {
 #[cfg(test)]
 mod tests {
   use crate::{
-    matcher::{Matcher, MatcherFailure, MatcherSuccess},
+    matcher::{MatcherFailure, MatcherSuccess},
     parser::Parser,
     parser_context::ParserContext,
     source_range::SourceRange,
@@ -154,7 +165,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Sequence!("\"", "\"", "\\");
 
-    if let Ok(MatcherSuccess::Token(token)) = matcher.exec(parser_context.clone()) {
+    if let Ok(MatcherSuccess::Token(token)) = matcher.borrow().exec(parser_context.clone()) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Sequence");
       assert_eq!(*token.get_value_range(), SourceRange::new(1, 34));
@@ -176,7 +187,7 @@ mod tests {
     let matcher = Sequence!("\"", "\"", "\\");
 
     assert_eq!(
-      matcher.exec(parser_context.clone()),
+      matcher.borrow().exec(parser_context.clone()),
       Err(MatcherFailure::Fail)
     );
   }

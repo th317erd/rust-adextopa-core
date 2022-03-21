@@ -1,4 +1,7 @@
-use crate::matcher::{Matcher, MatcherFailure, MatcherSuccess};
+use std::cell::RefCell;
+use std::rc::Rc;
+
+use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
 use crate::source_range::SourceRange;
 use crate::token::StandardToken;
@@ -8,15 +11,15 @@ pub struct ErrorPattern<'a> {
 }
 
 impl<'a> ErrorPattern<'a> {
-  pub fn new(message: &'a str) -> Self {
-    Self { message }
+  pub fn new(message: &'a str) -> MatcherRef<'a> {
+    Rc::new(RefCell::new(Box::new(Self { message })))
   }
 }
 
-impl<'a> Matcher for ErrorPattern<'a> {
+impl<'a> Matcher<'a> for ErrorPattern<'a> {
   fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
     let value_range = SourceRange::new(usize::MAX, usize::MAX);
-    let token = StandardToken::new(&context.borrow().parser, "Error", value_range);
+    let token = StandardToken::new(&context.borrow().parser, "Error".to_string(), value_range);
 
     {
       let mut token = token.borrow_mut();
@@ -30,6 +33,18 @@ impl<'a> Matcher for ErrorPattern<'a> {
   fn get_name(&self) -> &str {
     "Error"
   }
+
+  fn set_name(&mut self, _: &'a str) {
+    panic!("Can not set 'name' on a Error pattern");
+  }
+
+  fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {
+    None
+  }
+
+  fn add_pattern(&mut self, _: MatcherRef<'a>) {
+    panic!("Can not add a pattern to a Error pattern");
+  }
 }
 
 #[macro_export]
@@ -42,11 +57,8 @@ macro_rules! Error {
 #[cfg(test)]
 mod tests {
   use crate::{
-    matcher::{Matcher, MatcherSuccess},
-    parser::Parser,
-    parser_context::ParserContext,
-    source_range::SourceRange,
-    Discard, Matches, Program,
+    matcher::MatcherSuccess, parser::Parser, parser_context::ParserContext,
+    source_range::SourceRange, Discard, Matches, Program,
   };
 
   #[test]
@@ -60,7 +72,7 @@ mod tests {
       Matches!(r"\d+")
     );
 
-    if let Ok(MatcherSuccess::Token(token)) = matcher.exec(parser_context.clone()) {
+    if let Ok(MatcherSuccess::Token(token)) = matcher.borrow().exec(parser_context.clone()) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Program");
       assert_eq!(*token.get_value_range(), SourceRange::new(0, 12));

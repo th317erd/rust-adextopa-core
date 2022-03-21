@@ -1,4 +1,7 @@
-use crate::matcher::{Matcher, MatcherFailure, MatcherSuccess};
+use std::cell::RefCell;
+use std::rc::Rc;
+
+use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
 
 pub struct BreakPattern<'a> {
@@ -6,21 +9,33 @@ pub struct BreakPattern<'a> {
 }
 
 impl<'a> BreakPattern<'a> {
-  pub fn new(loop_name: &'a str) -> Self {
-    BreakPattern { loop_name }
+  pub fn new(loop_name: &'a str) -> MatcherRef<'a> {
+    Rc::new(RefCell::new(Box::new(BreakPattern { loop_name })))
   }
 }
 
-impl<'a> Matcher for BreakPattern<'a> {
+impl<'a> Matcher<'a> for BreakPattern<'a> {
   fn exec(&self, _: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
     Ok(MatcherSuccess::Break((
-      self.loop_name,
+      self.loop_name.to_string(),
       Box::new(MatcherSuccess::None),
     )))
   }
 
   fn get_name(&self) -> &str {
     "Break"
+  }
+
+  fn set_name(&mut self, _: &'a str) {
+    panic!("Can not set 'name' on a Break pattern");
+  }
+
+  fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {
+    None
+  }
+
+  fn add_pattern(&mut self, _: MatcherRef<'a>) {
+    panic!("Can not add a pattern to a Break pattern");
   }
 }
 
@@ -37,12 +52,7 @@ macro_rules! Break {
 
 #[cfg(test)]
 mod tests {
-  use crate::{
-    matcher::{Matcher, MatcherSuccess},
-    parser::Parser,
-    parser_context::ParserContext,
-    Break,
-  };
+  use crate::{matcher::MatcherSuccess, parser::Parser, parser_context::ParserContext, Break};
 
   #[test]
   fn it_works() {
@@ -51,9 +61,9 @@ mod tests {
     let matcher = Break!("Test");
 
     assert_eq!(
-      matcher.exec(parser_context.clone()),
+      matcher.borrow().exec(parser_context.clone()),
       Ok(MatcherSuccess::Break((
-        "Test",
+        "Test".to_string(),
         Box::new(MatcherSuccess::None),
       )))
     );

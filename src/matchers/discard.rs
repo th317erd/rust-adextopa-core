@@ -1,19 +1,22 @@
-use crate::matcher::{Matcher, MatcherFailure, MatcherSuccess};
+use std::cell::RefCell;
+use std::rc::Rc;
+
+use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
 use crate::source_range::SourceRange;
 use crate::token::{StandardToken, TokenRef};
 
-pub struct DiscardPattern {
-  matcher: Box<dyn Matcher>,
+pub struct DiscardPattern<'a> {
+  matcher: MatcherRef<'a>,
 }
 
-impl DiscardPattern {
-  pub fn new(matcher: Box<dyn Matcher>) -> Self {
-    Self { matcher }
+impl<'a> DiscardPattern<'a> {
+  pub fn new(matcher: MatcherRef<'a>) -> MatcherRef<'a> {
+    Rc::new(RefCell::new(Box::new(Self { matcher })))
   }
 }
 
-fn collect_errors<'a, 'b>(error_token: TokenRef<'a>, walk_token: TokenRef<'a>) {
+fn collect_errors<'a, 'b>(error_token: TokenRef, walk_token: TokenRef) {
   if walk_token.borrow().get_name() == "Error" {
     error_token
       .borrow_mut()
@@ -32,13 +35,13 @@ fn collect_errors<'a, 'b>(error_token: TokenRef<'a>, walk_token: TokenRef<'a>) {
   }
 }
 
-impl Matcher for DiscardPattern {
+impl<'a> Matcher<'a> for DiscardPattern<'a> {
   fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
     let context = context.borrow();
     let sub_context = context.clone_with_name(self.get_name());
     let start_offset = context.offset.start;
 
-    match self.matcher.exec(sub_context.clone()) {
+    match self.matcher.borrow().exec(sub_context.clone()) {
       Ok(success) => match success {
         MatcherSuccess::Token(token) => {
           let end_offset = token.borrow().get_raw_range().end;
@@ -48,7 +51,7 @@ impl Matcher for DiscardPattern {
           // If there are, continue to proxy them upstream
           let error_token = StandardToken::new(
             &context.parser,
-            "Error",
+            "Error".to_string(),
             SourceRange::new(start_offset, end_offset),
           );
           collect_errors(error_token.clone(), token.clone());
@@ -71,19 +74,31 @@ impl Matcher for DiscardPattern {
   fn get_name(&self) -> &str {
     "Discard"
   }
+
+  fn set_name(&mut self, _: &'a str) {
+    panic!("Can not set 'name' on a Discard pattern");
+  }
+
+  fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {
+    Some(vec![self.matcher.clone()])
+  }
+
+  fn add_pattern(&mut self, _: MatcherRef<'a>) {
+    panic!("Can not add a pattern to a Discard pattern");
+  }
 }
 
 #[macro_export]
 macro_rules! Discard {
   ($arg:expr) => {
-    $crate::matchers::discard::DiscardPattern::new(std::boxed::Box::new($arg))
+    $crate::matchers::discard::DiscardPattern::new($arg.clone())
   };
 }
 
 #[cfg(test)]
 mod tests {
   use crate::{
-    matcher::{Matcher, MatcherFailure, MatcherSuccess},
+    matcher::{MatcherFailure, MatcherSuccess},
     parser::Parser,
     parser_context::ParserContext,
     source_range::SourceRange,
@@ -98,7 +113,7 @@ mod tests {
 
     assert_eq!(
       Ok(MatcherSuccess::Skip(7)),
-      matcher.exec(parser_context.clone())
+      matcher.borrow().exec(parser_context.clone())
     );
   }
 
@@ -108,7 +123,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Discard!(Program!(Equals!("Testing"), Error!("This is an error")));
 
-    if let Ok(MatcherSuccess::Token(token)) = matcher.exec(parser_context.clone()) {
+    if let Ok(MatcherSuccess::Token(token)) = matcher.borrow().exec(parser_context.clone()) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Error");
       assert_eq!(*token.get_value_range(), SourceRange::new(0, 7));
@@ -142,7 +157,7 @@ mod tests {
 
     assert_eq!(
       Err(MatcherFailure::Fail),
-      matcher.exec(parser_context.clone())
+      matcher.borrow().exec(parser_context.clone())
     );
   }
 }

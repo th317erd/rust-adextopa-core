@@ -1,36 +1,33 @@
-use crate::matcher::{Matcher, MatcherFailure, MatcherSuccess};
+use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-pub struct DebugPattern {
-  matcher: Option<Rc<RefCell<Box<dyn Matcher>>>>,
+pub struct DebugPattern<'a> {
+  matcher: Option<MatcherRef<'a>>,
   debug_mode: usize,
 }
 
-impl DebugPattern {
-  pub fn new(matcher: Option<Box<dyn Matcher>>) -> Self {
-    Self {
+impl<'a> DebugPattern<'a> {
+  pub fn new(matcher: Option<MatcherRef<'a>>) -> MatcherRef<'a> {
+    Rc::new(RefCell::new(Box::new(Self {
       matcher: match matcher {
-        Some(matcher) => Some(Rc::new(RefCell::new(matcher))),
+        Some(matcher) => Some(matcher),
         None => None,
       },
       debug_mode: 1,
-    }
+    })))
   }
 
-  pub fn new_with_debug_mode(matcher: Option<Box<dyn Matcher>>, debug_mode: usize) -> Self {
-    Self {
-      matcher: match matcher {
-        Some(matcher) => Some(Rc::new(RefCell::new(matcher))),
-        None => None,
-      },
+  pub fn new_with_debug_mode(matcher: Option<MatcherRef<'a>>, debug_mode: usize) -> MatcherRef<'a> {
+    Rc::new(RefCell::new(Box::new(Self {
+      matcher,
       debug_mode,
-    }
+    })))
   }
 }
 
-impl Matcher for DebugPattern {
+impl<'a> Matcher<'a> for DebugPattern<'a> {
   fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
     let context = context.borrow();
     let sub_context = context.clone_with_name(self.get_name());
@@ -39,19 +36,22 @@ impl Matcher for DebugPattern {
 
     match self.matcher {
       Some(ref matcher) => {
+        let debug_range = sub_context.borrow().debug_range(10);
+        let start_offset = sub_context.borrow().offset.start;
+
         let matcher = RefCell::borrow(matcher);
-        let result = matcher.exec(sub_context.clone());
-        let sub_context = sub_context.borrow();
+        let result = matcher.exec(sub_context);
 
         println!(
           "'{}' matcher at: -->|{}|--> @[{}-{}]: {:?}",
           matcher.get_name(),
-          sub_context.debug_range(10),
-          sub_context.offset.start,
-          sub_context.offset.start + 10,
+          debug_range,
+          start_offset,
+          start_offset + 10,
           result,
         );
 
+        let result = result.clone();
         result
       }
       None => {
@@ -72,15 +72,27 @@ impl Matcher for DebugPattern {
   fn get_name(&self) -> &str {
     "Debug"
   }
+
+  fn set_name(&mut self, _: &'a str) {
+    panic!("Can not set 'name' on a Debug pattern");
+  }
+
+  fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {
+    match &self.matcher {
+      Some(matcher) => Some(vec![matcher.clone()]),
+      None => None,
+    }
+  }
+
+  fn add_pattern(&mut self, _: MatcherRef<'a>) {
+    panic!("Can not add a pattern to a Debug pattern");
+  }
 }
 
 #[macro_export]
 macro_rules! Debug {
   ($mode:expr; $arg:expr) => {
-    $crate::matchers::debug::DebugPattern::new_with_debug_mode(
-      Some(std::boxed::Box::new($arg)),
-      $mode,
-    )
+    $crate::matchers::debug::DebugPattern::new_with_debug_mode(Some($arg.clone()), $mode)
   };
 
   ($mode:expr;) => {
@@ -88,7 +100,7 @@ macro_rules! Debug {
   };
 
   ($arg:expr) => {
-    $crate::matchers::debug::DebugPattern::new(Some(std::boxed::Box::new($arg)))
+    $crate::matchers::debug::DebugPattern::new(Some($arg.clone()))
   };
 
   () => {
@@ -99,11 +111,8 @@ macro_rules! Debug {
 #[cfg(test)]
 mod tests {
   use crate::{
-    matcher::{Matcher, MatcherSuccess},
-    parser::Parser,
-    parser_context::ParserContext,
-    source_range::SourceRange,
-    Equals,
+    matcher::MatcherSuccess, parser::Parser, parser_context::ParserContext,
+    source_range::SourceRange, Equals,
   };
 
   #[test]
@@ -112,7 +121,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Debug!(Equals!("Testing"));
 
-    if let Ok(MatcherSuccess::Token(token)) = matcher.exec(parser_context.clone()) {
+    if let Ok(MatcherSuccess::Token(token)) = matcher.borrow().exec(parser_context.clone()) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Equals");
       assert_eq!(*token.get_value_range(), SourceRange::new(0, 7));

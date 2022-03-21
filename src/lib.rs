@@ -5,7 +5,6 @@ pub mod parser_context;
 pub mod script;
 pub mod source_range;
 pub mod token;
-pub(crate) mod utils;
 
 #[cfg(test)]
 mod tests {

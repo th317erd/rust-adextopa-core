@@ -1,30 +1,18 @@
 use super::source_range::SourceRange;
-use crate::{matcher::Matcher, parser::ParserRef};
+use crate::{matcher::MatcherRef, parser::ParserRef};
 use regex::Regex;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 pub type ParserContextRef<'a> = Rc<RefCell<ParserContext<'a>>>;
 
+#[derive(Clone)]
 pub struct ParserContext<'a> {
   debug_mode: usize,
-  matcher_reference_map: Rc<RefCell<HashMap<String, Box<dyn Matcher>>>>,
+  matcher_reference_map: Rc<RefCell<HashMap<String, MatcherRef<'a>>>>,
   variable_context: Rc<RefCell<HashMap<String, String>>>,
   pub offset: SourceRange,
   pub parser: ParserRef,
-  pub name: &'a str,
-}
-
-impl<'a> Clone for ParserContext<'a> {
-  fn clone(&self) -> Self {
-    Self {
-      debug_mode: self.debug_mode.clone(),
-      offset: self.offset.clone(),
-      parser: self.parser.clone(),
-      name: self.name.clone(),
-      matcher_reference_map: self.matcher_reference_map.clone(),
-      variable_context: self.variable_context.clone(),
-    }
-  }
+  pub name: String,
 }
 
 impl<'a> ParserContext<'a> {
@@ -35,7 +23,7 @@ impl<'a> ParserContext<'a> {
       offset: SourceRange::new(0, parser.borrow().source.len()),
       parser: parser.clone(),
       debug_mode: 0,
-      name,
+      name: name.to_string(),
     }))
   }
 
@@ -50,13 +38,13 @@ impl<'a> ParserContext<'a> {
       offset,
       parser: parser.clone(),
       debug_mode: 0,
-      name,
+      name: name.to_string(),
     }))
   }
 
-  pub fn clone_with_name<'b>(&'b self, name: &'b str) -> ParserContextRef<'b> {
+  pub fn clone_with_name(&self, name: &str) -> ParserContextRef<'a> {
     let mut c = self.clone();
-    c.name = name;
+    c.name = name.to_string();
     std::rc::Rc::new(std::cell::RefCell::new(c))
   }
 

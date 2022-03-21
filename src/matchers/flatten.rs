@@ -1,28 +1,31 @@
-use crate::matcher::{Matcher, MatcherFailure, MatcherSuccess};
+use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 pub struct FlattenPattern<'a> {
-  matcher: Box<dyn Matcher>,
+  matcher: MatcherRef<'a>,
   name: &'a str,
 }
 
 impl<'a> FlattenPattern<'a> {
-  pub fn new(matcher: Box<dyn Matcher>) -> Self {
-    FlattenPattern {
+  pub fn new(matcher: MatcherRef<'a>) -> MatcherRef<'a> {
+    Rc::new(RefCell::new(Box::new(FlattenPattern {
       matcher,
       name: "Flatten",
-    }
+    })))
   }
 
-  pub fn new_with_name(matcher: Box<dyn Matcher>, name: &'a str) -> Self {
-    FlattenPattern { matcher, name }
+  pub fn new_with_name(matcher: MatcherRef<'a>, name: &'a str) -> MatcherRef<'a> {
+    Rc::new(RefCell::new(Box::new(FlattenPattern { matcher, name })))
   }
 }
 
-impl<'a> Matcher for FlattenPattern<'a> {
+impl<'a> Matcher<'a> for FlattenPattern<'a> {
   fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
     let result = self
       .matcher
+      .borrow()
       .exec(context.borrow().clone_with_name(self.get_name()));
 
     match result {
@@ -48,27 +51,36 @@ impl<'a> Matcher for FlattenPattern<'a> {
   fn get_name(&self) -> &str {
     self.name
   }
+
+  fn set_name(&mut self, name: &'a str) {
+    self.name = name;
+  }
+
+  fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {
+    Some(vec![self.matcher.clone()])
+  }
+
+  fn add_pattern(&mut self, _: MatcherRef<'a>) {
+    panic!("Can not add a pattern to a Flatten pattern");
+  }
 }
 
 #[macro_export]
 macro_rules! Flatten {
   ($name:expr; $arg:expr) => {
-    $crate::matchers::flatten::FlattenPattern::new_with_name(std::boxed::Box::new($arg), $name)
+    $crate::matchers::flatten::FlattenPattern::new_with_name($arg.clone(), $name)
   };
 
   ($arg:expr) => {
-    $crate::matchers::flatten::FlattenPattern::new(std::boxed::Box::new($arg))
+    $crate::matchers::flatten::FlattenPattern::new($arg.clone())
   };
 }
 
 #[cfg(test)]
 mod tests {
   use crate::{
-    matcher::{Matcher, MatcherSuccess},
-    parser::Parser,
-    parser_context::ParserContext,
-    source_range::SourceRange,
-    Flatten, Loop, Matches, Switch,
+    matcher::MatcherSuccess, parser::Parser, parser_context::ParserContext,
+    source_range::SourceRange, Flatten, Loop, Matches, Switch,
   };
 
   #[test]
@@ -86,7 +98,7 @@ mod tests {
       ))
     );
 
-    if let Ok(MatcherSuccess::Token(token)) = matcher.exec(parser_context.clone()) {
+    if let Ok(MatcherSuccess::Token(token)) = matcher.borrow().exec(parser_context.clone()) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Loop");
       assert_eq!(*token.get_value_range(), SourceRange::new(0, 12));

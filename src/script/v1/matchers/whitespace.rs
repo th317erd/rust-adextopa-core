@@ -45,7 +45,7 @@ macro_rules! ScriptWSN1 {
 #[cfg(test)]
 mod tests {
   use crate::{
-    matcher::{Matcher, MatcherFailure, MatcherSuccess},
+    matcher::{MatcherFailure, MatcherSuccess},
     parser::Parser,
     parser_context::ParserContext,
     source_range::SourceRange,
@@ -57,7 +57,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = ScriptWS0!();
 
-    let result = matcher.exec(parser_context.clone());
+    let result = matcher.borrow().exec(parser_context.clone());
     assert_eq!(Ok(MatcherSuccess::Skip(0)), result);
   }
 
@@ -67,7 +67,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = ScriptWS0!();
 
-    let result = matcher.exec(parser_context.clone());
+    let result = matcher.borrow().exec(parser_context.clone());
 
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
@@ -87,7 +87,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = ScriptWSN1!();
 
-    let result = matcher.exec(parser_context.clone());
+    let result = matcher.borrow().exec(parser_context.clone());
 
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
@@ -109,7 +109,7 @@ mod tests {
 
     assert_eq!(
       Ok(MatcherSuccess::Skip(0)),
-      matcher.exec(parser_context.clone())
+      matcher.borrow().exec(parser_context.clone())
     );
   }
 
@@ -121,7 +121,7 @@ mod tests {
 
     assert_eq!(
       Err(MatcherFailure::Fail),
-      matcher.exec(parser_context.clone())
+      matcher.borrow().exec(parser_context.clone())
     );
   }
 }

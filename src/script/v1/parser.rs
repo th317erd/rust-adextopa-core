@@ -1,10 +1,10 @@
 use crate::{
-  matcher::{Matcher, MatcherSuccess},
+  matcher::{Matcher, MatcherRef, MatcherSuccess},
   parser::Parser,
   parser_context::ParserContext,
 };
 
-pub fn compile_script(source: &str) -> Result<Box<dyn Matcher>, String> {
+pub fn compile_script<'a>(source: &'a str) -> Result<MatcherRef<'a>, String> {
   let parser = Parser::new_from_file("./tests/uulang/test01.uu").unwrap();
   let parser_context = ParserContext::new(&parser, "Script");
   let pattern = crate::ScriptProgram!();
@@ -12,7 +12,7 @@ pub fn compile_script(source: &str) -> Result<Box<dyn Matcher>, String> {
     crate::matchers::program::MatchAction::Continue,
   );
 
-  let result = pattern.exec(parser_context.clone());
+  let result = pattern.borrow().exec(parser_context.clone());
   match result {
     Ok(result) => match result {
       MatcherSuccess::Token(token) => {
@@ -49,5 +49,5 @@ pub fn compile_script(source: &str) -> Result<Box<dyn Matcher>, String> {
     },
   }
 
-  Ok(Box::new(program))
+  Ok(program)
 }

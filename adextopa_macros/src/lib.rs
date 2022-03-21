@@ -15,7 +15,7 @@ pub fn token_derive(input: TokenStream) -> TokenStream {
   // Build the impl
   let name = &input.ident;
   let expanded = quote! {
-    impl<'a> Token<'a> for #name<'a> {
+    impl Token for #name {
       fn get_parser(&self) -> crate::parser::ParserRef {
         self.parser.clone()
       }
@@ -44,34 +44,34 @@ pub fn token_derive(input: TokenStream) -> TokenStream {
         self.raw_range = range;
       }
 
-      fn get_name(&self) -> &str {
-        self.name
+      fn get_name(&self) -> &String {
+        &self.name
       }
 
-      fn set_name(&mut self, name: &'a str) {
+      fn set_name(&mut self, name: String) {
         self.name = name;
       }
 
-      fn get_parent(&self) -> Option<crate::token::TokenRef<'a>> {
+      fn get_parent(&self) -> Option<crate::token::TokenRef> {
         match self.parent {
           Some(ref token_ref) => Some(token_ref.clone()),
           None => None,
         }
       }
 
-      fn set_parent(&mut self, token: Option<crate::token::TokenRef<'a>>) {
+      fn set_parent(&mut self, token: Option<crate::token::TokenRef>) {
         self.parent = token;
       }
 
-      fn get_children<'b>(&'b self) -> &'b Vec<crate::token::TokenRef<'a>> {
+      fn get_children<'b>(&'b self) -> &'b Vec<crate::token::TokenRef> {
         &self.children
       }
 
-      fn get_children_mut<'b>(&'b mut self) -> &'b mut Vec<crate::token::TokenRef<'a>> {
+      fn get_children_mut<'b>(&'b mut self) -> &'b mut Vec<crate::token::TokenRef> {
         &mut self.children
       }
 
-      fn set_children(&mut self, children: Vec<crate::token::TokenRef<'a>>) {
+      fn set_children(&mut self, children: Vec<crate::token::TokenRef>) {
         self.children = children;
       }
 

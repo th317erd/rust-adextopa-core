@@ -11,7 +11,7 @@ macro_rules! ScriptMatcherName {
 #[cfg(test)]
 mod tests {
   use crate::{
-    matcher::{Matcher, MatcherFailure, MatcherSuccess},
+    matcher::{MatcherFailure, MatcherSuccess},
     parser::Parser,
     parser_context::ParserContext,
     source_range::SourceRange,
@@ -23,7 +23,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = ScriptMatcherName!();
 
-    let result = matcher.exec(parser_context.clone());
+    let result = matcher.borrow().exec(parser_context.clone());
 
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
@@ -44,7 +44,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = ScriptMatcherName!();
 
-    if let Err(MatcherFailure::Fail) = matcher.exec(parser_context.clone()) {
+    if let Err(MatcherFailure::Fail) = matcher.borrow().exec(parser_context.clone()) {
     } else {
       unreachable!("Test failed!");
     };
