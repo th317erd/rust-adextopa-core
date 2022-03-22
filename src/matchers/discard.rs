@@ -121,7 +121,7 @@ mod tests {
 
     assert_eq!(
       Ok(MatcherSuccess::Skip(7)),
-      matcher.borrow().exec(parser_context.clone())
+      ParserContext::tokenize(parser_context, matcher)
     );
   }
 

@@ -20,7 +20,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = ScriptIdentifier!();
 
-    if let Ok(MatcherSuccess::Token(token)) = matcher.borrow().exec(parser_context.clone()) {
+    if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Identifier");
       assert_eq!(*token.get_value_range(), SourceRange::new(0, 8));
@@ -36,7 +36,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = ScriptIdentifier!();
 
-    if let Ok(MatcherSuccess::Token(token)) = matcher.borrow().exec(parser_context.clone()) {
+    if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Identifier");
       assert_eq!(*token.get_value_range(), SourceRange::new(0, 9));
@@ -52,7 +52,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = ScriptIdentifier!();
 
-    if let Err(MatcherFailure::Fail) = matcher.borrow().exec(parser_context.clone()) {
+    if let Err(MatcherFailure::Fail) = ParserContext::tokenize(parser_context, matcher) {
     } else {
       unreachable!("Test failed!");
     };

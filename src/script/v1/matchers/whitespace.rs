@@ -57,7 +57,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = ScriptWS0!();
 
-    let result = matcher.borrow().exec(parser_context.clone());
+    let result = ParserContext::tokenize(parser_context, matcher);
     assert_eq!(Ok(MatcherSuccess::Skip(0)), result);
   }
 
@@ -67,7 +67,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = ScriptWS0!();
 
-    let result = matcher.borrow().exec(parser_context.clone());
+    let result = ParserContext::tokenize(parser_context, matcher);
 
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
@@ -87,7 +87,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = ScriptWSN1!();
 
-    let result = matcher.borrow().exec(parser_context.clone());
+    let result = ParserContext::tokenize(parser_context, matcher);
 
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
@@ -109,7 +109,7 @@ mod tests {
 
     assert_eq!(
       Ok(MatcherSuccess::Skip(0)),
-      matcher.borrow().exec(parser_context.clone())
+      ParserContext::tokenize(parser_context, matcher)
     );
   }
 
@@ -121,7 +121,7 @@ mod tests {
 
     assert_eq!(
       Err(MatcherFailure::Fail),
-      matcher.borrow().exec(parser_context.clone())
+      ParserContext::tokenize(parser_context, matcher)
     );
   }
 }

@@ -30,7 +30,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = ScriptRepeatRange!();
 
-    let result = matcher.borrow().exec(parser_context.clone());
+    let result = ParserContext::tokenize(parser_context, matcher);
 
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
@@ -58,7 +58,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = ScriptRepeatRange!();
 
-    let result = matcher.borrow().exec(parser_context.clone());
+    let result = ParserContext::tokenize(parser_context, matcher);
 
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
@@ -100,7 +100,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = ScriptRepeatRange!();
 
-    let result = matcher.borrow().exec(parser_context.clone());
+    let result = ParserContext::tokenize(parser_context, matcher);
 
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
@@ -135,7 +135,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = ScriptRepeatRange!();
 
-    if let Err(MatcherFailure::Fail) = matcher.borrow().exec(parser_context.clone()) {
+    if let Err(MatcherFailure::Fail) = ParserContext::tokenize(parser_context, matcher) {
     } else {
       unreachable!("Test failed!");
     };
