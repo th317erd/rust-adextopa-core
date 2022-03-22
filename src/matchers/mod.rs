@@ -11,4 +11,5 @@ pub mod not;
 pub mod optional;
 pub mod program;
 pub mod r#ref;
+pub mod register;
 pub mod sequence;

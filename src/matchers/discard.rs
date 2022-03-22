@@ -35,6 +35,26 @@ fn collect_errors<'a, 'b>(error_token: TokenRef, walk_token: TokenRef) {
   }
 }
 
+fn skip_token(context: ParserContextRef, start_offset: usize, token: TokenRef) -> MatcherSuccess {
+  let end_offset = token.borrow().get_raw_range().end;
+  let offset: isize = end_offset as isize - start_offset as isize;
+
+  // Check to see if any errors are in the result
+  // If there are, continue to proxy them upstream
+  let error_token = StandardToken::new(
+    &context.borrow().parser,
+    "Error".to_string(),
+    SourceRange::new(start_offset, end_offset),
+  );
+  collect_errors(error_token.clone(), token.clone());
+
+  if error_token.borrow().get_children().len() > 0 {
+    return MatcherSuccess::Token(error_token);
+  }
+
+  MatcherSuccess::Skip(offset)
+}
+
 impl<'a> Matcher<'a> for DiscardPattern<'a> {
   fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
     let context = context.borrow();
@@ -44,25 +64,60 @@ impl<'a> Matcher<'a> for DiscardPattern<'a> {
     match self.matcher.borrow().exec(sub_context.clone()) {
       Ok(success) => match success {
         MatcherSuccess::Token(token) => {
-          let end_offset = token.borrow().get_raw_range().end;
-          let offset: isize = end_offset as isize - start_offset as isize;
-
-          // Check to see if any errors are in the result
-          // If there are, continue to proxy them upstream
-          let error_token = StandardToken::new(
-            &context.parser,
-            "Error".to_string(),
-            SourceRange::new(start_offset, end_offset),
-          );
-          collect_errors(error_token.clone(), token.clone());
-
-          if error_token.borrow().get_children().len() > 0 {
-            return Ok(MatcherSuccess::Token(error_token));
-          }
-
-          return Ok(MatcherSuccess::Skip(offset));
+          return Ok(skip_token(sub_context, start_offset, token.clone()));
+        }
+        MatcherSuccess::ExtractChildren(token) => {
+          return Ok(skip_token(sub_context, start_offset, token.clone()));
         }
         MatcherSuccess::Skip(offset) => Ok(MatcherSuccess::Skip(offset)),
+        // Here we Discard "Break"s payload
+        MatcherSuccess::Break((loop_name, result)) => match *result {
+          MatcherSuccess::Token(token) => Ok(MatcherSuccess::Break((
+            loop_name,
+            Box::new(skip_token(sub_context, start_offset, token.clone())),
+          ))),
+          MatcherSuccess::ExtractChildren(token) => Ok(MatcherSuccess::Break((
+            loop_name,
+            Box::new(skip_token(sub_context, start_offset, token.clone())),
+          ))),
+          MatcherSuccess::Skip(offset) => Ok(MatcherSuccess::Break((
+            loop_name,
+            Box::new(MatcherSuccess::Skip(offset)),
+          ))),
+          MatcherSuccess::None => Ok(MatcherSuccess::Break((
+            loop_name,
+            Box::new(MatcherSuccess::None),
+          ))),
+          MatcherSuccess::Stop => Ok(MatcherSuccess::Break((
+            loop_name,
+            Box::new(MatcherSuccess::Stop),
+          ))),
+          _ => unreachable!(),
+        },
+        // Here we Discard "Continue"s payload
+        MatcherSuccess::Continue((loop_name, result)) => match *result {
+          MatcherSuccess::Token(token) => Ok(MatcherSuccess::Continue((
+            loop_name,
+            Box::new(skip_token(sub_context, start_offset, token.clone())),
+          ))),
+          MatcherSuccess::ExtractChildren(token) => Ok(MatcherSuccess::Continue((
+            loop_name,
+            Box::new(skip_token(sub_context, start_offset, token.clone())),
+          ))),
+          MatcherSuccess::Skip(offset) => Ok(MatcherSuccess::Continue((
+            loop_name,
+            Box::new(MatcherSuccess::Skip(offset)),
+          ))),
+          MatcherSuccess::None => Ok(MatcherSuccess::Continue((
+            loop_name,
+            Box::new(MatcherSuccess::None),
+          ))),
+          MatcherSuccess::Stop => Ok(MatcherSuccess::Continue((
+            loop_name,
+            Box::new(MatcherSuccess::Stop),
+          ))),
+          _ => unreachable!(),
+        },
         _ => Ok(success),
       },
       Err(failure) => {

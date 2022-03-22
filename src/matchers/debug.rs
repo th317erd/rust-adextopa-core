@@ -38,16 +38,26 @@ impl<'a> Matcher<'a> for DebugPattern<'a> {
       Some(ref matcher) => {
         let debug_range = sub_context.borrow().debug_range(10);
         let start_offset = sub_context.borrow().offset.start;
+        let end_offset = sub_context.borrow().offset.end;
+        let debug_mode_level = sub_context.borrow().debug_mode_level();
 
         let matcher = RefCell::borrow(matcher);
         let result = matcher.exec(sub_context);
 
+        if debug_mode_level > 2 {
+          print!("{{Debug}} ");
+        }
+
         println!(
           "'{}' matcher at: -->|{}|--> @[{}-{}]: {:?}",
           matcher.get_name(),
-          debug_range,
+          debug_range
+            .as_str()
+            .replace("\n", r"\n")
+            .replace("\r", r"\r")
+            .replace("\t", r"\t"),
           start_offset,
-          start_offset + 10,
+          std::cmp::min(start_offset + 10, end_offset),
           result,
         );
 

@@ -160,7 +160,8 @@ impl<'a> ParserContext<'a> {
         let mut index: usize = 0;
 
         for child in children {
-          match child.borrow().swap_with_reference_name() {
+          let ref_name = child.borrow().swap_with_reference_name();
+          match ref_name {
             Some(name) => {
               let ref_map = self.matcher_reference_map.borrow();
               let reference = ref_map.get(&name.to_string());
@@ -180,6 +181,12 @@ impl<'a> ParserContext<'a> {
         }
       }
       None => {}
+    }
+  }
+
+  pub fn register_matchers(&self, matchers: Vec<MatcherRef<'a>>) {
+    for matcher in matchers {
+      self.capture_matcher_references(matcher.clone());
     }
   }
 

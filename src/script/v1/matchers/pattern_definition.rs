@@ -45,12 +45,18 @@ mod tests {
     parser::Parser,
     parser_context::ParserContext,
     source_range::SourceRange,
+    ScriptSwitchMatcher,
   };
 
   #[test]
   fn it_works1() {
     let parser = Parser::new("<!/test/i>");
     let parser_context = ParserContext::new(&parser, "Test");
+
+    parser_context
+      .borrow()
+      .register_matchers(vec![ScriptSwitchMatcher!()]);
+
     let matcher = ScriptPatternDefinition!();
 
     let result = ParserContext::tokenize(parser_context, matcher);
@@ -86,6 +92,11 @@ mod tests {
   fn it_works2() {
     let parser = Parser::new("!<='test'>");
     let parser_context = ParserContext::new(&parser, "Test");
+
+    parser_context
+      .borrow()
+      .register_matchers(vec![ScriptSwitchMatcher!()]);
+
     let matcher = ScriptPatternDefinition!();
 
     let result = ParserContext::tokenize(parser_context, matcher);
@@ -121,6 +132,11 @@ mod tests {
   fn it_works3() {
     let parser = Parser::new("<?='test'>");
     let parser_context = ParserContext::new(&parser, "Test");
+
+    parser_context
+      .borrow()
+      .register_matchers(vec![ScriptSwitchMatcher!()]);
+
     let matcher = ScriptPatternDefinition!();
 
     let result = ParserContext::tokenize(parser_context, matcher);
@@ -156,6 +172,11 @@ mod tests {
   fn it_works4() {
     let parser = Parser::new("< %'[',']','' >");
     let parser_context = ParserContext::new(&parser, "Test");
+
+    parser_context
+      .borrow()
+      .register_matchers(vec![ScriptSwitchMatcher!()]);
+
     let matcher = ScriptPatternDefinition!();
 
     let result = ParserContext::tokenize(parser_context, matcher);
@@ -184,6 +205,11 @@ mod tests {
   fn it_works_with_repeat_specifier1() {
     let parser = Parser::new("<='test'>+");
     let parser_context = ParserContext::new(&parser, "Test");
+
+    parser_context
+      .borrow()
+      .register_matchers(vec![ScriptSwitchMatcher!()]);
+
     let matcher = ScriptPatternDefinition!();
 
     let result = ParserContext::tokenize(parser_context, matcher);
@@ -219,6 +245,11 @@ mod tests {
   fn it_works_with_repeat_specifier2() {
     let parser = Parser::new("<='test'>*");
     let parser_context = ParserContext::new(&parser, "Test");
+
+    parser_context
+      .borrow()
+      .register_matchers(vec![ScriptSwitchMatcher!()]);
+
     let matcher = ScriptPatternDefinition!();
 
     let result = ParserContext::tokenize(parser_context, matcher);
@@ -254,6 +285,11 @@ mod tests {
   fn it_works_with_repeat_specifier3() {
     let parser = Parser::new("<='test'>{2,}");
     let parser_context = ParserContext::new(&parser, "Test");
+
+    parser_context
+      .borrow()
+      .register_matchers(vec![ScriptSwitchMatcher!()]);
+
     let matcher = ScriptPatternDefinition!();
 
     let result = ParserContext::tokenize(parser_context, matcher);
@@ -289,6 +325,11 @@ mod tests {
   fn it_fails_on_not_optional1() {
     let parser = Parser::new("<?!='test'>");
     let parser_context = ParserContext::new(&parser, "Test");
+
+    parser_context
+      .borrow()
+      .register_matchers(vec![ScriptSwitchMatcher!()]);
+
     let matcher = ScriptPatternDefinition!();
 
     let result = ParserContext::tokenize(parser_context, matcher);
@@ -331,6 +372,11 @@ mod tests {
   fn it_fails_on_not_optional2() {
     let parser = Parser::new("!?<='test'>");
     let parser_context = ParserContext::new(&parser, "Test");
+
+    parser_context
+      .borrow()
+      .register_matchers(vec![ScriptSwitchMatcher!()]);
+
     let matcher = ScriptPatternDefinition!();
 
     let result = ParserContext::tokenize(parser_context, matcher);
@@ -373,6 +419,11 @@ mod tests {
   fn it_fails1() {
     let parser = Parser::new("Testing");
     let parser_context = ParserContext::new(&parser, "Test");
+
+    parser_context
+      .borrow()
+      .register_matchers(vec![ScriptSwitchMatcher!()]);
+
     let matcher = ScriptPatternDefinition!();
 
     if let Err(MatcherFailure::Fail) = ParserContext::tokenize(parser_context, matcher) {

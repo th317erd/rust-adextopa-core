@@ -6,6 +6,7 @@ macro_rules! ScriptMatcher {
       $crate::ScriptEqualsMatcher!(),
       $crate::ScriptSequenceMatcher!(),
       $crate::ScriptCustomMatcher!(),
+      $crate::Ref!("SwitchMatcher"),
     )
   };
 }
@@ -17,13 +18,18 @@ mod tests {
     parser::Parser,
     parser_context::ParserContext,
     source_range::SourceRange,
-    Loop,
+    Loop, ScriptSwitchMatcher,
   };
 
   #[test]
   fn it_works1() {
     let parser = Parser::new("='test'%'[',']',''/test/icustom");
     let parser_context = ParserContext::new(&parser, "Test");
+
+    parser_context
+      .borrow()
+      .register_matchers(vec![ScriptSwitchMatcher!()]);
+
     let matcher = Loop!(ScriptMatcher!());
 
     let result = ParserContext::tokenize(parser_context, matcher);
@@ -73,6 +79,11 @@ mod tests {
   fn it_works2() {
     let parser = Parser::new("='test'");
     let parser_context = ParserContext::new(&parser, "Test");
+
+    parser_context
+      .borrow()
+      .register_matchers(vec![ScriptSwitchMatcher!()]);
+
     let matcher = ScriptMatcher!();
 
     let result = ParserContext::tokenize(parser_context, matcher);
@@ -93,6 +104,11 @@ mod tests {
   fn it_fails1() {
     let parser = Parser::new("!");
     let parser_context = ParserContext::new(&parser, "Test");
+
+    parser_context
+      .borrow()
+      .register_matchers(vec![ScriptSwitchMatcher!()]);
+
     let matcher = ScriptMatcher!();
 
     if let Err(MatcherFailure::Fail) = ParserContext::tokenize(parser_context, matcher) {

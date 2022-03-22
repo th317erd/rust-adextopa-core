@@ -213,6 +213,162 @@ fn add_token_to_children<'a>(
   children.push(token.clone());
 }
 
+fn handle_token(
+  program: &ProgramPattern,
+  program_token: &TokenRef,
+  context: &ParserContextRef,
+  children: &mut Vec<TokenRef>,
+  value_range: &mut SourceRange,
+  raw_range: &mut SourceRange,
+  token: &TokenRef,
+  assert_moving_forward: bool,
+) {
+  if context.borrow().debug_mode_level() > 1 {
+    let token = token.borrow();
+
+    if context.borrow().debug_mode_level() > 2 {
+      print!("{{Token}} ");
+    }
+
+    println!(
+      "'{}' Adding child '{}' @[{}-{}]",
+      program.get_name(),
+      token.get_name(),
+      token.get_raw_range().start,
+      token.get_raw_range().end
+    );
+  }
+
+  add_token_to_children(
+    &program_token,
+    &context,
+    children,
+    value_range,
+    raw_range,
+    token,
+    assert_moving_forward,
+  );
+
+  if context.borrow().is_debug_mode() {
+    if context.borrow().debug_mode_level() > 2 {
+      print!("{{Token}} ");
+    }
+
+    println!(
+      "'{}' Setting to offset to: {} -> {}",
+      program.get_name(),
+      context.borrow().offset.start,
+      token.borrow().get_raw_range().end
+    );
+  }
+}
+
+fn handle_extract_token(
+  program: &ProgramPattern,
+  program_token: &TokenRef,
+  context: &ParserContextRef,
+  children: &mut Vec<TokenRef>,
+  value_range: &mut SourceRange,
+  raw_range: &mut SourceRange,
+  token: &TokenRef,
+  assert_moving_forward: bool,
+) {
+  let token = token.borrow();
+  let target_children = token.get_children();
+
+  if context.borrow().is_debug_mode() {
+    if context.borrow().debug_mode_level() > 2 {
+      print!("{{ExtractChildren}} ");
+    }
+
+    println!(
+      "'{}' Setting to offset to: {} -> {}",
+      program.get_name(),
+      context.borrow().offset.start,
+      token.get_raw_range().end
+    );
+  }
+
+  context.borrow_mut().set_start(token.get_raw_range().end);
+
+  contain_source_range(value_range, &token.get_raw_range());
+  contain_source_range(raw_range, &token.get_raw_range());
+
+  if context.borrow().debug_mode_level() > 1 {
+    if context.borrow().debug_mode_level() > 2 {
+      print!("{{ExtractChildren}} ");
+    }
+
+    let count = target_children.len();
+    println!(
+      "'{}' Will be adding {} {}",
+      program.get_name(),
+      count,
+      if count != 1 { "children" } else { "child" }
+    );
+  }
+
+  for child in target_children {
+    if context.borrow().debug_mode_level() > 1 {
+      let child = child.borrow();
+
+      if context.borrow().debug_mode_level() > 2 {
+        print!("{{ExtractChildren}} ");
+      }
+
+      println!(
+        "'{}' Adding child '{}' @[{}-{}]",
+        program.get_name(),
+        child.get_name(),
+        child.get_raw_range().start,
+        child.get_raw_range().end
+      );
+    }
+
+    add_token_to_children(
+      program_token,
+      context,
+      children,
+      value_range,
+      raw_range,
+      &child,
+      assert_moving_forward,
+    );
+  }
+}
+
+fn handle_skip(
+  program: &ProgramPattern,
+  context: &ParserContextRef,
+  value_range: &mut SourceRange,
+  raw_range: &mut SourceRange,
+  start_offset: usize,
+  offset: isize,
+) {
+  let new_offset = context.borrow().offset.start + offset as usize;
+
+  if context.borrow().is_debug_mode() {
+    if context.borrow().debug_mode_level() > 2 {
+      print!("{{Skip}} ");
+    }
+
+    println!(
+      "'{}' Skipping: {} + {} -> {}",
+      program.get_name(),
+      context.borrow().offset.start,
+      offset,
+      new_offset
+    );
+  }
+
+  context.borrow_mut().set_start(new_offset);
+
+  let range = SourceRange::new(start_offset, new_offset);
+
+  contain_source_range(value_range, &range);
+  contain_source_range(raw_range, &range);
+}
+
 impl<'a> Matcher<'a> for ProgramPattern<'a> {
   fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
     let context = context.borrow();
@@ -256,23 +412,8 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
                 _ => {}
               }
 
-              if sub_context.borrow().debug_mode_level() > 1 {
-                let token = token.borrow();
-
-                if sub_context.borrow().debug_mode_level() > 2 {
-                  print!("{{Token}} ");
-                }
-
-                println!(
-                  "'{}' Adding child '{}' @[{}-{}]",
-                  self.get_name(),
-                  token.get_name(),
-                  token.get_raw_range().start,
-                  token.get_raw_range().end
-                );
-              }
-
-              add_token_to_children(
+              handle_token(
+                self,
                 &program_token,
                 &sub_context,
                 &mut children,
@@ -281,19 +422,6 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
                 &token,
                 true,
               );
-
-              if sub_context.borrow().is_debug_mode() {
-                if sub_context.borrow().debug_mode_level() > 2 {
-                  print!("{{Token}} ");
-                }
-
-                println!(
-                  "'{}' Setting to offset to: {} -> {}",
-                  self.get_name(),
-                  sub_context.borrow().offset.start,
-                  token.borrow().get_raw_range().end
-                );
-              }
             }
             MatcherSuccess::ExtractChildren(token) => {
               match self.stop_on_first {
@@ -303,94 +431,26 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
                 _ => {}
               }
 
-              let token = token.borrow();
-              let target_children = token.get_children();
-
-              if sub_context.borrow().is_debug_mode() {
-                if sub_context.borrow().debug_mode_level() > 2 {
-                  print!("{{ExtractChildren}} ");
-                }
-
-                println!(
-                  "'{}' Setting to offset to: {} -> {}",
-                  self.get_name(),
-                  sub_context.borrow().offset.start,
-                  token.get_raw_range().end
-                );
-              }
-
-              sub_context
-                .borrow_mut()
-                .set_start(token.get_raw_range().end);
-
-              contain_source_range(&mut value_range, &token.get_raw_range());
-              contain_source_range(&mut raw_range, &token.get_raw_range());
-
-              if sub_context.borrow().debug_mode_level() > 1 {
-                if sub_context.borrow().debug_mode_level() > 2 {
-                  print!("{{ExtractChildren}} ");
-                }
-
-                let count = target_children.len();
-                println!(
-                  "'{}' Will be adding {} {}",
-                  self.get_name(),
-                  count,
-                  if count != 1 { "children" } else { "child" }
-                );
-              }
-
-              for child in target_children {
-                if sub_context.borrow().debug_mode_level() > 1 {
-                  let child = child.borrow();
-
-                  if sub_context.borrow().debug_mode_level() > 2 {
-                    print!("{{ExtractChildren}} ");
-                  }
-
-                  println!(
-                    "'{}' Adding child '{}' @[{}-{}]",
-                    self.get_name(),
-                    child.get_name(),
-                    child.get_raw_range().start,
-                    child.get_raw_range().end
-                  );
-                }
-
-                add_token_to_children(
-                  &program_token,
-                  &sub_context,
-                  &mut children,
-                  &mut value_range,
-                  &mut raw_range,
-                  &child,
-                  false,
-                );
-              }
+              handle_extract_token(
+                self,
+                &program_token,
+                &sub_context,
+                &mut children,
+                &mut value_range,
+                &mut raw_range,
+                &token,
+                true,
+              );
             }
             MatcherSuccess::Skip(amount) => {
-              let new_offset = sub_context.borrow().offset.start + amount as usize;
-
-              if sub_context.borrow().is_debug_mode() {
-                if sub_context.borrow().debug_mode_level() > 2 {
-                  print!("{{Skip}} ");
-                }
-
-                println!(
-                  "'{}' Skipping: {} + {} -> {}",
-                  self.get_name(),
-                  sub_context.borrow().offset.start,
-                  amount,
-                  new_offset
-                );
-              }
-
-              sub_context.borrow_mut().set_start(new_offset);
-
-              let range = SourceRange::new(start_offset, new_offset);
-
-              contain_source_range(&mut value_range, &range);
-              contain_source_range(&mut raw_range, &range);
+              handle_skip(
+                self,
+                &sub_context,
+                &mut value_range,
+                &mut raw_range,
+                start_offset,
+                amount,
+              );
 
               continue;
             }
@@ -442,113 +502,42 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
             if is_loop && (loop_name == self.name || loop_name == "") {
               match &*data {
                 MatcherSuccess::Token(token) => {
-                  if sub_context.borrow().debug_mode_level() > 1 {
-                    let token = token.borrow();
-
-                    if sub_context.borrow().debug_mode_level() > 2 {
-                      print!("{{Break/Token}} ");
-                    }
-
-                    println!(
-                      "'{}' Adding child '{}' @[{}-{}]",
-                      self.get_name(),
-                      token.get_name(),
-                      token.get_raw_range().start,
-                      token.get_raw_range().end
-                    );
-                  }
-
-                  // Add token to myself, and then continue propagating
-                  add_token_to_children(
+                  handle_token(
+                    self,
                     &program_token,
-                    &mut sub_context,
+                    &sub_context,
                     &mut children,
                     &mut value_range,
                     &mut raw_range,
                     &token,
-                    true,
+                    false,
                   );
-
-                  if sub_context.borrow().is_debug_mode() {
-                    if sub_context.borrow().debug_mode_level() > 2 {
-                      print!("{{Break/Token}} ");
-                    }
-
-                    println!(
-                      "'{}' Setting to offset to: {} -> {}",
-                      self.get_name(),
-                      sub_context.borrow().offset.start,
-                      token.borrow().get_raw_range().end
-                    );
-                  }
 
                   Box::new(MatcherSuccess::None)
                 }
                 MatcherSuccess::ExtractChildren(token) => {
-                  let token = token.borrow();
-                  let target_children = token.get_children();
+                  handle_extract_token(
+                    self,
+                    &program_token,
+                    &sub_context,
+                    &mut children,
+                    &mut value_range,
+                    &mut raw_range,
+                    &token,
+                    false,
+                  );
 
-                  if sub_context.borrow().is_debug_mode() {
-                    if sub_context.borrow().debug_mode_level() > 2 {
-                      print!("{{Break/ExtractChildren}} ");
-                    }
-
-                    println!(
-                      "'{}' Setting to offset to: {} -> {}",
-                      self.get_name(),
-                      sub_context.borrow().offset.start,
-                      token.get_raw_range().end
-                    );
-                  }
-
-                  sub_context
-                    .borrow_mut()
-                    .set_start(token.get_raw_range().end);
-
-                  contain_source_range(&mut value_range, &token.get_raw_range());
-                  contain_source_range(&mut raw_range, &token.get_raw_range());
-
-                  if sub_context.borrow().debug_mode_level() > 1 {
-                    if sub_context.borrow().debug_mode_level() > 2 {
-                      print!("{{Break/ExtractChildren}} ");
-                    }
-
-                    let count = target_children.len();
-                    println!(
-                      "'{}' Will be adding {} {}",
-                      self.get_name(),
-                      count,
-                      if count != 1 { "children" } else { "child" }
-                    );
-                  }
-
-                  for child in target_children {
-                    add_token_to_children(
-                      &program_token,
-                      &sub_context,
-                      &mut children,
-                      &mut value_range,
-                      &mut raw_range,
-                      &child,
-                      false,
-                    );
-
-                    if sub_context.borrow().is_debug_mode() {
-                      let child = child.borrow();
-
-                      if sub_context.borrow().debug_mode_level() > 2 {
-                        print!("{{Break/ExtractChildren}} ");
-                      }
-
-                      println!(
-                        "'{}' Adding child '{}' @[{}-{}]",
-                        self.get_name(),
-                        child.get_name(),
-                        child.get_raw_range().start,
-                        child.get_raw_range().end
-                      );
-                    }
-                  }
+                  Box::new(MatcherSuccess::None)
+                }
+                MatcherSuccess::Skip(amount) => {
+                  handle_skip(
+                    self,
+                    &sub_context,
+                    &mut value_range,
+                    &mut raw_range,
+                    start_offset,
+                    *amount,
+                  );
 
                   Box::new(MatcherSuccess::None)
                 }
@@ -558,9 +547,19 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
               // This is the loop that should break, so cease propagating the Break
               return finalize_program_token(program_token, children, value_range, raw_range);
             } else {
-              // if children.len() == 0 {
-              //   return Ok(MatcherSuccess::Break((loop_name, data)));
-              // }
+              match &*data {
+                MatcherSuccess::Skip(amount) => {
+                  handle_skip(
+                    self,
+                    &sub_context,
+                    &mut value_range,
+                    &mut raw_range,
+                    start_offset,
+                    *amount,
+                  );
+                }
+                _ => {}
+              }
 
               match finalize_program_token(program_token, children, value_range, raw_range) {
                 Ok(final_token) => {
@@ -577,122 +576,61 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
             if is_loop && (loop_name == self.name || loop_name == "") {
               match &*data {
                 MatcherSuccess::Token(token) => {
-                  if sub_context.borrow().debug_mode_level() > 1 {
-                    let token = token.borrow();
-
-                    if sub_context.borrow().debug_mode_level() > 2 {
-                      print!("{{Continue/Token}} ");
-                    }
-
-                    println!(
-                      "'{}' Adding child '{}' @[{}-{}]",
-                      self.get_name(),
-                      token.get_name(),
-                      token.get_raw_range().start,
-                      token.get_raw_range().end,
-                    );
-                  }
-
-                  // Add token to myself, and then continue propagating
-                  add_token_to_children(
+                  handle_token(
+                    self,
                     &program_token,
-                    &mut sub_context,
+                    &sub_context,
                     &mut children,
                     &mut value_range,
                     &mut raw_range,
                     &token,
-                    true,
+                    false,
                   );
-
-                  if sub_context.borrow().is_debug_mode() {
-                    if sub_context.borrow().debug_mode_level() > 2 {
-                      print!("{{Continue/Token}} ");
-                    }
-
-                    println!(
-                      "'{}' Setting to offset to: {} -> {}",
-                      self.get_name(),
-                      sub_context.borrow().offset.start,
-                      token.borrow().get_raw_range().end
-                    );
-                  }
 
                   Box::new(MatcherSuccess::None)
                 }
                 MatcherSuccess::ExtractChildren(token) => {
-                  let token = token.borrow();
-                  let target_children = token.get_children();
+                  handle_extract_token(
+                    self,
+                    &program_token,
+                    &sub_context,
+                    &mut children,
+                    &mut value_range,
+                    &mut raw_range,
+                    &token,
+                    false,
+                  );
 
-                  if sub_context.borrow().is_debug_mode() {
-                    if sub_context.borrow().debug_mode_level() > 2 {
-                      print!("{{Continue/ExtractChildren}} ");
-                    }
-
-                    println!(
-                      "'{}' Setting to offset to: {} -> {}",
-                      self.get_name(),
-                      sub_context.borrow().offset.start,
-                      token.get_raw_range().end
-                    );
-                  }
-
-                  sub_context
-                    .borrow_mut()
-                    .set_start(token.get_raw_range().end);
-
-                  contain_source_range(&mut value_range, &token.get_raw_range());
-                  contain_source_range(&mut raw_range, &token.get_raw_range());
-
-                  if sub_context.borrow().debug_mode_level() > 1 {
-                    if sub_context.borrow().debug_mode_level() > 2 {
-                      print!("{{Continue/ExtractChildren}} ");
-                    }
-
-                    let count = target_children.len();
-                    println!(
-                      "'{}' Will be adding {} {}",
-                      self.get_name(),
-                      count,
-                      if count != 1 { "children" } else { "child" }
-                    );
-                  }
-
-                  for child in target_children {
-                    add_token_to_children(
-                      &program_token,
-                      &sub_context,
-                      &mut children,
-                      &mut value_range,
-                      &mut raw_range,
-                      &child,
-                      false,
-                    );
-
-                    if sub_context.borrow().debug_mode_level() > 1 {
-                      let child = child.borrow();
-
-                      if sub_context.borrow().debug_mode_level() > 2 {
-                        print!("{{Continue/ExtractChildren}} ");
-                      }
-
-                      println!(
-                        "'{}' Adding child '{}' @[{}-{}]",
-                        self.get_name(),
-                        child.get_name(),
-                        child.get_raw_range().start,
-                        child.get_raw_range().end
-                      );
-                    }
-                  }
+                  Box::new(MatcherSuccess::None)
+                }
+                MatcherSuccess::Skip(amount) => {
+                  handle_skip(
+                    self,
+                    &sub_context,
+                    &mut value_range,
+                    &mut raw_range,
+                    start_offset,
+                    *amount,
+                  );
 
                   Box::new(MatcherSuccess::None)
                 }
                 _ => data,
               };
             } else {
-              // if children.len() == 0 {
-              //   return Ok(MatcherSuccess::Continue((loop_name, data)));
-              // }
+              match &*data {
+                MatcherSuccess::Skip(amount) => {
+                  handle_skip(
+                    self,
+                    &sub_context,
+                    &mut value_range,
+                    &mut raw_range,
+                    start_offset,
+                    *amount,
+                  );
+                }
+                _ => {}
+              }
 
               match finalize_program_token(program_token, children, value_range, raw_range) {
                 Ok(final_token) => {

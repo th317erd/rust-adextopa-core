@@ -33,7 +33,7 @@ macro_rules! ScriptWSN0 {
 
 #[macro_export]
 macro_rules! ScriptWSN1 {
-  (!) => {
+  (?) => {
     $crate::Discard!($crate::Matches!("Whitespace"; r"[\s\t\r\n]+"))
   };
 
