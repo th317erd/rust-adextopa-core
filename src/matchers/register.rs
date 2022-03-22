@@ -22,12 +22,16 @@ impl<'a> Matcher<'a> for RegisterPattern<'a> {
     Ok(MatcherSuccess::Skip(0))
   }
 
+  fn is_consuming(&self) -> bool {
+    false
+  }
+
   fn get_name(&self) -> &str {
     "Register"
   }
 
   fn set_name(&mut self, _: &'a str) {
-    panic!("Can not set 'name' on a Register pattern");
+    panic!("Can not set `name` on a `Register` matcher");
   }
 
   fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {

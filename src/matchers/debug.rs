@@ -49,7 +49,7 @@ impl<'a> Matcher<'a> for DebugPattern<'a> {
         }
 
         println!(
-          "'{}' matcher at: -->|{}|--> @[{}-{}]: {:?}",
+          "`{}` matcher at: -->|{}|--> @[{}-{}]: {:?}",
           matcher.get_name(),
           debug_range
             .as_str()
@@ -84,7 +84,7 @@ impl<'a> Matcher<'a> for DebugPattern<'a> {
   }
 
   fn set_name(&mut self, _: &'a str) {
-    panic!("Can not set 'name' on a Debug pattern");
+    panic!("Can not set `name` on a `Debug` matcher");
   }
 
   fn set_child(&mut self, index: usize, matcher: MatcherRef<'a>) {
@@ -103,17 +103,17 @@ impl<'a> Matcher<'a> for DebugPattern<'a> {
   }
 
   fn add_pattern(&mut self, _: MatcherRef<'a>) {
-    panic!("Can not add a pattern to a Debug pattern");
+    panic!("Can not add a pattern to a `Debug` matcher");
   }
 }
 
 #[macro_export]
 macro_rules! Debug {
-  ($mode:expr; $arg:expr) => {
+  ($mode:literal; $arg:expr) => {
     $crate::matchers::debug::DebugPattern::new_with_debug_mode(Some($arg.clone()), $mode)
   };
 
-  ($mode:expr;) => {
+  ($mode:literal;) => {
     $crate::matchers::debug::DebugPattern::new_with_debug_mode(None, $mode)
   };
 

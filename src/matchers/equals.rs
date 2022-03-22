@@ -6,14 +6,24 @@ use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
 use crate::token::StandardToken;
 
-pub struct EqualsPattern<'a> {
-  pattern: &'a str,
+use super::fetch::Fetchable;
+
+pub struct EqualsPattern<'a, T>
+where
+  T: Fetchable<'a>,
+  T: 'a,
+{
+  pattern: T,
   name: &'a str,
   custom_name: bool,
 }
 
-impl<'a> EqualsPattern<'a> {
-  pub fn new(pattern: &'a str) -> MatcherRef<'a> {
+impl<'a, T> EqualsPattern<'a, T>
+where
+  T: Fetchable<'a>,
+  T: 'a,
+{
+  pub fn new(pattern: T) -> MatcherRef<'a> {
     Rc::new(RefCell::new(Box::new(Self {
       pattern,
       name: "Equals",
@@ -21,7 +31,7 @@ impl<'a> EqualsPattern<'a> {
     })))
   }
 
-  pub fn new_with_name(name: &'a str, pattern: &'a str) -> MatcherRef<'a> {
+  pub fn new_with_name(name: &'a str, pattern: T) -> MatcherRef<'a> {
     Rc::new(RefCell::new(Box::new(Self {
       pattern,
       name,
@@ -30,9 +40,15 @@ impl<'a> EqualsPattern<'a> {
   }
 }
 
-impl<'a> Matcher<'a> for EqualsPattern<'a> {
+impl<'a, T> Matcher<'a> for EqualsPattern<'a, T>
+where
+  T: Fetchable<'a>,
+  T: 'a,
+{
   fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
-    if let Some(range) = context.borrow().matches_str(self.pattern) {
+    let sub_context = context.borrow().clone_with_name(self.get_name());
+    let pattern_value = self.pattern.fetch_value(sub_context);
+    if let Some(range) = context.borrow().matches_str(pattern_value.as_str()) {
       Ok(MatcherSuccess::Token(StandardToken::new(
         &context.borrow().parser,
         self.name.to_string(),
@@ -61,13 +77,13 @@ impl<'a> Matcher<'a> for EqualsPattern<'a> {
   }
 
   fn add_pattern(&mut self, _: MatcherRef<'a>) {
-    panic!("Can not add a pattern to a Equals pattern");
+    panic!("Can not add a pattern to a `Equals` matcher");
   }
 }
 
 #[macro_export]
 macro_rules! Equals {
-  ($name:expr; $arg:expr) => {
+  ($name:literal; $arg:expr) => {
     $crate::matchers::equals::EqualsPattern::new_with_name($name, $arg)
   };
 

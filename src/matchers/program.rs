@@ -231,7 +231,7 @@ fn handle_token(
     }
 
     println!(
-      "'{}' Adding child '{}' @[{}-{}]",
+      "`{}` Adding child `{}` @[{}-{}]",
       program.get_name(),
       token.get_name(),
       token.get_raw_range().start,
@@ -255,7 +255,7 @@ fn handle_token(
     }
 
     println!(
-      "'{}' Setting to offset to: {} -> {}",
+      "`{}` Setting to offset to: {} -> {}",
       program.get_name(),
       context.borrow().offset.start,
       token.borrow().get_raw_range().end
@@ -282,7 +282,7 @@ fn handle_extract_token(
     }
 
     println!(
-      "'{}' Setting to offset to: {} -> {}",
+      "`{}` Setting to offset to: {} -> {}",
       program.get_name(),
       context.borrow().offset.start,
       token.get_raw_range().end
@@ -301,7 +301,7 @@ fn handle_extract_token(
 
     let count = target_children.len();
     println!(
-      "'{}' Will be adding {} {}",
+      "`{}` Will be adding {} {}",
       program.get_name(),
       count,
       if count != 1 { "children" } else { "child" }
@@ -317,7 +317,7 @@ fn handle_extract_token(
       }
 
       println!(
-        "'{}' Adding child '{}' @[{}-{}]",
+        "`{}` Adding child `{}` @[{}-{}]",
         program.get_name(),
         child.get_name(),
         child.get_raw_range().start,
@@ -353,7 +353,7 @@ fn handle_skip(
     }
 
     println!(
-      "'{}' Skipping: {} + {} -> {}",
+      "`{}` Skipping: {} + {} -> {}",
       program.get_name(),
       context.borrow().offset.start,
       offset,
@@ -372,7 +372,7 @@ fn handle_skip(
 impl<'a> Matcher<'a> for ProgramPattern<'a> {
   fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
     let context = context.borrow();
-    let mut sub_context = context.clone_with_name(self.get_name());
+    let sub_context = context.clone_with_name(self.get_name());
     let start_offset = sub_context.borrow().offset.start;
     let program_token = StandardToken::new(
       &sub_context.borrow().parser,
@@ -420,7 +420,7 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
                 &mut value_range,
                 &mut raw_range,
                 &token,
-                true,
+                pattern.borrow().is_consuming(),
               );
             }
             MatcherSuccess::ExtractChildren(token) => {
@@ -439,7 +439,7 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
                 &mut value_range,
                 &mut raw_range,
                 &token,
-                true,
+                pattern.borrow().is_consuming(),
               );
             }
             MatcherSuccess::Skip(amount) => {
@@ -467,7 +467,7 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
               }
 
               println!(
-                "'{}' failure! -->|{}|--> @[{}-{}]",
+                "`{}` failure! -->|{}|--> @[{}-{}]",
                 self.get_name(),
                 sub_context.debug_range(10),
                 sub_context.offset.start,
@@ -686,7 +686,7 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
 
 #[macro_export]
 macro_rules! Program {
-  ($name:expr; $($args:expr),+ $(,)?) => {
+  ($name:literal; $($args:expr),+ $(,)?) => {
     {
       let program = $crate::matchers::program::ProgramPattern::new_blank_program($crate::matchers::program::MatchAction::Continue);
 
@@ -722,7 +722,7 @@ macro_rules! Program {
 
 #[macro_export]
 macro_rules! Switch {
-  ($name:expr; $($args:expr),+ $(,)?) => {
+  ($name:literal; $($args:expr),+ $(,)?) => {
     {
       let program = $crate::matchers::program::ProgramPattern::new_blank_program($crate::matchers::program::MatchAction::Stop);
 
@@ -758,7 +758,7 @@ macro_rules! Switch {
 
 #[macro_export]
 macro_rules! Loop {
-  ($range:expr; $name:expr; $($args:expr),+ $(,)?) => {
+  ($range:expr; $name:literal; $($args:expr),+ $(,)?) => {
     {
       let loop_program = $crate::matchers::program::ProgramPattern::new_blank_loop($range);
 
@@ -775,7 +775,7 @@ macro_rules! Loop {
     }
   };
 
-  ($name:expr; $($args:expr),+ $(,)?) => {
+  ($name:literal; $($args:expr),+ $(,)?) => {
     {
       let loop_program = $crate::matchers::program::ProgramPattern::new_blank_loop(0..);
 

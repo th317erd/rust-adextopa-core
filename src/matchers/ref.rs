@@ -16,7 +16,7 @@ impl<'a> RefPattern<'a> {
 
 impl<'a> Matcher<'a> for RefPattern<'a> {
   fn exec(&self, _: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
-    panic!("'exec' called on a Ref pattern, which should never be executed. Ref matchers are only meant for reference substitution. Did you call 'exec' instead of 'tokenize'?")
+    panic!("`exec` called on a `Ref` pattern, which should never be executed. `Ref` matchers are only meant for reference substitution. Did you call `matcher.exec` instead of `PatternContext::tokenize`?")
   }
 
   fn get_name(&self) -> &str {
@@ -24,7 +24,7 @@ impl<'a> Matcher<'a> for RefPattern<'a> {
   }
 
   fn set_name(&mut self, _: &'a str) {
-    panic!("Can not set 'name' on a Ref pattern");
+    panic!("Can not set `name` on a `Ref` matcher");
   }
 
   fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {
@@ -32,7 +32,7 @@ impl<'a> Matcher<'a> for RefPattern<'a> {
   }
 
   fn add_pattern(&mut self, _: MatcherRef<'a>) {
-    panic!("Can not add a pattern to a Ref pattern");
+    panic!("Can not add a pattern to a `Ref` matcher");
   }
 
   fn swap_with_reference_name(&self) -> Option<&'a str> {

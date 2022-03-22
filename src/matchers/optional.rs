@@ -33,7 +33,7 @@ impl<'a> Matcher<'a> for OptionalPattern<'a> {
   }
 
   fn set_name(&mut self, _: &'a str) {
-    panic!("Can not set 'name' on a Optional pattern");
+    panic!("Can not set `name` on a `Optional` matcher");
   }
 
   fn set_child(&mut self, index: usize, matcher: MatcherRef<'a>) {
@@ -49,7 +49,7 @@ impl<'a> Matcher<'a> for OptionalPattern<'a> {
   }
 
   fn add_pattern(&mut self, _: MatcherRef<'a>) {
-    panic!("Can not add a pattern to a Optional pattern");
+    panic!("Can not add a pattern to a `Optional` matcher");
   }
 }
 

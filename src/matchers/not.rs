@@ -49,7 +49,7 @@ impl<'a> Matcher<'a> for NotPattern<'a> {
   }
 
   fn set_name(&mut self, _: &'a str) {
-    panic!("Can not set 'name' on a Not pattern");
+    panic!("Can not set `name` on a `Not` matcher");
   }
 
   fn set_child(&mut self, index: usize, matcher: MatcherRef<'a>) {

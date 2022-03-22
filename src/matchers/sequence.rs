@@ -6,24 +6,26 @@ use crate::parser_context::ParserContextRef;
 use crate::source_range::SourceRange;
 use crate::token::StandardToken;
 
-pub struct SequencePattern<'a> {
-  start: &'a str,
-  end: &'a str,
-  escape: &'a str,
+use super::fetch::Fetchable;
+
+pub struct SequencePattern<'a, T>
+where
+  T: Fetchable<'a>,
+  T: 'a,
+{
+  start: T,
+  end: T,
+  escape: T,
   name: &'a str,
   custom_name: bool,
 }
 
-impl<'a> SequencePattern<'a> {
-  pub fn new(start: &'a str, end: &'a str, escape: &'a str) -> MatcherRef<'a> {
-    if start.len() == 0 {
-      panic!("Sequence start pattern of \"\" makes no sense");
-    }
-
-    if end.len() == 0 {
-      panic!("Sequence end pattern of \"\" makes no sense");
-    }
-
+impl<'a, T> SequencePattern<'a, T>
+where
+  T: Fetchable<'a>,
+  T: 'a,
+{
+  pub fn new(start: T, end: T, escape: T) -> MatcherRef<'a> {
     Rc::new(RefCell::new(Box::new(Self {
       name: "Sequence",
       start,
@@ -33,20 +35,7 @@ impl<'a> SequencePattern<'a> {
     })))
   }
 
-  pub fn new_with_name(
-    name: &'a str,
-    start: &'a str,
-    end: &'a str,
-    escape: &'a str,
-  ) -> MatcherRef<'a> {
-    if start.len() == 0 {
-      panic!("Sequence start pattern of \"\" makes no sense");
-    }
-
-    if end.len() == 0 {
-      panic!("Sequence end pattern of \"\" makes no sense");
-    }
-
+  pub fn new_with_name(name: &'a str, start: T, end: T, escape: T) -> MatcherRef<'a> {
     Rc::new(RefCell::new(Box::new(Self {
       name,
       start,
@@ -57,7 +46,11 @@ impl<'a> SequencePattern<'a> {
   }
 }
 
-impl<'a> Matcher<'a> for SequencePattern<'a> {
+impl<'a, T> Matcher<'a> for SequencePattern<'a, T>
+where
+  T: Fetchable<'a>,
+  T: 'a,
+{
   fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
     let start = context.borrow().offset.start;
     let end = context.borrow().offset.end;
@@ -65,15 +58,33 @@ impl<'a> Matcher<'a> for SequencePattern<'a> {
     let source_copy = context.borrow().parser.borrow().source.clone();
     let source = source_copy.as_str();
 
-    if let Some(source_range) = context.borrow().matches_str(self.start) {
+    let sub_context = context.borrow().clone_with_name(self.get_name());
+
+    let start_fetchable = self.start.fetch_value(sub_context.clone());
+    let start_pattern = start_fetchable.as_str();
+
+    if start_pattern.len() == 0 {
+      panic!("Sequence `start` pattern of \"\" makes no sense");
+    }
+
+    if let Some(source_range) = context.borrow().matches_str(start_pattern) {
       scan_start = source_range.end;
+
+      if scan_start >= end {
+        return Err(MatcherFailure::Fail);
+      }
     } else {
       return Err(MatcherFailure::Fail);
     }
 
-    if scan_start >= end {
-      return Err(MatcherFailure::Fail);
+    let end_fetchable = self.end.fetch_value(sub_context.clone());
+    let end_pattern = end_fetchable.as_str();
+    if end_pattern.len() == 0 {
+      panic!("Sequence `end` pattern of \"\" makes no sense");
     }
+
+    let escape_fetchable = self.escape.fetch_value(sub_context);
+    let escape_pattern = escape_fetchable.as_str();
 
     let mut index = scan_start;
     let mut previous_index = scan_start;
@@ -84,7 +95,7 @@ impl<'a> Matcher<'a> for SequencePattern<'a> {
         return Err(MatcherFailure::Fail);
       }
 
-      let result = context.borrow().matches_str_at_offset(self.end, index);
+      let result = context.borrow().matches_str_at_offset(end_pattern, index);
       if let Some(source_range) = result {
         if previous_index < index {
           parts.push(&source[previous_index..index]);
@@ -97,7 +108,7 @@ impl<'a> Matcher<'a> for SequencePattern<'a> {
         let token = StandardToken::new_with_raw_range(
           &context.borrow().parser,
           self.name.to_string(),
-          SourceRange::new(start + self.start.len(), index - self.end.len()),
+          SourceRange::new(start + start_pattern.len(), index - end_pattern.len()),
           SourceRange::new(start, index),
         );
 
@@ -107,7 +118,10 @@ impl<'a> Matcher<'a> for SequencePattern<'a> {
 
         return Ok(MatcherSuccess::Token(token));
       } else {
-        let result = context.borrow().matches_str_at_offset(self.escape, index);
+        let result = context
+          .borrow()
+          .matches_str_at_offset(escape_pattern, index);
+
         if let Some(source_range) = result {
           if previous_index < index {
             parts.push(&source[previous_index..index]);
@@ -143,13 +157,13 @@ impl<'a> Matcher<'a> for SequencePattern<'a> {
   }
 
   fn add_pattern(&mut self, _: MatcherRef<'a>) {
-    panic!("Can not add a pattern to a Sequence pattern");
+    panic!("Can not add a pattern to a `Sequence` matcher");
   }
 }
 
 #[macro_export]
 macro_rules! Sequence {
-  ($name:expr; $start:expr, $end:expr, $escape:expr) => {
+  ($name:literal; $start:expr, $end:expr, $escape:expr) => {
     $crate::matchers::sequence::SequencePattern::new_with_name($name, $start, $end, $escape)
   };
 

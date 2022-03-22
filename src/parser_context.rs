@@ -2,9 +2,16 @@ use super::source_range::SourceRange;
 use crate::{
   matcher::{MatcherFailure, MatcherRef, MatcherSuccess},
   parser::ParserRef,
+  token::TokenRef,
 };
 use regex::Regex;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
+
+#[derive(PartialEq, Debug)]
+pub enum VariableType {
+  Token(TokenRef),
+  String(String),
+}
 
 pub type ParserContextRef<'a> = Rc<RefCell<ParserContext<'a>>>;
 
@@ -12,7 +19,7 @@ pub type ParserContextRef<'a> = Rc<RefCell<ParserContext<'a>>>;
 pub struct ParserContext<'a> {
   debug_mode: usize,
   matcher_reference_map: Rc<RefCell<HashMap<String, MatcherRef<'a>>>>,
-  variable_context: Rc<RefCell<HashMap<String, String>>>,
+  pub variable_context: Rc<RefCell<HashMap<String, VariableType>>>,
   pub offset: SourceRange,
   pub parser: ParserRef,
   pub name: String,
@@ -73,6 +80,18 @@ impl<'a> ParserContext<'a> {
 
   pub fn set_offset(&mut self, range: SourceRange) {
     self.offset = range;
+  }
+
+  pub fn get_variable(&self, name: &str) -> Option<VariableType> {
+    match self.variable_context.borrow().get(name) {
+      Some(VariableType::Token(value)) => Some(VariableType::Token(value.clone())),
+      Some(VariableType::String(value)) => Some(VariableType::String(value.clone())),
+      None => None,
+    }
+  }
+
+  pub fn set_variable(&mut self, name: String, value: VariableType) -> Option<VariableType> {
+    self.variable_context.borrow_mut().insert(name, value)
   }
 
   pub fn matches_str(&self, pattern: &str) -> Option<SourceRange> {
@@ -168,7 +187,7 @@ impl<'a> ParserContext<'a> {
               match reference {
                 Some(matcher_ref) => matcher.borrow_mut().set_child(index, matcher_ref.clone()),
                 None => {
-                  panic!("Unable to find pattern reference named '{}'", name);
+                  panic!("Unable to find pattern reference named `{}`", name);
                 }
               }
             }

@@ -29,7 +29,12 @@ pub trait Matcher<'a> {
   fn add_pattern(&mut self, pattern: MatcherRef<'a>);
   fn get_children(&self) -> Option<Vec<MatcherRef<'a>>>;
 
-  fn set_child(&mut self, index: usize, matcher: MatcherRef<'a>) {}
+  fn set_child(&mut self, _: usize, _: MatcherRef<'a>) {
+    panic!(
+      "Can not call `set_child` on a `{}` matcher: Operation not supported",
+      self.get_name()
+    );
+  }
 
   fn has_custom_name(&self) -> bool {
     false
@@ -37,5 +42,9 @@ pub trait Matcher<'a> {
 
   fn swap_with_reference_name(&self) -> Option<&'a str> {
     None
+  }
+
+  fn is_consuming(&self) -> bool {
+    true
   }
 }

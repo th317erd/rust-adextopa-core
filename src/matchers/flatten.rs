@@ -80,13 +80,13 @@ impl<'a> Matcher<'a> for FlattenPattern<'a> {
   }
 
   fn add_pattern(&mut self, _: MatcherRef<'a>) {
-    panic!("Can not add a pattern to a Flatten pattern");
+    panic!("Can not add a pattern to a `Flatten` matcher");
   }
 }
 
 #[macro_export]
 macro_rules! Flatten {
-  ($name:expr; $arg:expr) => {
+  ($name:literal; $arg:expr) => {
     $crate::matchers::flatten::FlattenPattern::new_with_name($arg.clone(), $name)
   };
 

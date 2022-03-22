@@ -131,7 +131,7 @@ impl<'a> Matcher<'a> for DiscardPattern<'a> {
   }
 
   fn set_name(&mut self, _: &'a str) {
-    panic!("Can not set 'name' on a Discard pattern");
+    panic!("Can not set `name` on a `Discard` matcher");
   }
 
   fn set_child(&mut self, index: usize, matcher: MatcherRef<'a>) {
@@ -147,7 +147,7 @@ impl<'a> Matcher<'a> for DiscardPattern<'a> {
   }
 
   fn add_pattern(&mut self, _: MatcherRef<'a>) {
-    panic!("Can not add a pattern to a Discard pattern");
+    panic!("Can not add a pattern to a `Discard` matcher");
   }
 }
 

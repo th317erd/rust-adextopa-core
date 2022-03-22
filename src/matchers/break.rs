@@ -27,7 +27,7 @@ impl<'a> Matcher<'a> for BreakPattern<'a> {
   }
 
   fn set_name(&mut self, _: &'a str) {
-    panic!("Can not set 'name' on a Break pattern");
+    panic!("Can not set `name` on a `Break` matcher");
   }
 
   fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {
@@ -35,7 +35,7 @@ impl<'a> Matcher<'a> for BreakPattern<'a> {
   }
 
   fn add_pattern(&mut self, _: MatcherRef<'a>) {
-    panic!("Can not add a pattern to a Break pattern");
+    panic!("Can not add a pattern to a `Break` matcher");
   }
 }
 

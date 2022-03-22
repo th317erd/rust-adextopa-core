@@ -35,7 +35,7 @@ impl<'a> Matcher<'a> for ErrorPattern<'a> {
   }
 
   fn set_name(&mut self, _: &'a str) {
-    panic!("Can not set 'name' on a Error pattern");
+    panic!("Can not set `name` on a `Error` matcher");
   }
 
   fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {
@@ -43,7 +43,7 @@ impl<'a> Matcher<'a> for ErrorPattern<'a> {
   }
 
   fn add_pattern(&mut self, _: MatcherRef<'a>) {
-    panic!("Can not add a pattern to a Error pattern");
+    panic!("Can not add a pattern to a `Error` matcher");
   }
 }
 

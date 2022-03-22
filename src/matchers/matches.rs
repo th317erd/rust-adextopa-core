@@ -68,13 +68,13 @@ impl<'a> Matcher<'a> for MatchesPattern<'a> {
   }
 
   fn add_pattern(&mut self, _: MatcherRef<'a>) {
-    panic!("Can not add a pattern to a Matches pattern");
+    panic!("Can not add a pattern to a `Matches` matcher");
   }
 }
 
 #[macro_export]
 macro_rules! Matches {
-  ($name:expr; $arg:expr) => {
+  ($name:literal; $arg:expr) => {
     $crate::matchers::matches::MatchesPattern::new_with_name(
       $name,
       regex::Regex::new($arg).unwrap(),

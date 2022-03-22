@@ -1,14 +1,14 @@
 use crate::{
-  matcher::{Matcher, MatcherRef, MatcherSuccess},
+  matcher::{MatcherRef, MatcherSuccess},
   parser::Parser,
   parser_context::ParserContext,
 };
 
-pub fn compile_script<'a>(source: &'a str) -> Result<MatcherRef<'a>, String> {
+pub fn compile_script<'a>(_: &'a str) -> Result<MatcherRef<'a>, String> {
   let parser = Parser::new_from_file("./tests/uulang/test01.uu").unwrap();
   let parser_context = ParserContext::new(&parser, "Script");
   let pattern = crate::ScriptProgram!();
-  let mut program = crate::matchers::program::ProgramPattern::new_blank_program(
+  let program = crate::matchers::program::ProgramPattern::new_blank_program(
     crate::matchers::program::MatchAction::Continue,
   );
 
