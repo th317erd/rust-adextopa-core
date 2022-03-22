@@ -61,7 +61,7 @@ mod tests {
       Matches!(r"\d+")
     );
 
-    if let Err(MatcherFailure::Error(message)) = matcher.borrow().exec(parser_context.clone()) {
+    if let Err(MatcherFailure::Error(message)) = ParserContext::tokenize(parser_context, matcher) {
       assert_eq!(message, "There was an error!");
     } else {
       unreachable!("Test failed!");

@@ -35,6 +35,7 @@ pub struct ProgramPattern<'a> {
   name: &'a str,
   pub(self) iterate_range: Option<Range<usize>>,
   pub(self) stop_on_first: MatchAction,
+  custom_name: bool,
 }
 
 impl<'a> ProgramPattern<'a> {
@@ -49,6 +50,7 @@ impl<'a> ProgramPattern<'a> {
       iterate_range: None,
       name,
       stop_on_first,
+      custom_name: false,
     })))
   }
 
@@ -61,6 +63,7 @@ impl<'a> ProgramPattern<'a> {
       name: "Loop",
       iterate_range: Some(get_range(r)),
       stop_on_first: MatchAction::Continue,
+      custom_name: false,
     })))
   }
 
@@ -75,6 +78,7 @@ impl<'a> ProgramPattern<'a> {
       iterate_range: None,
       name,
       stop_on_first,
+      custom_name: false,
     })))
   }
 
@@ -87,6 +91,7 @@ impl<'a> ProgramPattern<'a> {
       name: "Loop",
       iterate_range: Some(get_range(r)),
       stop_on_first: MatchAction::Continue,
+      custom_name: false,
     })))
   }
 
@@ -100,6 +105,7 @@ impl<'a> ProgramPattern<'a> {
       name,
       iterate_range: None,
       stop_on_first,
+      custom_name: true,
     })))
   }
 
@@ -112,6 +118,7 @@ impl<'a> ProgramPattern<'a> {
       name,
       iterate_range: Some(get_range(r)),
       stop_on_first: MatchAction::Continue,
+      custom_name: true,
     })))
   }
 }
@@ -709,12 +716,25 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
     finalize_program_token(program_token, children, value_range, raw_range)
   }
 
+  fn has_custom_name(&self) -> bool {
+    self.custom_name
+  }
+
   fn get_name(&self) -> &str {
     self.name
   }
 
   fn set_name(&mut self, name: &'a str) {
     self.name = name;
+    self.custom_name = true;
+  }
+
+  fn set_child(&mut self, index: usize, matcher: MatcherRef<'a>) {
+    if index >= self.patterns.len() {
+      panic!("Attempt to set child at an index that is out of bounds");
+    }
+
+    self.patterns[index] = matcher;
   }
 
   fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {
@@ -867,7 +887,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Program!(Equals!("Testing"), Equals!(" "), Matches!(r"\d+"));
 
-    if let Ok(MatcherSuccess::Token(token)) = matcher.borrow().exec(parser_context.clone()) {
+    if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Program");
       assert_eq!(*token.get_value_range(), SourceRange::new(0, 12));
@@ -885,7 +905,7 @@ mod tests {
 
     assert_eq!(
       Err(MatcherFailure::Fail),
-      matcher.borrow().exec(parser_context.clone())
+      ParserContext::tokenize(parser_context, matcher)
     );
   }
 
@@ -895,7 +915,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Switch!(Equals!(" "), Matches!(r"\d+"), Equals!("Testing"));
 
-    if let Ok(MatcherSuccess::Token(token)) = matcher.borrow().exec(parser_context.clone()) {
+    if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Equals");
       assert_eq!(*token.get_value_range(), SourceRange::new(0, 7));
@@ -911,7 +931,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Loop!(Matches!(r"\w"), Equals!(" "));
 
-    if let Ok(MatcherSuccess::Token(token)) = matcher.borrow().exec(parser_context.clone()) {
+    if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Loop");
       assert_eq!(*token.get_value_range(), SourceRange::new(0, 12));
@@ -947,7 +967,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Loop!(Program!(Matches!(r"\w"), Equals!(" ")));
 
-    if let Ok(MatcherSuccess::Token(token)) = matcher.borrow().exec(parser_context.clone()) {
+    if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Loop");
       assert_eq!(*token.get_value_range(), SourceRange::new(0, 12));
@@ -990,7 +1010,7 @@ mod tests {
     let brk = Optional!(Program!(Equals!("break"), Break!()));
     let matcher = Loop!(0..10; "Loop"; brk, capture);
 
-    if let Ok(MatcherSuccess::Token(token)) = matcher.borrow().exec(parser_context.clone()) {
+    if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Loop");
       assert_eq!(*token.get_value_range(), SourceRange::new(0, 11));

@@ -59,9 +59,10 @@ mod tests {
     let parser = Parser::new("Testing 1234");
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Break!("Test");
+    let result = ParserContext::tokenize(parser_context, matcher);
 
     assert_eq!(
-      matcher.borrow().exec(parser_context.clone()),
+      result,
       Ok(MatcherSuccess::Break((
         "Test".to_string(),
         Box::new(MatcherSuccess::None),

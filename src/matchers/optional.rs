@@ -36,6 +36,14 @@ impl<'a> Matcher<'a> for OptionalPattern<'a> {
     panic!("Can not set 'name' on a Optional pattern");
   }
 
+  fn set_child(&mut self, index: usize, matcher: MatcherRef<'a>) {
+    if index > 0 {
+      panic!("Attempt to set child at an index that is out of bounds");
+    }
+
+    self.matcher = matcher;
+  }
+
   fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {
     Some(vec![self.matcher.clone()])
   }
@@ -65,7 +73,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Optional!(Equals!("Testing"));
 
-    if let Ok(MatcherSuccess::Token(token)) = matcher.borrow().exec(parser_context.clone()) {
+    if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Equals");
       assert_eq!(*token.get_value_range(), SourceRange::new(0, 7));
@@ -83,7 +91,7 @@ mod tests {
 
     assert_eq!(
       Ok(MatcherSuccess::Skip(0)),
-      matcher.borrow().exec(parser_context.clone())
+      ParserContext::tokenize(parser_context, matcher)
     );
   }
 }

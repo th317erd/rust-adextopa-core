@@ -79,6 +79,14 @@ impl<'a> Matcher<'a> for DiscardPattern<'a> {
     panic!("Can not set 'name' on a Discard pattern");
   }
 
+  fn set_child(&mut self, index: usize, matcher: MatcherRef<'a>) {
+    if index > 0 {
+      panic!("Attempt to set child at an index that is out of bounds");
+    }
+
+    self.matcher = matcher;
+  }
+
   fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {
     Some(vec![self.matcher.clone()])
   }
@@ -123,7 +131,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Discard!(Program!(Equals!("Testing"), Error!("This is an error")));
 
-    if let Ok(MatcherSuccess::Token(token)) = matcher.borrow().exec(parser_context.clone()) {
+    if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Error");
       assert_eq!(*token.get_value_range(), SourceRange::new(0, 7));
@@ -157,7 +165,7 @@ mod tests {
 
     assert_eq!(
       Err(MatcherFailure::Fail),
-      matcher.borrow().exec(parser_context.clone())
+      ParserContext::tokenize(parser_context, matcher)
     );
   }
 }

@@ -11,6 +11,7 @@ pub struct SequencePattern<'a> {
   end: &'a str,
   escape: &'a str,
   name: &'a str,
+  custom_name: bool,
 }
 
 impl<'a> SequencePattern<'a> {
@@ -28,6 +29,7 @@ impl<'a> SequencePattern<'a> {
       start,
       end,
       escape,
+      custom_name: false,
     })))
   }
 
@@ -50,6 +52,7 @@ impl<'a> SequencePattern<'a> {
       start,
       end,
       escape,
+      custom_name: true,
     })))
   }
 }
@@ -122,12 +125,17 @@ impl<'a> Matcher<'a> for SequencePattern<'a> {
     }
   }
 
+  fn has_custom_name(&self) -> bool {
+    self.custom_name
+  }
+
   fn get_name(&self) -> &str {
     self.name
   }
 
   fn set_name(&mut self, name: &'a str) {
     self.name = name;
+    self.custom_name = true;
   }
 
   fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {
@@ -165,7 +173,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Sequence!("\"", "\"", "\\");
 
-    if let Ok(MatcherSuccess::Token(token)) = matcher.borrow().exec(parser_context.clone()) {
+    if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Sequence");
       assert_eq!(*token.get_value_range(), SourceRange::new(1, 34));
@@ -187,7 +195,7 @@ mod tests {
     let matcher = Sequence!("\"", "\"", "\\");
 
     assert_eq!(
-      matcher.borrow().exec(parser_context.clone()),
+      ParserContext::tokenize(parser_context, matcher),
       Err(MatcherFailure::Fail)
     );
   }

@@ -6,6 +6,7 @@ use std::rc::Rc;
 pub struct FlattenPattern<'a> {
   matcher: MatcherRef<'a>,
   name: &'a str,
+  custom_name: bool,
 }
 
 impl<'a> FlattenPattern<'a> {
@@ -13,11 +14,16 @@ impl<'a> FlattenPattern<'a> {
     Rc::new(RefCell::new(Box::new(FlattenPattern {
       matcher,
       name: "Flatten",
+      custom_name: false,
     })))
   }
 
   pub fn new_with_name(matcher: MatcherRef<'a>, name: &'a str) -> MatcherRef<'a> {
-    Rc::new(RefCell::new(Box::new(FlattenPattern { matcher, name })))
+    Rc::new(RefCell::new(Box::new(FlattenPattern {
+      matcher,
+      name,
+      custom_name: true,
+    })))
   }
 }
 
@@ -48,12 +54,25 @@ impl<'a> Matcher<'a> for FlattenPattern<'a> {
     }
   }
 
+  fn has_custom_name(&self) -> bool {
+    self.custom_name
+  }
+
   fn get_name(&self) -> &str {
     self.name
   }
 
   fn set_name(&mut self, name: &'a str) {
     self.name = name;
+    self.custom_name = true;
+  }
+
+  fn set_child(&mut self, index: usize, matcher: MatcherRef<'a>) {
+    if index > 0 {
+      panic!("Attempt to set child at an index that is out of bounds");
+    }
+
+    self.matcher = matcher;
   }
 
   fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {
@@ -98,7 +117,7 @@ mod tests {
       ))
     );
 
-    if let Ok(MatcherSuccess::Token(token)) = matcher.borrow().exec(parser_context.clone()) {
+    if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Loop");
       assert_eq!(*token.get_value_range(), SourceRange::new(0, 12));

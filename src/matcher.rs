@@ -28,4 +28,14 @@ pub trait Matcher<'a> {
   fn set_name(&mut self, name: &'a str);
   fn add_pattern(&mut self, pattern: MatcherRef<'a>);
   fn get_children(&self) -> Option<Vec<MatcherRef<'a>>>;
+
+  fn set_child(&mut self, index: usize, matcher: MatcherRef<'a>) {}
+
+  fn has_custom_name(&self) -> bool {
+    false
+  }
+
+  fn swap_with_reference_name(&self) -> Option<&'a str> {
+    None
+  }
 }

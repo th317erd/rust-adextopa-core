@@ -1,5 +1,8 @@
 use super::source_range::SourceRange;
-use crate::{matcher::MatcherRef, parser::ParserRef};
+use crate::{
+  matcher::{MatcherFailure, MatcherRef, MatcherSuccess},
+  parser::ParserRef,
+};
 use regex::Regex;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
@@ -127,5 +130,68 @@ impl<'a> ParserContext<'a> {
     }
 
     parser.source[self.offset.start..end_offset].to_string()
+  }
+
+  fn capture_matcher_references(&self, matcher: MatcherRef<'a>) {
+    let m = matcher.borrow();
+    if m.has_custom_name() {
+      let name = m.get_name();
+      self
+        .matcher_reference_map
+        .borrow_mut()
+        .insert(name.to_string(), matcher.clone());
+    }
+
+    match m.get_children() {
+      Some(children) => {
+        for child in children {
+          self.capture_matcher_references(child.clone());
+        }
+      }
+      None => {}
+    }
+  }
+
+  fn substitute_matcher_references(&self, matcher: MatcherRef<'a>) {
+    let children = matcher.borrow().get_children();
+
+    match children {
+      Some(children) => {
+        let mut index: usize = 0;
+
+        for child in children {
+          match child.borrow().swap_with_reference_name() {
+            Some(name) => {
+              let ref_map = self.matcher_reference_map.borrow();
+              let reference = ref_map.get(&name.to_string());
+              match reference {
+                Some(matcher_ref) => matcher.borrow_mut().set_child(index, matcher_ref.clone()),
+                None => {
+                  panic!("Unable to find pattern reference named '{}'", name);
+                }
+              }
+            }
+            None => {
+              self.substitute_matcher_references(child.clone());
+            }
+          }
+
+          index += 1;
+        }
+      }
+      None => {}
+    }
+  }
+
+  pub fn tokenize(
+    context: ParserContextRef<'a>,
+    matcher: MatcherRef<'a>,
+  ) -> Result<MatcherSuccess, MatcherFailure> {
+    context.borrow().capture_matcher_references(matcher.clone());
+    context
+      .borrow()
+      .substitute_matcher_references(matcher.clone());
+
+    matcher.borrow().exec(context.clone())
   }
 }

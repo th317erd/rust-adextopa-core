@@ -52,6 +52,14 @@ impl<'a> Matcher<'a> for NotPattern<'a> {
     panic!("Can not set 'name' on a Not pattern");
   }
 
+  fn set_child(&mut self, index: usize, matcher: MatcherRef<'a>) {
+    if index > 0 {
+      panic!("Attempt to set child at an index that is out of bounds");
+    }
+
+    self.matcher = matcher;
+  }
+
   fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {
     Some(vec![self.matcher.clone()])
   }
@@ -85,7 +93,7 @@ mod tests {
 
     assert_eq!(
       Err(MatcherFailure::Fail),
-      matcher.borrow().exec(parser_context.clone())
+      ParserContext::tokenize(parser_context, matcher)
     );
   }
 
@@ -97,7 +105,7 @@ mod tests {
 
     assert_eq!(
       Ok(MatcherSuccess::Skip(0)),
-      matcher.borrow().exec(parser_context.clone())
+      ParserContext::tokenize(parser_context, matcher)
     );
   }
 }
