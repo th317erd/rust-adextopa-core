@@ -8,6 +8,7 @@ pub mod error;
 pub mod fatal;
 pub mod fetch;
 pub mod flatten;
+// pub mod map;
 pub mod matches;
 pub mod not;
 pub mod optional;

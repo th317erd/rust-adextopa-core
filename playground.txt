@@ -1,12 +1,11 @@
 <!--[adextopa:v1]
   # Comment
   # <{<Program1><Program2>}>: Multiple patterns in one
-  # <[<switch1>, <switch2>]>: Select first matching
+  # <[<switch1>|<switch2>]>: Select first matching
   # </RegExp/>: Regular expressions
   # <="value">: Equals
   # <%"'","'","\\">: Sequence
   # <!pattern>: Invert pattern: i.e.: <!="value">
-  # <?optional>: Optional expression
   # <?optional>: Optional expression
   # <expr>*: Loop zero or more times
   # <expr>+: Loop one or more times

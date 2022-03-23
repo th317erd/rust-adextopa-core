@@ -9,6 +9,7 @@ pub mod matcher_name;
 pub mod pattern;
 pub mod pattern_definition;
 pub mod program;
+pub mod program_matcher;
 pub mod regex_matcher;
 pub mod repeat_one_or_more;
 pub mod repeat_range;
