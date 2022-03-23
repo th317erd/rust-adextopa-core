@@ -23,8 +23,8 @@ impl<'a> Matcher<'a> for ErrorPattern<'a> {
 
     {
       let mut token = token.borrow_mut();
-      token.set_attribute("__message".to_string(), self.message.to_string());
-      token.set_attribute("__is_error".to_string(), "true".to_string());
+      token.set_attribute("__message", self.message);
+      token.set_attribute("__is_error", "true");
     }
 
     Ok(MatcherSuccess::Token(token))
@@ -88,7 +88,7 @@ mod tests {
       assert_eq!(second.value(), "Testing");
       assert_eq!(second.raw_value(), "Testing");
       assert_eq!(
-        second.get_attribute("__message".to_string()).unwrap(),
+        second.get_attribute("__message").unwrap(),
         "There was an error!"
       );
     } else {

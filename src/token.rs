@@ -124,8 +124,8 @@ pub trait Token {
   fn value(&self) -> String;
   fn raw_value(&self) -> String;
   fn get_attributes<'b>(&'b self) -> &'b std::collections::HashMap<String, String>;
-  fn get_attribute<'b>(&'b self, name: String) -> Option<&'b String>;
-  fn set_attribute(&mut self, name: String, value: String) -> Option<String>;
+  fn get_attribute<'b>(&'b self, name: &str) -> Option<&'b String>;
+  fn set_attribute(&mut self, name: &str, value: &str) -> Option<String>;
   fn should_discard(&self) -> bool {
     false
   }

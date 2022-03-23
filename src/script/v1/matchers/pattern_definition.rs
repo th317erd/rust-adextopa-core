@@ -350,7 +350,7 @@ mod tests {
       assert_eq!(first.value(), "?!");
       assert_eq!(first.raw_value(), "?!");
       assert_eq!(
-        first.get_attribute("__message".to_string()),
+        first.get_attribute("__message"),
         Some(
           &"Can not use ? and ! at the same time in this context. Use one or the other, not both."
             .to_string()
@@ -397,7 +397,7 @@ mod tests {
       assert_eq!(first.value(), "!?");
       assert_eq!(first.raw_value(), "!?");
       assert_eq!(
-        first.get_attribute("__message".to_string()),
+        first.get_attribute("__message"),
         Some(
           &"Can not use ? and ! at the same time in this context. Use one or the other, not both."
             .to_string()

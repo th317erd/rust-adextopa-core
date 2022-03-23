@@ -77,7 +77,7 @@ pub fn token_derive(input: TokenStream) -> TokenStream {
 
       fn value(&self) -> String {
         // Value override via attribute
-        match self.get_attribute("__value".to_string()) {
+        match self.get_attribute("__value") {
           Some(value) => {
             return value.clone();
           },
@@ -89,7 +89,7 @@ pub fn token_derive(input: TokenStream) -> TokenStream {
 
       fn raw_value(&self) -> String {
         // Value override via attribute
-        match self.get_attribute("__raw_value".to_string()) {
+        match self.get_attribute("__raw_value") {
           Some(value) => {
             return value.clone();
           },
@@ -103,12 +103,12 @@ pub fn token_derive(input: TokenStream) -> TokenStream {
         &self.attributes
       }
 
-      fn get_attribute<'b>(&'b self, name: String) -> Option<&'b String> {
-        self.attributes.get(&name)
+      fn get_attribute<'b>(&'b self, name: &str) -> Option<&'b String> {
+        self.attributes.get(&name.to_string())
       }
 
-      fn set_attribute(&mut self, name: String, value: String) -> Option<String> {
-        self.attributes.insert(name, value)
+      fn set_attribute(&mut self, name: &str, value: &str) -> Option<String> {
+        self.attributes.insert(name.to_string(), value.to_string())
       }
     }
   };

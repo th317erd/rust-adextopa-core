@@ -102,7 +102,7 @@ mod tests {
       assert_eq!(third.value(), "_test");
       assert_eq!(third.raw_value(), "_test");
       assert_eq!(
-        third.get_attribute("__message".to_string()).unwrap(),
+        third.get_attribute("__message").unwrap(),
         "Attribute names can not start with an underscore"
       );
     } else {

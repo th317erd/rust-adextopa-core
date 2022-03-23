@@ -112,9 +112,7 @@ where
           SourceRange::new(start, index),
         );
 
-        token
-          .borrow_mut()
-          .set_attribute("__value".to_string(), parts.join("").to_string());
+        token.borrow_mut().set_attribute("__value", &parts.join(""));
 
         return Ok(MatcherSuccess::Token(token));
       } else {

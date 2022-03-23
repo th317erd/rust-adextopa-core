@@ -194,7 +194,7 @@ mod tests {
       assert_eq!(token.value(), "Testing");
       assert_eq!(token.raw_value(), "Testing");
       assert_eq!(token.get_children().len(), 1);
-      assert_eq!(token.get_attribute("__message".to_string()), None);
+      assert_eq!(token.get_attribute("__message"), None);
 
       let first = token.get_children()[0].borrow();
       assert_eq!(first.get_name(), "Error");
@@ -204,7 +204,7 @@ mod tests {
       assert_eq!(first.raw_value(), "Testing");
       assert_eq!(first.get_children().len(), 0);
       assert_eq!(
-        first.get_attribute("__message".to_string()),
+        first.get_attribute("__message"),
         Some(&"This is an error".to_string())
       );
     } else {
