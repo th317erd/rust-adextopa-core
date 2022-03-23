@@ -1,12 +1,12 @@
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
-use crate::token::Token;
+use crate::token::TokenRef;
 use std::cell::RefCell;
 use std::rc::Rc;
 
 pub struct MapPattern<'a, F>
 where
-  F: FnMut(&mut Box<dyn Token>),
+  F: Fn(TokenRef) -> Option<String>,
   F: 'a,
 {
   matcher: MatcherRef<'a>,
@@ -15,7 +15,7 @@ where
 
 impl<'a, F> MapPattern<'a, F>
 where
-  F: FnMut(&mut Box<dyn Token>),
+  F: Fn(TokenRef) -> Option<String>,
   F: 'a,
 {
   pub fn new(matcher: MatcherRef<'a>, map_func: F) -> MatcherRef<'a> {
@@ -25,19 +25,23 @@ where
 
 impl<'a, F> Matcher<'a> for MapPattern<'a, F>
 where
-  F: FnMut(&mut Box<dyn Token>),
+  F: Fn(TokenRef) -> Option<String>,
   F: 'a,
 {
   fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
-    match self
+    let result = self
       .matcher
       .borrow()
-      .exec(context.borrow().clone_with_name(self.get_name()))
-    {
+      .exec(context.borrow().clone_with_name(self.get_name()));
+
+    match result {
       Ok(success) => match success {
         MatcherSuccess::Token(token) => {
-          let mut mtoken = token.borrow_mut();
-          (self.map_func)(&mut *mtoken);
+          if let Some(result) = (self.map_func)(token.clone()) {
+            return Ok(MatcherSuccess::Token(
+              crate::matchers::error::new_error_token(context, result.as_str()),
+            ));
+          }
 
           Ok(MatcherSuccess::Token(token))
         }
@@ -48,11 +52,11 @@ where
   }
 
   fn get_name(&self) -> &str {
-    "Optional"
+    "Map"
   }
 
   fn set_name(&mut self, _: &'a str) {
-    panic!("Can not set `name` on a `Optional` matcher");
+    panic!("Can not set `name` on a `Map` matcher");
   }
 
   fn set_child(&mut self, index: usize, matcher: MatcherRef<'a>) {
@@ -68,48 +72,92 @@ where
   }
 
   fn add_pattern(&mut self, _: MatcherRef<'a>) {
-    panic!("Can not add a pattern to a `Optional` matcher");
+    panic!("Can not add a pattern to a `Map` matcher");
   }
 }
 
 #[macro_export]
 macro_rules! Map {
-  ($arg:expr) => {
-    $crate::matchers::optional::MapPattern::new($arg.clone())
+  ($matcher:expr, $map_func:expr) => {
+    $crate::matchers::map::MapPattern::new($matcher, $map_func)
   };
 }
 
 #[cfg(test)]
 mod tests {
   use crate::{
-    matcher::MatcherSuccess, parser::Parser, parser_context::ParserContext,
-    source_range::SourceRange, Equals,
+    matcher::{MatcherFailure, MatcherSuccess},
+    parser::Parser,
+    parser_context::ParserContext,
+    source_range::SourceRange,
+    Equals,
   };
 
   #[test]
-  fn it_matches_against_a_string() {
+  fn it_can_mutate_a_token() {
     let parser = Parser::new("Testing 1234");
     let parser_context = ParserContext::new(&parser, "Test");
-    let matcher = Optional!(Equals!("Testing"));
+    let matcher = Map!(Equals!("Testing"), |token| {
+      let value_range = token.borrow().get_value_range().clone();
+      let mut token = token.borrow_mut();
+
+      token.set_name("WOW");
+      token.set_value_range(SourceRange::new(value_range.start + 1, value_range.end - 1));
+      token.set_attribute("was_mapped", "true");
+
+      None
+    });
 
     if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
-      assert_eq!(token.get_name(), "Equals");
-      assert_eq!(*token.get_value_range(), SourceRange::new(0, 7));
-      assert_eq!(token.value(), "Testing");
+      assert_eq!(token.get_name(), "WOW");
+      assert_eq!(*token.get_value_range(), SourceRange::new(1, 6));
+      assert_eq!(*token.get_raw_range(), SourceRange::new(0, 7));
+      assert_eq!(token.value(), "estin");
+      assert_eq!(token.raw_value(), "Testing");
     } else {
       unreachable!("Test failed!");
     };
   }
 
   #[test]
-  fn it_fails_to_match_against_a_string() {
+  fn it_can_return_an_error() {
     let parser = Parser::new("Testing 1234");
     let parser_context = ParserContext::new(&parser, "Test");
-    let matcher = Optional!(Equals!("testing"));
+    let matcher = Map!(Equals!("Testing"), |_| {
+      Some("There was a big fat error!".to_string())
+    });
+
+    if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
+      let token = token.borrow();
+      assert_eq!(token.get_name(), "Error");
+      assert_eq!(
+        *token.get_value_range(),
+        SourceRange::new(usize::MAX, usize::MAX)
+      );
+      assert_eq!(
+        *token.get_raw_range(),
+        SourceRange::new(usize::MAX, usize::MAX)
+      );
+      assert_eq!(token.value(), "");
+      assert_eq!(token.raw_value(), "");
+      assert_eq!(
+        token.get_attribute("__message").unwrap(),
+        "There was a big fat error!"
+      );
+    } else {
+      unreachable!("Test failed!");
+    };
+  }
+
+  #[test]
+  fn it_fails_to_match() {
+    let parser = Parser::new("Testing 1234");
+    let parser_context = ParserContext::new(&parser, "Test");
+    let matcher = Map!(Equals!("testing"), |_| { None });
 
     assert_eq!(
-      Ok(MatcherSuccess::Skip(0)),
+      Err(MatcherFailure::Fail),
       ParserContext::tokenize(parser_context, matcher)
     );
   }

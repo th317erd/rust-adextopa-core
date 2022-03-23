@@ -56,7 +56,7 @@ impl<'a> Matcher<'a> for OptionalPattern<'a> {
 #[macro_export]
 macro_rules! Optional {
   ($arg:expr) => {
-    $crate::matchers::optional::OptionalPattern::new($arg.clone())
+    $crate::matchers::optional::OptionalPattern::new($arg)
   };
 }
 

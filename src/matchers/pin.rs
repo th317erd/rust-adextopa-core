@@ -135,8 +135,8 @@ impl Token for PinToken {
     &self.name
   }
 
-  fn set_name(&mut self, name: String) {
-    self.name = name;
+  fn set_name(&mut self, name: &str) {
+    self.name = name.to_string();
   }
 
   fn get_parent(&self) -> Option<crate::token::TokenRef> {

@@ -72,7 +72,7 @@ impl<'a> Matcher<'a> for NotPattern<'a> {
 #[macro_export]
 macro_rules! Not {
   ($arg:expr) => {
-    $crate::matchers::not::NotPattern::new($arg.clone())
+    $crate::matchers::not::NotPattern::new($arg)
   };
 }
 

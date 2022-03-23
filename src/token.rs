@@ -115,7 +115,7 @@ pub trait Token {
   fn get_raw_range_mut(&mut self) -> &mut SourceRange;
   fn set_raw_range(&mut self, range: SourceRange);
   fn get_name(&self) -> &String;
-  fn set_name(&mut self, name: String);
+  fn set_name(&mut self, name: &str);
   fn get_parent(&self) -> Option<TokenRef>;
   fn set_parent(&mut self, token: Option<crate::token::TokenRef>);
   fn get_children<'b>(&'b self) -> &'b Vec<crate::token::TokenRef>;

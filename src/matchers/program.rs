@@ -733,7 +733,7 @@ macro_rules! Program {
         pm.set_name($name);
 
         $(
-          pm.add_pattern($args.clone());
+          pm.add_pattern($args);
         )*
       }
 
@@ -749,7 +749,7 @@ macro_rules! Program {
         let mut pm = program.borrow_mut();
 
         $(
-          pm.add_pattern($args.clone());
+          pm.add_pattern($args);
         )*
       }
 
@@ -769,7 +769,7 @@ macro_rules! Switch {
         pm.set_name($name);
 
         $(
-          pm.add_pattern($args.clone());
+          pm.add_pattern($args);
         )*
       }
 
@@ -785,7 +785,7 @@ macro_rules! Switch {
         let mut pm = program.borrow_mut();
 
         $(
-          pm.add_pattern($args.clone());
+          pm.add_pattern($args);
         )*
       }
 
@@ -805,7 +805,7 @@ macro_rules! Loop {
         lm.set_name($name);
 
         $(
-          lm.add_pattern($args.clone());
+          lm.add_pattern($args);
         )*
       }
 
@@ -822,7 +822,7 @@ macro_rules! Loop {
         lm.set_name($name);
 
         $(
-          lm.add_pattern($args.clone());
+          lm.add_pattern($args);
         )*
       }
 
@@ -838,7 +838,7 @@ macro_rules! Loop {
         let mut lm = loop_program.borrow_mut();
 
         $(
-          lm.add_pattern($args.clone());
+          lm.add_pattern($args);
         )*
       }
 

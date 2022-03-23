@@ -53,7 +53,7 @@ macro_rules! Register {
         let mut rm = register.borrow_mut();
 
         $(
-          rm.add_pattern($args.clone());
+          rm.add_pattern($args);
         )*
       }
 

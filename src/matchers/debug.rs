@@ -110,7 +110,7 @@ impl<'a> Matcher<'a> for DebugPattern<'a> {
 #[macro_export]
 macro_rules! Debug {
   ($mode:literal; $arg:expr) => {
-    $crate::matchers::debug::DebugPattern::new_with_debug_mode(Some($arg.clone()), $mode)
+    $crate::matchers::debug::DebugPattern::new_with_debug_mode(Some($arg), $mode)
   };
 
   ($mode:literal;) => {
@@ -118,7 +118,7 @@ macro_rules! Debug {
   };
 
   ($arg:expr) => {
-    $crate::matchers::debug::DebugPattern::new(Some($arg.clone()))
+    $crate::matchers::debug::DebugPattern::new(Some($arg))
   };
 
   () => {

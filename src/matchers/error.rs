@@ -4,7 +4,20 @@ use std::rc::Rc;
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
 use crate::source_range::SourceRange;
-use crate::token::StandardToken;
+use crate::token::{StandardToken, TokenRef};
+
+pub fn new_error_token(context: ParserContextRef, message: &str) -> TokenRef {
+  let value_range = SourceRange::new(usize::MAX, usize::MAX);
+  let token = StandardToken::new(&context.borrow().parser, "Error".to_string(), value_range);
+
+  {
+    let mut token = token.borrow_mut();
+    token.set_attribute("__message", message);
+    token.set_attribute("__is_error", "true");
+  }
+
+  token
+}
 
 pub struct ErrorPattern<'a> {
   message: &'a str,
@@ -18,16 +31,8 @@ impl<'a> ErrorPattern<'a> {
 
 impl<'a> Matcher<'a> for ErrorPattern<'a> {
   fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
-    let value_range = SourceRange::new(usize::MAX, usize::MAX);
-    let token = StandardToken::new(&context.borrow().parser, "Error".to_string(), value_range);
-
-    {
-      let mut token = token.borrow_mut();
-      token.set_attribute("__message", self.message);
-      token.set_attribute("__is_error", "true");
-    }
-
-    Ok(MatcherSuccess::Token(token))
+    let error_token = new_error_token(context, self.message);
+    Ok(MatcherSuccess::Token(error_token))
   }
 
   fn get_name(&self) -> &str {

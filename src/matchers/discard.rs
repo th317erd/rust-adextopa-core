@@ -154,7 +154,7 @@ impl<'a> Matcher<'a> for DiscardPattern<'a> {
 #[macro_export]
 macro_rules! Discard {
   ($arg:expr) => {
-    $crate::matchers::discard::DiscardPattern::new($arg.clone())
+    $crate::matchers::discard::DiscardPattern::new($arg)
   };
 }
 

@@ -87,11 +87,11 @@ impl<'a> Matcher<'a> for FlattenPattern<'a> {
 #[macro_export]
 macro_rules! Flatten {
   ($name:literal; $arg:expr) => {
-    $crate::matchers::flatten::FlattenPattern::new_with_name($arg.clone(), $name)
+    $crate::matchers::flatten::FlattenPattern::new_with_name($arg, $name)
   };
 
   ($arg:expr) => {
-    $crate::matchers::flatten::FlattenPattern::new($arg.clone())
+    $crate::matchers::flatten::FlattenPattern::new($arg)
   };
 }
 
