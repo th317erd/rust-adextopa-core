@@ -11,3 +11,4 @@ default = ["v1"]
 substring = "1.4.5"
 regex = "1.5.4"
 adextopa_macros = { path = "./adextopa_macros" }
+lazy_static = "1.4.0"

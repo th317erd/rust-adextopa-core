@@ -161,45 +161,50 @@ fn add_token_to_children<'a>(
   raw_range: &mut SourceRange,
   token: &TokenRef,
   assert_moving_forward: bool,
+  update_offsets: bool,
 ) {
-  {
-    if token.borrow().get_name() != "Error" {
-      let token = token.borrow();
+  if token.borrow().get_name() != "Error" {
+    let token = token.borrow();
 
-      if assert_moving_forward {
-        // Ensure that we are moving forward, and that the token doesn't have a zero width
-        assert!(token.get_raw_range().end != context.borrow().offset.start);
-      }
+    if assert_moving_forward && update_offsets {
+      // Ensure that we are moving forward, and that the token doesn't have a zero width
+      assert!(token.get_raw_range().end != context.borrow().offset.start);
+    }
 
-      // value_range is set to raw_range because the program
-      // should always span the range of all child tokens
-      contain_source_range(value_range, &token.get_raw_range());
-      contain_source_range(raw_range, &token.get_raw_range());
-    } else {
-      let mut token = token.borrow_mut();
-      let sr = token.get_raw_range();
-
-      if sr.start == usize::MAX || sr.end == usize::MAX {
-        let mut source_range = SourceRange::new_blank();
-
-        if value_range.start == usize::MAX {
-          source_range.start = context.borrow().offset.start;
-        } else {
-          source_range.start = value_range.start;
-        }
-
-        source_range.end = context.borrow().offset.start;
-
-        token.set_value_range(source_range);
-        token.set_raw_range(source_range);
-      }
-
+    if update_offsets {
       // value_range is set to raw_range because the program
       // should always span the range of all child tokens
       contain_source_range(value_range, &token.get_raw_range());
       contain_source_range(raw_range, &token.get_raw_range());
     }
+  } else {
+    let mut token = token.borrow_mut();
+    let sr = token.get_raw_range();
 
+    if sr.start == usize::MAX || sr.end == usize::MAX {
+      let mut source_range = SourceRange::new_blank();
+
+      if value_range.start == usize::MAX {
+        source_range.start = context.borrow().offset.start;
+      } else {
+        source_range.start = value_range.start;
+      }
+
+      source_range.end = context.borrow().offset.start;
+
+      token.set_value_range(source_range);
+      token.set_raw_range(source_range);
+    }
+
+    if update_offsets {
+      // value_range is set to raw_range because the program
+      // should always span the range of all child tokens
+      contain_source_range(value_range, &token.get_raw_range());
+      contain_source_range(raw_range, &token.get_raw_range());
+    }
+  }
+
+  if update_offsets {
     context
       .borrow_mut()
       .set_start(token.borrow().get_raw_range().end);
@@ -222,6 +227,7 @@ fn handle_token(
   raw_range: &mut SourceRange,
   token: &TokenRef,
   assert_moving_forward: bool,
+  update_offsets: bool,
 ) {
   if context.borrow().debug_mode_level() > 1 {
     let token = token.borrow();
@@ -239,6 +245,8 @@ fn handle_token(
     );
   }
 
+  let should_discard = token.borrow().should_discard();
+
   add_token_to_children(
     &program_token,
     &context,
@@ -247,6 +255,7 @@ fn handle_token(
     raw_range,
     token,
     assert_moving_forward,
+    update_offsets && !should_discard,
   );
 
   if context.borrow().is_debug_mode() {
@@ -272,9 +281,11 @@ fn handle_extract_token(
   raw_range: &mut SourceRange,
   token: &TokenRef,
   assert_moving_forward: bool,
+  update_offsets: bool,
 ) {
   let token = token.borrow();
   let target_children = token.get_children();
+  let should_discard = token.should_discard();
 
   if context.borrow().is_debug_mode() {
     if context.borrow().debug_mode_level() > 2 {
@@ -289,10 +300,12 @@ fn handle_extract_token(
     );
   }
 
-  context.borrow_mut().set_start(token.get_raw_range().end);
+  if update_offsets && !should_discard {
+    context.borrow_mut().set_start(token.get_raw_range().end);
 
-  contain_source_range(value_range, &token.get_raw_range());
-  contain_source_range(raw_range, &token.get_raw_range());
+    contain_source_range(value_range, &token.get_raw_range());
+    contain_source_range(raw_range, &token.get_raw_range());
+  }
 
   if context.borrow().debug_mode_level() > 1 {
     if context.borrow().debug_mode_level() > 2 {
@@ -309,6 +322,10 @@ fn handle_extract_token(
   }
 
   for child in target_children {
+    if child.borrow().should_discard() {
+      continue;
+    }
+
     if context.borrow().debug_mode_level() > 1 {
       let child = child.borrow();
 
@@ -333,6 +350,7 @@ fn handle_extract_token(
       raw_range,
       &child,
       assert_moving_forward,
+      update_offsets && !should_discard,
     );
   }
 }
@@ -405,12 +423,18 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
         match result {
           Ok(success) => match success {
             MatcherSuccess::Token(token) => {
+              if token.borrow().should_discard() {
+                continue;
+              }
+
               match self.stop_on_first {
                 MatchAction::Stop => {
                   return Ok(MatcherSuccess::Token(token.clone()));
                 }
                 _ => {}
               }
+
+              let is_consuming = pattern.borrow().is_consuming();
 
               handle_token(
                 self,
@@ -420,16 +444,23 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
                 &mut value_range,
                 &mut raw_range,
                 &token,
-                pattern.borrow().is_consuming(),
+                is_consuming,
+                is_consuming,
               );
             }
             MatcherSuccess::ExtractChildren(token) => {
+              if token.borrow().should_discard() {
+                continue;
+              }
+
               match self.stop_on_first {
                 MatchAction::Stop => {
                   return Ok(MatcherSuccess::ExtractChildren(token.clone()));
                 }
                 _ => {}
               }
+
+              let is_consuming = pattern.borrow().is_consuming();
 
               handle_extract_token(
                 self,
@@ -439,18 +470,21 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
                 &mut value_range,
                 &mut raw_range,
                 &token,
-                pattern.borrow().is_consuming(),
+                is_consuming,
+                is_consuming,
               );
             }
             MatcherSuccess::Skip(amount) => {
-              handle_skip(
-                self,
-                &sub_context,
-                &mut value_range,
-                &mut raw_range,
-                start_offset,
-                amount,
-              );
+              if pattern.borrow().is_consuming() {
+                handle_skip(
+                  self,
+                  &sub_context,
+                  &mut value_range,
+                  &mut raw_range,
+                  start_offset,
+                  amount,
+                );
+              }
 
               continue;
             }
@@ -511,6 +545,7 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
                     &mut raw_range,
                     &token,
                     false,
+                    true,
                   );
 
                   Box::new(MatcherSuccess::None)
@@ -525,6 +560,7 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
                     &mut raw_range,
                     &token,
                     false,
+                    true,
                   );
 
                   Box::new(MatcherSuccess::None)
@@ -585,6 +621,7 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
                     &mut raw_range,
                     &token,
                     false,
+                    true,
                   );
 
                   Box::new(MatcherSuccess::None)
@@ -599,6 +636,7 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
                     &mut raw_range,
                     &token,
                     false,
+                    true,
                   );
 
                   Box::new(MatcherSuccess::None)

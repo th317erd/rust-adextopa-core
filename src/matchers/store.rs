@@ -17,6 +17,10 @@ pub struct StorePattern<'a> {
 
 impl<'a> StorePattern<'a> {
   pub fn new_as_string_type(name: &'a str, pattern: &'a str) -> MatcherRef<'a> {
+    if let Some(_) = name.find(".") {
+      panic!("`Store`: Variable names can not contain `.` characters");
+    }
+
     Rc::new(RefCell::new(Box::new(StorePattern {
       pattern: StorePatternType::String(pattern.to_string()),
       name,
@@ -25,6 +29,10 @@ impl<'a> StorePattern<'a> {
   }
 
   pub fn new_as_matcher_type(name: &'a str, pattern: MatcherRef<'a>) -> MatcherRef<'a> {
+    if let Some(_) = name.find(".") {
+      panic!("`Store`: Variable names can not contain `.` characters");
+    }
+
     Rc::new(RefCell::new(Box::new(StorePattern {
       pattern: StorePatternType::Matcher(pattern),
       name,

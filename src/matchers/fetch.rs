@@ -26,6 +26,20 @@ impl<'a> Fetchable<'a> for FetchPattern<'a> {
           token.value()
         } else if sub_name == "raw_value" {
           token.raw_value()
+        } else if sub_name == "start" {
+          format!("{}", token.get_raw_range().start)
+        } else if sub_name == "end" {
+          format!("{}", token.get_raw_range().end)
+        } else if sub_name == "value_start" {
+          format!("{}", token.get_value_range().start)
+        } else if sub_name == "value_end" {
+          format!("{}", token.get_value_range().end)
+        } else if sub_name == "range" {
+          let range = token.get_raw_range();
+          format!("{}..{}", range.start, range.end)
+        } else if sub_name == "value_range" {
+          let range = token.get_value_range();
+          format!("{}..{}", range.start, range.end)
         } else {
           panic!(
             "Invalid variable reference `{}`: Don't know how to fetch this value on a Token reference",

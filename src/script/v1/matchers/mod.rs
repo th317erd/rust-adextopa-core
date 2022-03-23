@@ -1,4 +1,5 @@
 pub mod assignment_expression;
+pub mod attribute;
 pub mod comment;
 pub mod custom_matcher;
 pub mod equals_matcher;

@@ -126,6 +126,9 @@ pub trait Token {
   fn get_attributes<'b>(&'b self) -> &'b std::collections::HashMap<String, String>;
   fn get_attribute<'b>(&'b self, name: String) -> Option<&'b String>;
   fn set_attribute(&mut self, name: String, value: String) -> Option<String>;
+  fn should_discard(&self) -> bool {
+    false
+  }
 }
 
 #[derive(adextopa_macros::Token)]

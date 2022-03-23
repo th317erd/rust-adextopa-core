@@ -1,4 +1,5 @@
 pub mod assert;
+pub mod assert_not;
 pub mod r#break;
 pub mod debug;
 pub mod discard;
@@ -10,6 +11,7 @@ pub mod flatten;
 pub mod matches;
 pub mod not;
 pub mod optional;
+pub mod pin;
 pub mod program;
 pub mod r#ref;
 pub mod register;
