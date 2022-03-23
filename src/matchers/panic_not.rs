@@ -2,12 +2,10 @@
 macro_rules! PanicNot {
   ($matcher:expr, $message:expr) => {
     $crate::Flatten!("PanicNot";
-      $crate::Discard!(
-        $crate::Optional!(
-          $crate::Program!("PanicNot";
-            $crate::Not!($matcher),
-            $crate::Fatal!($message),
-          )
+      $crate::Optional!(
+        $crate::Program!("PanicNot";
+          $crate::Discard!($crate::Not!($matcher)),
+          $crate::Fatal!($message),
         )
       )
     )

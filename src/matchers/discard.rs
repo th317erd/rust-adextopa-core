@@ -17,27 +17,47 @@ impl<'a> DiscardPattern<'a> {
 }
 
 fn collect_errors<'a, 'b>(error_token: TokenRef, walk_token: TokenRef) {
-  if walk_token.borrow().get_name() == "Error" {
-    error_token
-      .borrow_mut()
-      .get_children_mut()
-      .push(walk_token.clone());
+  let is_error = if let Some(value) = walk_token.borrow().get_attribute("__is_error") {
+    value == "true"
+  } else {
+    false
+  };
+
+  if is_error {
+    let mut error_token = error_token.borrow_mut();
+    error_token.get_children_mut().push(walk_token.clone());
+
+    let walk_token = walk_token.borrow();
+    let walk_token_range = walk_token.get_raw_range();
+    let error_token_range = error_token.get_raw_range();
+    let mut new_start = error_token_range.start;
+    let mut new_end = error_token_range.end;
+
+    if new_start > walk_token_range.start {
+      new_start = walk_token_range.start;
+    }
+
+    if new_end < walk_token_range.end {
+      new_end = walk_token_range.end;
+    }
+
+    if new_start != error_token_range.start || new_end != error_token_range.end {
+      let new_source_range = SourceRange::new(new_start, new_end);
+      error_token.set_raw_range(new_source_range);
+    }
   }
 
   {
     let walk_token = walk_token.borrow();
     let children = walk_token.get_children();
-    if children.len() > 0 {
-      for child in children {
-        collect_errors(error_token.clone(), child.clone());
-      }
+    for child in children {
+      collect_errors(error_token.clone(), child.clone());
     }
   }
 }
 
 fn skip_token(context: ParserContextRef, start_offset: usize, token: TokenRef) -> MatcherSuccess {
   let end_offset = token.borrow().get_raw_range().end;
-  let offset: isize = end_offset as isize - start_offset as isize;
 
   // Check to see if any errors are in the result
   // If there are, continue to proxy them upstream
@@ -52,14 +72,15 @@ fn skip_token(context: ParserContextRef, start_offset: usize, token: TokenRef) -
     return MatcherSuccess::Token(error_token);
   }
 
+  let offset: isize = end_offset as isize - start_offset as isize;
   MatcherSuccess::Skip(offset)
 }
 
 impl<'a> Matcher<'a> for DiscardPattern<'a> {
   fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
     let context = context.borrow();
-    let sub_context = context.clone_with_name(self.get_name());
     let start_offset = context.offset.start;
+    let sub_context = context.clone_with_name(self.get_name());
 
     match self.matcher.borrow().exec(sub_context.clone()) {
       Ok(success) => match success {
@@ -204,8 +225,8 @@ mod tests {
       assert_eq!(first.raw_value(), "Testing");
       assert_eq!(first.get_children().len(), 0);
       assert_eq!(
-        first.get_attribute("__message"),
-        Some(&"This is an error".to_string())
+        first.attribute_equals("__message", "This is an error"),
+        true
       );
     } else {
       unreachable!("Test failed!");

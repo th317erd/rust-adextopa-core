@@ -39,7 +39,11 @@ where
         MatcherSuccess::Token(token) => {
           if let Some(result) = (self.map_func)(token.clone()) {
             return Ok(MatcherSuccess::Token(
-              crate::matchers::error::new_error_token(context, result.as_str()),
+              crate::matchers::error::new_error_token_with_range(
+                context,
+                result.as_str(),
+                token.borrow().get_raw_range().clone(),
+              ),
             ));
           }
 
@@ -131,16 +135,10 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Error");
-      assert_eq!(
-        *token.get_value_range(),
-        SourceRange::new(usize::MAX, usize::MAX)
-      );
-      assert_eq!(
-        *token.get_raw_range(),
-        SourceRange::new(usize::MAX, usize::MAX)
-      );
-      assert_eq!(token.value(), "");
-      assert_eq!(token.raw_value(), "");
+      assert_eq!(*token.get_value_range(), SourceRange::new(0, 7));
+      assert_eq!(*token.get_raw_range(), SourceRange::new(0, 7));
+      assert_eq!(token.value(), "Testing");
+      assert_eq!(token.raw_value(), "Testing");
       assert_eq!(
         token.get_attribute("__message").unwrap(),
         "There was a big fat error!"

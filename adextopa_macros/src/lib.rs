@@ -107,6 +107,13 @@ pub fn token_derive(input: TokenStream) -> TokenStream {
         self.attributes.get(&name.to_string())
       }
 
+      fn attribute_equals<'b>(&'b self, name: &str, value: &str) -> bool {
+        match self.attributes.get(&name.to_string()) {
+          Some(v) => (v == value),
+          None => false,
+        }
+      }
+
       fn set_attribute(&mut self, name: &str, value: &str) -> Option<String> {
         self.attributes.insert(name.to_string(), value.to_string())
       }

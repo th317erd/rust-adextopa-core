@@ -163,44 +163,39 @@ fn add_token_to_children<'a>(
   assert_moving_forward: bool,
   update_offsets: bool,
 ) {
-  if token.borrow().get_name() != "Error" {
-    let token = token.borrow();
+  {
+    if !token.borrow().attribute_equals("__is_error", "true") {
+      let token = token.borrow();
 
-    if assert_moving_forward && update_offsets {
-      // Ensure that we are moving forward, and that the token doesn't have a zero width
-      assert!(token.get_raw_range().end != context.borrow().offset.start);
-    }
-
-    if update_offsets {
-      // value_range is set to raw_range because the program
-      // should always span the range of all child tokens
-      contain_source_range(value_range, &token.get_raw_range());
-      contain_source_range(raw_range, &token.get_raw_range());
-    }
-  } else {
-    let mut token = token.borrow_mut();
-    let sr = token.get_raw_range();
-
-    if sr.start == usize::MAX || sr.end == usize::MAX {
-      let mut source_range = SourceRange::new_blank();
-
-      if value_range.start == usize::MAX {
-        source_range.start = context.borrow().offset.start;
-      } else {
-        source_range.start = value_range.start;
+      if assert_moving_forward && update_offsets {
+        // Ensure that we are moving forward, and that the token doesn't have a zero width
+        assert!(token.get_raw_range().end != context.borrow().offset.start);
       }
 
-      source_range.end = context.borrow().offset.start;
+      if update_offsets {
+        // value_range is set to raw_range because the program
+        // should always span the range of all child tokens
+        contain_source_range(value_range, &token.get_raw_range());
+        contain_source_range(raw_range, &token.get_raw_range());
+      }
+    } else {
+      let mut token = token.borrow_mut();
+      let source_range = token.get_raw_range();
 
-      token.set_value_range(source_range);
-      token.set_raw_range(source_range);
-    }
+      if source_range.start == source_range.end {
+        let mut new_source_range = source_range.clone();
+        new_source_range.start = raw_range.start;
 
-    if update_offsets {
-      // value_range is set to raw_range because the program
-      // should always span the range of all child tokens
-      contain_source_range(value_range, &token.get_raw_range());
-      contain_source_range(raw_range, &token.get_raw_range());
+        token.set_value_range(new_source_range);
+        token.set_raw_range(new_source_range);
+      }
+
+      if update_offsets {
+        // value_range is set to raw_range because the program
+        // should always span the range of all child tokens
+        contain_source_range(value_range, &token.get_raw_range());
+        contain_source_range(raw_range, &token.get_raw_range());
+      }
     }
   }
 

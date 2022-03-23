@@ -7,8 +7,26 @@ use crate::source_range::SourceRange;
 use crate::token::{StandardToken, TokenRef};
 
 pub fn new_error_token(context: ParserContextRef, message: &str) -> TokenRef {
-  let value_range = SourceRange::new(usize::MAX, usize::MAX);
-  let token = StandardToken::new(&context.borrow().parser, "Error".to_string(), value_range);
+  let context = context.borrow();
+  let value_range = SourceRange::new(context.offset.start, context.offset.start);
+  let token = StandardToken::new(&context.parser, "Error".to_string(), value_range);
+
+  {
+    let mut token = token.borrow_mut();
+    token.set_attribute("__message", message);
+    token.set_attribute("__is_error", "true");
+  }
+
+  token
+}
+
+pub fn new_error_token_with_range(
+  context: ParserContextRef,
+  message: &str,
+  raw_range: SourceRange,
+) -> TokenRef {
+  let context = context.borrow();
+  let token = StandardToken::new(&context.parser, "Error".to_string(), raw_range);
 
   {
     let mut token = token.borrow_mut();
