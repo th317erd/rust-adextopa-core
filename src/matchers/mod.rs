@@ -11,6 +11,8 @@ pub mod flatten;
 pub mod matches;
 pub mod not;
 pub mod optional;
+pub mod r#panic;
+pub mod r#panic_not;
 pub mod pin;
 pub mod program;
 pub mod r#ref;

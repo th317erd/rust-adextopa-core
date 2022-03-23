@@ -32,6 +32,14 @@ macro_rules! ScriptPatternDefinition {
       $crate::ScriptWSN0!(?),
       $crate::ScriptMatcher!(),
       $crate::ScriptWSN0!(?),
+      $crate::Optional!(
+        $crate::Flatten!(
+          $crate::Loop!("Attributes";
+            $crate::ScriptAttribute!(),
+            $crate::ScriptWSN0!(?),
+          )
+        )
+      ),
       $crate::Discard!($crate::Equals!(">")),
       $crate::Optional!($crate::ScriptRepeatSpecifier!()),
     )
@@ -83,6 +91,60 @@ mod tests {
       assert_eq!(*second.get_raw_range(), SourceRange::new(2, 9));
       assert_eq!(second.value(), "/test/i");
       assert_eq!(second.raw_value(), "/test/i");
+    } else {
+      unreachable!("Test failed!");
+    };
+  }
+
+  #[test]
+  fn it_works_with_attributes() {
+    let parser = Parser::new("<!/test/i attr1='test' attr2 = 'derp'>");
+    let parser_context = ParserContext::new(&parser, "Test");
+
+    parser_context
+      .borrow()
+      .register_matchers(vec![ScriptSwitchMatcher!()]);
+
+    let matcher = ScriptPatternDefinition!();
+
+    let result = ParserContext::tokenize(parser_context, matcher);
+
+    if let Ok(MatcherSuccess::Token(token)) = result {
+      let token = token.borrow();
+      assert_eq!(token.get_name(), "PatternDefinition");
+      assert_eq!(*token.get_value_range(), SourceRange::new(0, 38));
+      assert_eq!(*token.get_raw_range(), SourceRange::new(0, 38));
+      assert_eq!(token.value(), "<!/test/i attr1='test' attr2 = 'derp'>");
+      assert_eq!(token.raw_value(), "<!/test/i attr1='test' attr2 = 'derp'>");
+      assert_eq!(token.get_children().len(), 4);
+
+      let first = token.get_children()[0].borrow();
+      assert_eq!(first.get_name(), "NotModifier");
+      assert_eq!(*first.get_value_range(), SourceRange::new(1, 2));
+      assert_eq!(*first.get_raw_range(), SourceRange::new(1, 2));
+      assert_eq!(first.value(), "!");
+      assert_eq!(first.raw_value(), "!");
+
+      let second = token.get_children()[1].borrow();
+      assert_eq!(second.get_name(), "RegexMatcher");
+      assert_eq!(*second.get_value_range(), SourceRange::new(2, 9));
+      assert_eq!(*second.get_raw_range(), SourceRange::new(2, 9));
+      assert_eq!(second.value(), "/test/i");
+      assert_eq!(second.raw_value(), "/test/i");
+
+      let third = token.get_children()[2].borrow();
+      assert_eq!(third.get_name(), "Attribute");
+      assert_eq!(*third.get_value_range(), SourceRange::new(10, 22));
+      assert_eq!(*third.get_raw_range(), SourceRange::new(10, 22));
+      assert_eq!(third.value(), "attr1='test'");
+      assert_eq!(third.raw_value(), "attr1='test'");
+
+      let forth = token.get_children()[3].borrow();
+      assert_eq!(forth.get_name(), "Attribute");
+      assert_eq!(*forth.get_value_range(), SourceRange::new(23, 37));
+      assert_eq!(*forth.get_raw_range(), SourceRange::new(23, 37));
+      assert_eq!(forth.value(), "attr2 = 'derp'");
+      assert_eq!(forth.raw_value(), "attr2 = 'derp'");
     } else {
       unreachable!("Test failed!");
     };

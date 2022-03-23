@@ -7,7 +7,7 @@ macro_rules! ScriptAttribute {
       $crate::ScriptWS0!(?),
       $crate::Discard!($crate::Equals!("=")),
       $crate::ScriptWS0!(?),
-      $crate::AssertNot!($crate::Equals!("'"), "Malformed attribute detected. The proper format for an attribute is: name='value'"),
+      $crate::PanicNot!($crate::Equals!("'"), "Malformed attribute detected. Attribute value is not single-quoted. The proper format for an attribute is: name='value'"),
       $crate::ScriptString!("Value"),
       $crate::Pin!($crate::Fetch!("AttributeStartOffset.range");
         $crate::Assert!(
@@ -108,6 +108,23 @@ mod tests {
     } else {
       unreachable!("Test failed!");
     };
+  }
+
+  #[test]
+  fn it_panics_when_the_value_is_not_a_string() {
+    let parser = Parser::new("_test=derp");
+    let parser_context = ParserContext::new(&parser, "Test");
+    let matcher = ScriptAttribute!();
+
+    let result = ParserContext::tokenize(parser_context, matcher);
+
+    assert_eq!(
+      Err(MatcherFailure::Error(
+        "Malformed attribute detected. Attribute value is not single-quoted. The proper format for an attribute is: name='value'"
+          .to_string()
+      )),
+      result
+    );
   }
 
   #[test]
