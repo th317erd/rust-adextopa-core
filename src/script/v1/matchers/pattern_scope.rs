@@ -61,7 +61,6 @@ mod tests {
       assert_eq!(second.value(), "(</test/i>)");
       assert_eq!(second.raw_value(), "(</test/i>)");
     } else {
-      println!("{:?}", result);
       unreachable!("Test failed!");
     };
   }

@@ -8,18 +8,20 @@ macro_rules! ScriptAdextopaScope {
         $crate::Fatal!("You must specify an ADEXTOPA version in your `adextopa:` scope: i.e. `<!--[adextopa:v{version}`"),
       ),
       $crate::Discard!($crate::Equals!("]")),
-      $crate::Loop!("Scope";
-        $crate::ScriptWSN0!(?),
-        $crate::Switch!(
-          $crate::ScriptComment!(),
-          $crate::ScriptAssignmentExpression!(),
-          $crate::Discard!(
-            $crate::Program!(
-              $crate::Pin!($crate::Equals!("-->")),
-              $crate::Break!(),
+      $crate::Optional!(
+        $crate::Loop!("Scope";
+          $crate::ScriptWSN0!(?),
+          $crate::Switch!(
+            $crate::ScriptComment!(),
+            $crate::ScriptAssignmentExpression!(),
+            $crate::Discard!(
+              $crate::Program!(
+                $crate::Pin!($crate::Equals!("-->")),
+                $crate::Break!(),
+              )
             )
-          )
-        ),
+          ),
+        )
       ),
       $crate::Discard!($crate::Equals!("-->")),
     )
@@ -112,7 +114,37 @@ mod tests {
       assert_eq!(forth.value(), "#another comment");
       assert_eq!(forth.raw_value(), "#another comment");
     } else {
-      println!("{:?}", result);
+      unreachable!("Test failed!");
+    };
+  }
+
+  #[test]
+  fn it_works2() {
+    let source = "<!--[adextopa:v1]-->";
+    let parser = Parser::new(source);
+    let parser_context = ParserContext::new(&parser, "Test");
+    let matcher = ScriptAdextopaScope!();
+
+    register_matchers(&parser_context);
+
+    let result = ParserContext::tokenize(parser_context, matcher);
+
+    if let Ok(MatcherSuccess::Token(token)) = result {
+      let token = token.borrow();
+      assert_eq!(token.get_name(), "AdextopaScope");
+      assert_eq!(*token.get_value_range(), SourceRange::new(0, 20));
+      assert_eq!(*token.get_raw_range(), SourceRange::new(0, 20));
+      assert_eq!(token.value(), source);
+      assert_eq!(token.raw_value(), source);
+      assert_eq!(token.get_children().len(), 1);
+
+      let version = token.get_children()[0].borrow();
+      assert_eq!(version.get_name(), "Version");
+      assert_eq!(*version.get_value_range(), SourceRange::new(15, 16));
+      assert_eq!(*version.get_raw_range(), SourceRange::new(15, 16));
+      assert_eq!(version.value(), "1");
+      assert_eq!(version.raw_value(), "1");
+    } else {
       unreachable!("Test failed!");
     };
   }
