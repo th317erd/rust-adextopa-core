@@ -5,6 +5,7 @@ pub mod parser_context;
 pub mod script;
 pub mod source_range;
 pub mod token;
+pub mod token_visitor;
 
 #[cfg(test)]
 mod tests {

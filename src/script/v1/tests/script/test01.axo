@@ -12,8 +12,7 @@
   # <expr>{1, 5} Loop one to five times
   # (<pattern>): Capture pattern (default is to discard)
 
-  Identifier = {value=(/[a-zA-Z$_-][a-zA-Z0-9$_-]*/)}
-  AssignmentExpression = {(?'identifier'<Identifier attr1="true">), <?Whitespace>, /=/, (?'program'<Program>)}
+  Identifier = <='test'>
 -->
 
 <patterns><go><here>
