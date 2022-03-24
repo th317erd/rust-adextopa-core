@@ -51,19 +51,23 @@ mod tests {
   use crate::{
     matcher::{MatcherFailure, MatcherSuccess},
     parser::Parser,
-    parser_context::ParserContext,
+    parser_context::{ParserContext, ParserContextRef},
     source_range::SourceRange,
-    ScriptSwitchMatcher,
+    ScriptProgramMatcher, ScriptSwitchMatcher,
   };
+
+  fn register_matchers(parser_context: &ParserContextRef) {
+    (*parser_context)
+      .borrow()
+      .register_matchers(vec![ScriptSwitchMatcher!(), ScriptProgramMatcher!()]);
+  }
 
   #[test]
   fn it_works1() {
     let parser = Parser::new("<!/test/i>");
     let parser_context = ParserContext::new(&parser, "Test");
 
-    parser_context
-      .borrow()
-      .register_matchers(vec![ScriptSwitchMatcher!()]);
+    register_matchers(&parser_context);
 
     let matcher = ScriptPatternDefinition!();
 
@@ -101,9 +105,7 @@ mod tests {
     let parser = Parser::new("<!/test/i attr1='test' attr2 = 'derp'>");
     let parser_context = ParserContext::new(&parser, "Test");
 
-    parser_context
-      .borrow()
-      .register_matchers(vec![ScriptSwitchMatcher!()]);
+    register_matchers(&parser_context);
 
     let matcher = ScriptPatternDefinition!();
 
@@ -155,9 +157,7 @@ mod tests {
     let parser = Parser::new("!<='test'>");
     let parser_context = ParserContext::new(&parser, "Test");
 
-    parser_context
-      .borrow()
-      .register_matchers(vec![ScriptSwitchMatcher!()]);
+    register_matchers(&parser_context);
 
     let matcher = ScriptPatternDefinition!();
 
@@ -195,9 +195,7 @@ mod tests {
     let parser = Parser::new("<?='test'>");
     let parser_context = ParserContext::new(&parser, "Test");
 
-    parser_context
-      .borrow()
-      .register_matchers(vec![ScriptSwitchMatcher!()]);
+    register_matchers(&parser_context);
 
     let matcher = ScriptPatternDefinition!();
 
@@ -235,9 +233,7 @@ mod tests {
     let parser = Parser::new("< %'[',']','' >");
     let parser_context = ParserContext::new(&parser, "Test");
 
-    parser_context
-      .borrow()
-      .register_matchers(vec![ScriptSwitchMatcher!()]);
+    register_matchers(&parser_context);
 
     let matcher = ScriptPatternDefinition!();
 
@@ -268,9 +264,7 @@ mod tests {
     let parser = Parser::new("<='test'>+");
     let parser_context = ParserContext::new(&parser, "Test");
 
-    parser_context
-      .borrow()
-      .register_matchers(vec![ScriptSwitchMatcher!()]);
+    register_matchers(&parser_context);
 
     let matcher = ScriptPatternDefinition!();
 
@@ -308,9 +302,7 @@ mod tests {
     let parser = Parser::new("<='test'>*");
     let parser_context = ParserContext::new(&parser, "Test");
 
-    parser_context
-      .borrow()
-      .register_matchers(vec![ScriptSwitchMatcher!()]);
+    register_matchers(&parser_context);
 
     let matcher = ScriptPatternDefinition!();
 
@@ -348,9 +340,7 @@ mod tests {
     let parser = Parser::new("<='test'>{2,}");
     let parser_context = ParserContext::new(&parser, "Test");
 
-    parser_context
-      .borrow()
-      .register_matchers(vec![ScriptSwitchMatcher!()]);
+    register_matchers(&parser_context);
 
     let matcher = ScriptPatternDefinition!();
 
@@ -388,9 +378,7 @@ mod tests {
     let parser = Parser::new("<?!='test'>");
     let parser_context = ParserContext::new(&parser, "Test");
 
-    parser_context
-      .borrow()
-      .register_matchers(vec![ScriptSwitchMatcher!()]);
+    register_matchers(&parser_context);
 
     let matcher = ScriptPatternDefinition!();
 
@@ -435,9 +423,7 @@ mod tests {
     let parser = Parser::new("!?<='test'>");
     let parser_context = ParserContext::new(&parser, "Test");
 
-    parser_context
-      .borrow()
-      .register_matchers(vec![ScriptSwitchMatcher!()]);
+    register_matchers(&parser_context);
 
     let matcher = ScriptPatternDefinition!();
 
@@ -482,9 +468,7 @@ mod tests {
     let parser = Parser::new("Testing");
     let parser_context = ParserContext::new(&parser, "Test");
 
-    parser_context
-      .borrow()
-      .register_matchers(vec![ScriptSwitchMatcher!()]);
+    register_matchers(&parser_context);
 
     let matcher = ScriptPatternDefinition!();
 

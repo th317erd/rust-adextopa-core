@@ -1,9 +1,7 @@
 #[macro_export]
 macro_rules! ScriptComment {
   () => {
-    $crate::Program!("Comment";
-      $crate::Matches!("Comment"; r"#.*$"),
-    )
+    $crate::Matches!("Comment"; r"#[^\r\n]*")
   };
 }
 
@@ -19,7 +17,7 @@ mod tests {
 
   #[test]
   fn it_works1() {
-    let parser = Parser::new(r"# Testing");
+    let parser = Parser::new("# Testing\n");
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = ScriptComment!();
 
@@ -30,9 +28,9 @@ mod tests {
       assert_eq!(token.get_name(), "Comment");
       assert_eq!(*token.get_value_range(), SourceRange::new(0, 9));
       assert_eq!(*token.get_raw_range(), SourceRange::new(0, 9));
-      assert_eq!(token.value(), r"# Testing");
-      assert_eq!(token.raw_value(), r"# Testing");
-      assert_eq!(token.get_children().len(), 1);
+      assert_eq!(token.value(), "# Testing");
+      assert_eq!(token.raw_value(), "# Testing");
+      assert_eq!(token.get_children().len(), 0);
     } else {
       unreachable!("Test failed!");
     };

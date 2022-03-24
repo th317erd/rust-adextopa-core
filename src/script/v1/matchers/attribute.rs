@@ -26,7 +26,6 @@ mod tests {
     parser::Parser,
     parser_context::ParserContext,
     source_range::SourceRange,
-    Loop, Matches, Switch,
   };
 
   #[test]

@@ -138,8 +138,13 @@ fn finalize_program_token<'a>(
   children: Vec<TokenRef>,
   value_range: SourceRange,
   raw_range: SourceRange,
+  is_loop: bool,
 ) -> Result<MatcherSuccess, MatcherFailure> {
   if value_range.start == usize::MAX || raw_range.start == usize::MAX {
+    return Err(MatcherFailure::Fail);
+  }
+
+  if is_loop && children.len() == 0 {
     return Err(MatcherFailure::Fail);
   }
 
@@ -505,7 +510,13 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
             }
 
             if is_loop {
-              return finalize_program_token(program_token, children, value_range, raw_range);
+              return finalize_program_token(
+                program_token,
+                children,
+                value_range,
+                raw_range,
+                is_loop,
+              );
             } else {
               match failure {
                 MatcherFailure::Fail => match self.stop_on_first {
@@ -576,7 +587,13 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
               };
 
               // This is the loop that should break, so cease propagating the Break
-              return finalize_program_token(program_token, children, value_range, raw_range);
+              return finalize_program_token(
+                program_token,
+                children,
+                value_range,
+                raw_range,
+                is_loop,
+              );
             } else {
               match &*data {
                 MatcherSuccess::Skip(amount) => {
@@ -592,7 +609,8 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
                 _ => {}
               }
 
-              match finalize_program_token(program_token, children, value_range, raw_range) {
+              match finalize_program_token(program_token, children, value_range, raw_range, is_loop)
+              {
                 Ok(final_token) => {
                   return Ok(MatcherSuccess::Break((loop_name, Box::new(final_token))));
                 }
@@ -665,7 +683,8 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
                 _ => {}
               }
 
-              match finalize_program_token(program_token, children, value_range, raw_range) {
+              match finalize_program_token(program_token, children, value_range, raw_range, is_loop)
+              {
                 Ok(final_token) => {
                   return Ok(MatcherSuccess::Continue((loop_name, Box::new(final_token))));
                 }
@@ -684,7 +703,7 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
       }
     }
 
-    finalize_program_token(program_token, children, value_range, raw_range)
+    finalize_program_token(program_token, children, value_range, raw_range, is_loop)
   }
 
   fn has_custom_name(&self) -> bool {
