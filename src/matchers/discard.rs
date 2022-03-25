@@ -151,7 +151,7 @@ impl<'a> Matcher<'a> for DiscardPattern<'a> {
     "Discard"
   }
 
-  fn set_name(&mut self, _: &'a str) {
+  fn set_name(&mut self, _: &str) {
     panic!("Can not set `name` on a `Discard` matcher");
   }
 

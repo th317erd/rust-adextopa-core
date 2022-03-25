@@ -1,5 +1,6 @@
 extern crate adextopa_macros;
 use std::cell::RefCell;
+use std::marker::PhantomData;
 use std::rc::Rc;
 
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
@@ -11,11 +12,11 @@ use super::fetch::Fetchable;
 pub struct EqualsPattern<'a, T>
 where
   T: Fetchable<'a>,
-  T: 'a,
 {
   pattern: T,
-  name: &'a str,
+  name: String,
   custom_name: bool,
+  _phantom: PhantomData<&'a T>,
 }
 
 impl<'a, T> EqualsPattern<'a, T>
@@ -26,16 +27,18 @@ where
   pub fn new(pattern: T) -> MatcherRef<'a> {
     Rc::new(RefCell::new(Box::new(Self {
       pattern,
-      name: "Equals",
+      name: "Equals".to_string(),
       custom_name: false,
+      _phantom: PhantomData,
     })))
   }
 
   pub fn new_with_name(name: &'a str, pattern: T) -> MatcherRef<'a> {
     Rc::new(RefCell::new(Box::new(Self {
       pattern,
-      name,
+      name: name.to_string(),
       custom_name: true,
+      _phantom: PhantomData,
     })))
   }
 }
@@ -64,11 +67,11 @@ where
   }
 
   fn get_name(&self) -> &str {
-    self.name
+    self.name.as_str()
   }
 
-  fn set_name(&mut self, name: &'a str) {
-    self.name = name;
+  fn set_name(&mut self, name: &str) {
+    self.name = name.to_string();
     self.custom_name = true;
   }
 
@@ -84,7 +87,7 @@ where
 #[macro_export]
 macro_rules! Equals {
   ($name:literal; $arg:expr) => {
-    $crate::matchers::equals::EqualsPattern::new_with_name($name, $arg)
+    $crate::matchers::equals::EqualsPattern::new_with_name($name, $arg.to_string())
   };
 
   ($arg:expr) => {

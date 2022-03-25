@@ -5,7 +5,7 @@ pub trait Fetchable<'a> {
   fn fetch_value(&self, context: ParserContextRef) -> String;
 }
 
-impl<'a> Fetchable<'a> for FetchPattern<'a> {
+impl<'a> Fetchable<'a> for FetchPattern {
   fn fetch_value(&self, context: ParserContextRef) -> String {
     let name = self.get_name();
     let name_path: Vec<&str> = name.split(".").collect();
@@ -70,17 +70,25 @@ impl<'a> Fetchable<'a> for &'a str {
   }
 }
 
-pub struct FetchPattern<'a> {
-  name: &'a str,
-}
-
-impl<'a> FetchPattern<'a> {
-  pub fn new(name: &'a str) -> Self {
-    FetchPattern { name }
+impl<'a> Fetchable<'a> for String {
+  fn fetch_value(&self, _: ParserContextRef) -> String {
+    self.clone()
   }
 }
 
-impl<'a> Matcher<'a> for FetchPattern<'a> {
+pub struct FetchPattern {
+  name: String,
+}
+
+impl FetchPattern {
+  pub fn new(name: &str) -> Self {
+    FetchPattern {
+      name: name.to_string(),
+    }
+  }
+}
+
+impl<'a> Matcher<'a> for FetchPattern {
   fn exec(&self, _: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
     Ok(MatcherSuccess::Skip(0))
   }
@@ -94,11 +102,11 @@ impl<'a> Matcher<'a> for FetchPattern<'a> {
   }
 
   fn get_name(&self) -> &str {
-    self.name
+    self.name.as_str()
   }
 
-  fn set_name(&mut self, name: &'a str) {
-    self.name = name;
+  fn set_name(&mut self, name: &str) {
+    self.name = name.to_string();
   }
 
   fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {

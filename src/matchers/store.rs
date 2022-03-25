@@ -11,7 +11,7 @@ pub enum StorePatternType<'a> {
 
 pub struct StorePattern<'a> {
   pattern: StorePatternType<'a>,
-  name: &'a str,
+  name: String,
   custom_name: bool,
 }
 
@@ -23,7 +23,7 @@ impl<'a> StorePattern<'a> {
 
     Rc::new(RefCell::new(Box::new(StorePattern {
       pattern: StorePatternType::String(pattern.to_string()),
-      name,
+      name: name.to_string(),
       custom_name: true,
     })))
   }
@@ -35,7 +35,7 @@ impl<'a> StorePattern<'a> {
 
     Rc::new(RefCell::new(Box::new(StorePattern {
       pattern: StorePatternType::Matcher(pattern),
-      name,
+      name: name.to_string(),
       custom_name: true,
     })))
   }
@@ -81,11 +81,11 @@ impl<'a> Matcher<'a> for StorePattern<'a> {
   }
 
   fn get_name(&self) -> &str {
-    self.name
+    self.name.as_str()
   }
 
-  fn set_name(&mut self, name: &'a str) {
-    self.name = name;
+  fn set_name(&mut self, name: &str) {
+    self.name = name.to_string();
     self.custom_name = true;
   }
 

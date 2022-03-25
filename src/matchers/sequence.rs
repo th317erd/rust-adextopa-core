@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::marker::PhantomData;
 use std::rc::Rc;
 
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
@@ -16,8 +17,9 @@ where
   start: T,
   end: T,
   escape: T,
-  name: &'a str,
+  name: String,
   custom_name: bool,
+  _phantom: PhantomData<&'a T>,
 }
 
 impl<'a, T> SequencePattern<'a, T>
@@ -27,21 +29,23 @@ where
 {
   pub fn new(start: T, end: T, escape: T) -> MatcherRef<'a> {
     Rc::new(RefCell::new(Box::new(Self {
-      name: "Sequence",
+      name: "Sequence".to_string(),
       start,
       end,
       escape,
       custom_name: false,
+      _phantom: PhantomData,
     })))
   }
 
   pub fn new_with_name(name: &'a str, start: T, end: T, escape: T) -> MatcherRef<'a> {
     Rc::new(RefCell::new(Box::new(Self {
-      name,
+      name: name.to_string(),
       start,
       end,
       escape,
       custom_name: true,
+      _phantom: PhantomData,
     })))
   }
 }
@@ -142,11 +146,11 @@ where
   }
 
   fn get_name(&self) -> &str {
-    self.name
+    self.name.as_str()
   }
 
-  fn set_name(&mut self, name: &'a str) {
-    self.name = name;
+  fn set_name(&mut self, name: &str) {
+    self.name = name.to_string();
     self.custom_name = true;
   }
 

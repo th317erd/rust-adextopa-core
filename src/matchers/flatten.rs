@@ -5,7 +5,7 @@ use std::rc::Rc;
 
 pub struct FlattenPattern<'a> {
   matcher: MatcherRef<'a>,
-  name: &'a str,
+  name: String,
   custom_name: bool,
 }
 
@@ -13,7 +13,7 @@ impl<'a> FlattenPattern<'a> {
   pub fn new(matcher: MatcherRef<'a>) -> MatcherRef<'a> {
     Rc::new(RefCell::new(Box::new(FlattenPattern {
       matcher,
-      name: "Flatten",
+      name: "Flatten".to_string(),
       custom_name: false,
     })))
   }
@@ -21,7 +21,7 @@ impl<'a> FlattenPattern<'a> {
   pub fn new_with_name(matcher: MatcherRef<'a>, name: &'a str) -> MatcherRef<'a> {
     Rc::new(RefCell::new(Box::new(FlattenPattern {
       matcher,
-      name,
+      name: name.to_string(),
       custom_name: true,
     })))
   }
@@ -59,11 +59,11 @@ impl<'a> Matcher<'a> for FlattenPattern<'a> {
   }
 
   fn get_name(&self) -> &str {
-    self.name
+    self.name.as_str()
   }
 
-  fn set_name(&mut self, name: &'a str) {
-    self.name = name;
+  fn set_name(&mut self, name: &str) {
+    self.name = name.to_string();
     self.custom_name = true;
   }
 

@@ -32,7 +32,7 @@ impl<'a> Matcher<'a> for OptionalPattern<'a> {
     "Optional"
   }
 
-  fn set_name(&mut self, _: &'a str) {
+  fn set_name(&mut self, _: &str) {
     panic!("Can not set `name` on a `Optional` matcher");
   }
 

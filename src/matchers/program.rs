@@ -32,7 +32,7 @@ pub enum MatchAction {
 
 pub struct ProgramPattern<'a> {
   patterns: Vec<MatcherRef<'a>>,
-  name: &'a str,
+  name: String,
   pub(self) iterate_range: Option<Range<usize>>,
   pub(self) stop_on_first: MatchAction,
   custom_name: bool,
@@ -48,7 +48,7 @@ impl<'a> ProgramPattern<'a> {
     Rc::new(RefCell::new(Box::new(Self {
       patterns: Vec::new(),
       iterate_range: None,
-      name,
+      name: name.to_string(),
       stop_on_first,
       custom_name: false,
     })))
@@ -60,7 +60,7 @@ impl<'a> ProgramPattern<'a> {
   {
     Rc::new(RefCell::new(Box::new(Self {
       patterns: Vec::new(),
-      name: "Loop",
+      name: "Loop".to_string(),
       iterate_range: Some(get_range(r)),
       stop_on_first: MatchAction::Continue,
       custom_name: false,
@@ -76,7 +76,7 @@ impl<'a> ProgramPattern<'a> {
     Rc::new(RefCell::new(Box::new(Self {
       patterns,
       iterate_range: None,
-      name,
+      name: name.to_string(),
       stop_on_first,
       custom_name: false,
     })))
@@ -88,7 +88,7 @@ impl<'a> ProgramPattern<'a> {
   {
     Rc::new(RefCell::new(Box::new(Self {
       patterns,
-      name: "Loop",
+      name: "Loop".to_string(),
       iterate_range: Some(get_range(r)),
       stop_on_first: MatchAction::Continue,
       custom_name: false,
@@ -102,7 +102,7 @@ impl<'a> ProgramPattern<'a> {
   ) -> MatcherRef<'a> {
     Rc::new(RefCell::new(Box::new(Self {
       patterns,
-      name,
+      name: name.to_string(),
       iterate_range: None,
       stop_on_first,
       custom_name: true,
@@ -115,7 +115,7 @@ impl<'a> ProgramPattern<'a> {
   {
     Rc::new(RefCell::new(Box::new(Self {
       patterns,
-      name,
+      name: name.to_string(),
       iterate_range: Some(get_range(r)),
       stop_on_first: MatchAction::Continue,
       custom_name: true,
@@ -711,11 +711,11 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
   }
 
   fn get_name(&self) -> &str {
-    self.name
+    self.name.as_str()
   }
 
-  fn set_name(&mut self, name: &'a str) {
-    self.name = name;
+  fn set_name(&mut self, name: &str) {
+    self.name = name.to_string();
     self.custom_name = true;
   }
 

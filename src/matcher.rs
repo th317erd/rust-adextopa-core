@@ -25,7 +25,7 @@ pub type MatcherRef<'a> = Rc<RefCell<Box<dyn Matcher<'a> + 'a>>>;
 pub trait Matcher<'a> {
   fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure>;
   fn get_name(&self) -> &str;
-  fn set_name(&mut self, name: &'a str);
+  fn set_name(&mut self, name: &str);
   fn add_pattern(&mut self, pattern: MatcherRef<'a>);
   fn get_children(&self) -> Option<Vec<MatcherRef<'a>>>;
 

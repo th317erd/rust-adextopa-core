@@ -7,17 +7,17 @@ use crate::parser_context::ParserContextRef;
 use crate::token::StandardToken;
 use regex::Regex;
 
-pub struct MatchesPattern<'a> {
+pub struct MatchesPattern {
   regex: Regex,
-  name: &'a str,
+  name: String,
   custom_name: bool,
 }
 
-impl<'a> MatchesPattern<'a> {
+impl<'a> MatchesPattern {
   pub fn new(regex: Regex) -> MatcherRef<'a> {
     Rc::new(RefCell::new(Box::new(Self {
       regex,
-      name: "Matches",
+      name: "Matches".to_string(),
       custom_name: false,
     })))
   }
@@ -25,13 +25,13 @@ impl<'a> MatchesPattern<'a> {
   pub fn new_with_name(name: &'a str, regex: Regex) -> MatcherRef<'a> {
     Rc::new(RefCell::new(Box::new(Self {
       regex,
-      name,
+      name: name.to_string(),
       custom_name: true,
     })))
   }
 }
 
-impl<'a> Matcher<'a> for MatchesPattern<'a> {
+impl<'a> Matcher<'a> for MatchesPattern {
   fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
     if let Some(range) = context.borrow().matches_regexp(&self.regex) {
       // We got a match, but it has zero length
@@ -55,11 +55,11 @@ impl<'a> Matcher<'a> for MatchesPattern<'a> {
   }
 
   fn get_name(&self) -> &str {
-    self.name
+    self.name.as_str()
   }
 
-  fn set_name(&mut self, name: &'a str) {
-    self.name = name;
+  fn set_name(&mut self, name: &str) {
+    self.name = name.to_string();
     self.custom_name = true;
   }
 

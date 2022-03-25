@@ -83,7 +83,7 @@ impl<'a> Matcher<'a> for DebugPattern<'a> {
     "Debug"
   }
 
-  fn set_name(&mut self, _: &'a str) {
+  fn set_name(&mut self, _: &str) {
     panic!("Can not set `name` on a `Debug` matcher");
   }
 

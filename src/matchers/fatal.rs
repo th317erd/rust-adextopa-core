@@ -23,7 +23,7 @@ impl<'a> Matcher<'a> for FatalPattern<'a> {
     "Error"
   }
 
-  fn set_name(&mut self, _: &'a str) {
+  fn set_name(&mut self, _: &str) {
     panic!("Can not set `name` on a `Fatal` matcher");
   }
 

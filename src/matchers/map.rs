@@ -59,7 +59,7 @@ where
     "Map"
   }
 
-  fn set_name(&mut self, _: &'a str) {
+  fn set_name(&mut self, _: &str) {
     panic!("Can not set `name` on a `Map` matcher");
   }
 

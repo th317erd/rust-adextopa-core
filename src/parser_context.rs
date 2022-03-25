@@ -209,6 +209,13 @@ impl<'a> ParserContext<'a> {
     }
   }
 
+  pub fn get_registered_matcher(&self, name: &str) -> Option<MatcherRef<'a>> {
+    match self.matcher_reference_map.borrow().get(name) {
+      Some(matcher) => Some(matcher.clone()),
+      None => None,
+    }
+  }
+
   pub fn tokenize(
     context: ParserContextRef<'a>,
     matcher: MatcherRef<'a>,
