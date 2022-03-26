@@ -58,10 +58,6 @@ pub trait Matcher<'a> {
     false
   }
 
-  fn swap_with_reference_name(&self) -> Option<&'a str> {
-    None
-  }
-
   fn is_consuming(&self) -> bool {
     true
   }
