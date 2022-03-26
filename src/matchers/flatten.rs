@@ -3,6 +3,7 @@ use crate::parser_context::ParserContextRef;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+#[derive(Debug)]
 pub struct FlattenPattern<'a> {
   matcher: MatcherRef<'a>,
   name: String,
@@ -81,6 +82,10 @@ impl<'a> Matcher<'a> for FlattenPattern<'a> {
 
   fn add_pattern(&mut self, _: MatcherRef<'a>) {
     panic!("Can not add a pattern to a `Flatten` matcher");
+  }
+
+  fn to_string(&self) -> String {
+    format!("{:?}", self)
   }
 }
 

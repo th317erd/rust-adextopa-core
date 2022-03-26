@@ -4,6 +4,7 @@ use std::rc::Rc;
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
 
+#[derive(Debug)]
 pub struct RegisterPattern<'a> {
   patterns: Vec<MatcherRef<'a>>,
 }
@@ -40,6 +41,10 @@ impl<'a> Matcher<'a> for RegisterPattern<'a> {
 
   fn add_pattern(&mut self, pattern: MatcherRef<'a>) {
     self.patterns.push(pattern);
+  }
+
+  fn to_string(&self) -> String {
+    format!("{:?}", self)
   }
 }
 

@@ -13,6 +13,7 @@ pub struct SequencePattern<'a, T>
 where
   T: Fetchable<'a>,
   T: 'a,
+  T: std::fmt::Debug,
 {
   start: T,
   end: T,
@@ -22,10 +23,28 @@ where
   _phantom: PhantomData<&'a T>,
 }
 
+impl<'a, T> std::fmt::Debug for SequencePattern<'a, T>
+where
+  T: Fetchable<'a>,
+  T: 'a,
+  T: std::fmt::Debug,
+{
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.debug_struct("SequencePattern")
+      .field("start", &self.start)
+      .field("end", &self.end)
+      .field("escape", &self.escape)
+      .field("name", &self.name)
+      .field("custom_name", &self.custom_name)
+      .finish()
+  }
+}
+
 impl<'a, T> SequencePattern<'a, T>
 where
   T: Fetchable<'a>,
   T: 'a,
+  T: std::fmt::Debug,
 {
   pub fn new(start: T, end: T, escape: T) -> MatcherRef<'a> {
     Rc::new(RefCell::new(Box::new(Self {
@@ -54,6 +73,7 @@ impl<'a, T> Matcher<'a> for SequencePattern<'a, T>
 where
   T: Fetchable<'a>,
   T: 'a,
+  T: std::fmt::Debug,
 {
   fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
     let start = context.borrow().offset.start;
@@ -160,6 +180,10 @@ where
 
   fn add_pattern(&mut self, _: MatcherRef<'a>) {
     panic!("Can not add a pattern to a `Sequence` matcher");
+  }
+
+  fn to_string(&self) -> String {
+    format!("{:?}", self)
   }
 }
 

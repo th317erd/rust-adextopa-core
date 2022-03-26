@@ -22,12 +22,30 @@ pub enum MatcherFailure {
 
 pub type MatcherRef<'a> = Rc<RefCell<Box<dyn Matcher<'a> + 'a>>>;
 
+impl<'a> std::fmt::Debug for dyn Matcher<'a> + 'a {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.write_str(&self.to_string())
+  }
+}
+
+// trait CustomDebug: std::fmt::Debug {}
+
+// impl<'a> CustomDebug for MatcherRef<'a> {
+//   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//     f.debug_struct("Rc")
+//       .field("ptr", &self.ptr)
+//       .field("phantom", &self.phantom)
+//       .finish()
+//   }
+// }
+
 pub trait Matcher<'a> {
   fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure>;
   fn get_name(&self) -> &str;
   fn set_name(&mut self, name: &str);
   fn add_pattern(&mut self, pattern: MatcherRef<'a>);
   fn get_children(&self) -> Option<Vec<MatcherRef<'a>>>;
+  fn to_string(&self) -> String;
 
   fn set_child(&mut self, _: usize, _: MatcherRef<'a>) {
     panic!(

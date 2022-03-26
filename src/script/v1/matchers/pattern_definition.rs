@@ -15,8 +15,8 @@ macro_rules! ScriptPatternDefinition {
         "Can not use ? and ! at the same time in this context. Use one or the other, not both."
       ),
       $crate::Optional!($crate::Switch!(
-        $crate::Equals!("OptionalModifier"; "?"),
-        $crate::Equals!("NotModifier"; "!"),
+        $crate::Equals!("OuterOptionalModifier"; "?"),
+        $crate::Equals!("OuterNotModifier"; "!"),
       )),
       $crate::Discard!($crate::Equals!("<")),
       // Check for both "optional" and "not",
@@ -26,18 +26,16 @@ macro_rules! ScriptPatternDefinition {
         "Can not use ? and ! at the same time in this context. Use one or the other, not both."
       ),
       $crate::Optional!($crate::Switch!(
-        $crate::Equals!("OptionalModifier"; "?"),
-        $crate::Equals!("NotModifier"; "!"),
+        $crate::Equals!("InnerOptionalModifier"; "?"),
+        $crate::Equals!("InnerNotModifier"; "!"),
       )),
       $crate::ScriptWSN0!(?),
       $crate::ScriptMatcher!(),
       $crate::ScriptWSN0!(?),
       $crate::Optional!(
-        $crate::Flatten!(
-          $crate::Loop!("Attributes";
-            $crate::ScriptAttribute!(),
-            $crate::ScriptWSN0!(?),
-          )
+        $crate::Loop!("Attributes";
+          $crate::ScriptAttribute!(),
+          $crate::ScriptWSN0!(?),
         )
       ),
       $crate::Discard!($crate::Equals!(">")),
@@ -83,7 +81,7 @@ mod tests {
       assert_eq!(token.get_children().len(), 2);
 
       let first = token.get_children()[0].borrow();
-      assert_eq!(first.get_name(), "NotModifier");
+      assert_eq!(first.get_name(), "InnerNotModifier");
       assert_eq!(*first.get_value_range(), SourceRange::new(1, 2));
       assert_eq!(*first.get_raw_range(), SourceRange::new(1, 2));
       assert_eq!(first.value(), "!");
@@ -118,10 +116,10 @@ mod tests {
       assert_eq!(*token.get_raw_range(), SourceRange::new(0, 38));
       assert_eq!(token.value(), "<!/test/i attr1='test' attr2 = 'derp'>");
       assert_eq!(token.raw_value(), "<!/test/i attr1='test' attr2 = 'derp'>");
-      assert_eq!(token.get_children().len(), 4);
+      assert_eq!(token.get_children().len(), 3);
 
       let first = token.get_children()[0].borrow();
-      assert_eq!(first.get_name(), "NotModifier");
+      assert_eq!(first.get_name(), "InnerNotModifier");
       assert_eq!(*first.get_value_range(), SourceRange::new(1, 2));
       assert_eq!(*first.get_raw_range(), SourceRange::new(1, 2));
       assert_eq!(first.value(), "!");
@@ -135,18 +133,26 @@ mod tests {
       assert_eq!(second.raw_value(), "/test/i");
 
       let third = token.get_children()[2].borrow();
-      assert_eq!(third.get_name(), "Attribute");
-      assert_eq!(*third.get_value_range(), SourceRange::new(10, 22));
-      assert_eq!(*third.get_raw_range(), SourceRange::new(10, 22));
-      assert_eq!(third.value(), "attr1='test'");
-      assert_eq!(third.raw_value(), "attr1='test'");
+      assert_eq!(third.get_name(), "Attributes");
+      assert_eq!(*third.get_value_range(), SourceRange::new(10, 37));
+      assert_eq!(*third.get_raw_range(), SourceRange::new(10, 37));
+      assert_eq!(third.value(), "attr1='test' attr2 = 'derp'");
+      assert_eq!(third.raw_value(), "attr1='test' attr2 = 'derp'");
+      assert_eq!(third.get_children().len(), 2);
 
-      let forth = token.get_children()[3].borrow();
-      assert_eq!(forth.get_name(), "Attribute");
-      assert_eq!(*forth.get_value_range(), SourceRange::new(23, 37));
-      assert_eq!(*forth.get_raw_range(), SourceRange::new(23, 37));
-      assert_eq!(forth.value(), "attr2 = 'derp'");
-      assert_eq!(forth.raw_value(), "attr2 = 'derp'");
+      let attr1 = third.get_children()[0].borrow();
+      assert_eq!(attr1.get_name(), "Attribute");
+      assert_eq!(*attr1.get_value_range(), SourceRange::new(10, 22));
+      assert_eq!(*attr1.get_raw_range(), SourceRange::new(10, 22));
+      assert_eq!(attr1.value(), "attr1='test'");
+      assert_eq!(attr1.raw_value(), "attr1='test'");
+
+      let attr2 = third.get_children()[1].borrow();
+      assert_eq!(attr2.get_name(), "Attribute");
+      assert_eq!(*attr2.get_value_range(), SourceRange::new(23, 37));
+      assert_eq!(*attr2.get_raw_range(), SourceRange::new(23, 37));
+      assert_eq!(attr2.value(), "attr2 = 'derp'");
+      assert_eq!(attr2.raw_value(), "attr2 = 'derp'");
     } else {
       unreachable!("Test failed!");
     };
@@ -173,7 +179,7 @@ mod tests {
       assert_eq!(token.get_children().len(), 2);
 
       let first = token.get_children()[0].borrow();
-      assert_eq!(first.get_name(), "NotModifier");
+      assert_eq!(first.get_name(), "OuterNotModifier");
       assert_eq!(*first.get_value_range(), SourceRange::new(0, 1));
       assert_eq!(*first.get_raw_range(), SourceRange::new(0, 1));
       assert_eq!(first.value(), "!");
@@ -211,7 +217,7 @@ mod tests {
       assert_eq!(token.get_children().len(), 2);
 
       let first = token.get_children()[0].borrow();
-      assert_eq!(first.get_name(), "OptionalModifier");
+      assert_eq!(first.get_name(), "InnerOptionalModifier");
       assert_eq!(*first.get_value_range(), SourceRange::new(1, 2));
       assert_eq!(*first.get_raw_range(), SourceRange::new(1, 2));
       assert_eq!(first.value(), "?");

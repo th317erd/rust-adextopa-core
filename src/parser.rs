@@ -3,6 +3,7 @@ use std::{fs, io::Error};
 pub type ParserRef = std::rc::Rc<std::cell::RefCell<Parser>>;
 
 #[allow(unused)]
+#[derive(Debug)]
 pub struct Parser {
   pub(crate) source: String,
   pub(crate) filename: String,

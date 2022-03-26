@@ -18,7 +18,7 @@ pub mod repeat_range;
 pub mod repeat_specifier;
 pub mod repeat_zero_or_more;
 pub mod script;
-pub mod sequence;
+pub mod sequence_matcher;
 pub mod string;
 pub mod switch_matcher;
 pub mod whitespace;

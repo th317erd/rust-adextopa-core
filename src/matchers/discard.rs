@@ -6,6 +6,7 @@ use crate::parser_context::ParserContextRef;
 use crate::source_range::SourceRange;
 use crate::token::{StandardToken, TokenRef};
 
+#[derive(Debug)]
 pub struct DiscardPattern<'a> {
   matcher: MatcherRef<'a>,
 }
@@ -169,6 +170,10 @@ impl<'a> Matcher<'a> for DiscardPattern<'a> {
 
   fn add_pattern(&mut self, _: MatcherRef<'a>) {
     panic!("Can not add a pattern to a `Discard` matcher");
+  }
+
+  fn to_string(&self) -> String {
+    format!("{:?}", self)
   }
 }
 

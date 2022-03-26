@@ -4,11 +4,13 @@ use std::rc::Rc;
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::{ParserContextRef, VariableType};
 
+#[derive(Debug)]
 pub enum StorePatternType<'a> {
   Matcher(MatcherRef<'a>),
   String(String),
 }
 
+#[derive(Debug)]
 pub struct StorePattern<'a> {
   pattern: StorePatternType<'a>,
   name: String,
@@ -98,6 +100,10 @@ impl<'a> Matcher<'a> for StorePattern<'a> {
 
   fn add_pattern(&mut self, _: MatcherRef<'a>) {
     panic!("Can not add a pattern to a `Store` matcher");
+  }
+
+  fn to_string(&self) -> String {
+    format!("{:?}", self)
   }
 }
 

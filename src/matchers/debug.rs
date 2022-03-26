@@ -3,6 +3,7 @@ use crate::parser_context::ParserContextRef;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+#[derive(std::fmt::Debug)]
 pub struct DebugPattern<'a> {
   matcher: Option<MatcherRef<'a>>,
   debug_mode: usize,
@@ -104,6 +105,10 @@ impl<'a> Matcher<'a> for DebugPattern<'a> {
 
   fn add_pattern(&mut self, _: MatcherRef<'a>) {
     panic!("Can not add a pattern to a `Debug` matcher");
+  }
+
+  fn to_string(&self) -> String {
+    format!("{:?}", self)
   }
 }
 

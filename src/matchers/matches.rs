@@ -7,6 +7,7 @@ use crate::parser_context::ParserContextRef;
 use crate::token::StandardToken;
 use regex::Regex;
 
+#[derive(Debug)]
 pub struct MatchesPattern {
   regex: Regex,
   name: String,
@@ -69,6 +70,10 @@ impl<'a> Matcher<'a> for MatchesPattern {
 
   fn add_pattern(&mut self, _: MatcherRef<'a>) {
     panic!("Can not add a pattern to a `Matches` matcher");
+  }
+
+  fn to_string(&self) -> String {
+    format!("{:?}", self)
   }
 }
 

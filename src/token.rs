@@ -1,6 +1,8 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use regex::Regex;
+
 use crate::parser::ParserRef;
 
 use super::source_range::SourceRange;
@@ -107,16 +109,16 @@ impl PartialEq for TokenRefInner {
 
 // Token<'a> is required because name: &'a str is required (name lives as long as the underlying struct)
 pub trait Token {
-  fn get_parser(&self) -> ParserRef;
-  fn get_value_range(&self) -> &SourceRange;
-  fn get_value_range_mut(&mut self) -> &mut SourceRange;
-  fn set_value_range(&mut self, range: SourceRange);
-  fn get_raw_range(&self) -> &SourceRange;
-  fn get_raw_range_mut(&mut self) -> &mut SourceRange;
-  fn set_raw_range(&mut self, range: SourceRange);
+  fn get_parser(&self) -> crate::parser::ParserRef;
+  fn get_value_range(&self) -> &crate::source_range::SourceRange;
+  fn get_value_range_mut(&mut self) -> &mut crate::source_range::SourceRange;
+  fn set_value_range(&mut self, range: crate::source_range::SourceRange);
+  fn get_raw_range(&self) -> &crate::source_range::SourceRange;
+  fn get_raw_range_mut(&mut self) -> &mut crate::source_range::SourceRange;
+  fn set_raw_range(&mut self, range: crate::source_range::SourceRange);
   fn get_name(&self) -> &String;
   fn set_name(&mut self, name: &str);
-  fn get_parent(&self) -> Option<TokenRef>;
+  fn get_parent(&self) -> Option<crate::token::TokenRef>;
   fn set_parent(&mut self, token: Option<crate::token::TokenRef>);
   fn get_children<'b>(&'b self) -> &'b Vec<crate::token::TokenRef>;
   fn get_children_mut<'b>(&'b mut self) -> &'b mut Vec<crate::token::TokenRef>;
@@ -127,6 +129,46 @@ pub trait Token {
   fn get_attribute<'b>(&'b self, name: &str) -> Option<&'b String>;
   fn attribute_equals<'b>(&'b self, name: &str, value: &str) -> bool;
   fn set_attribute(&mut self, name: &str, value: &str) -> Option<String>;
+
+  fn find_child(&self, needle: &str) -> Option<crate::token::TokenRef> {
+    let children = self.get_children();
+    if children.len() == 0 {
+      return None;
+    }
+
+    for child in children {
+      let _child = child.borrow();
+      if _child.get_name() == needle {
+        return Some(child.clone());
+      }
+    }
+
+    None
+  }
+
+  fn find_child_fuzzy(&self, regex: &Regex) -> Option<crate::token::TokenRef> {
+    let children = self.get_children();
+    if children.len() == 0 {
+      return None;
+    }
+
+    for child in children {
+      let _child = child.borrow();
+      if regex.is_match(_child.get_name()) {
+        return Some(child.clone());
+      }
+    }
+
+    None
+  }
+
+  fn has_child(&self, needle: &str) -> bool {
+    match self.find_child(needle) {
+      Some(_) => true,
+      None => false,
+    }
+  }
+
   fn should_discard(&self) -> bool {
     false
   }

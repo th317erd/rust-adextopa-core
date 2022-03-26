@@ -61,6 +61,7 @@ fn parse_offset(start: usize, end: usize, offset_str: &str) -> usize {
   }
 }
 
+#[derive(Debug)]
 pub struct PinToken {
   parser: ParserRef,
   pub value_range: SourceRange,
@@ -210,10 +211,12 @@ impl Token for PinToken {
   }
 }
 
+#[derive(Debug)]
 pub struct PinPattern<'a, T>
 where
   T: Fetchable<'a>,
   T: 'a,
+  T: std::fmt::Debug,
 {
   pattern: Option<MatcherRef<'a>>,
   offset: T,
@@ -223,6 +226,7 @@ impl<'a, T> PinPattern<'a, T>
 where
   T: Fetchable<'a>,
   T: 'a,
+  T: std::fmt::Debug,
 {
   pub fn new(offset: T, pattern: Option<MatcherRef<'a>>) -> MatcherRef<'a> {
     Rc::new(RefCell::new(Box::new(Self { pattern, offset })))
@@ -233,6 +237,7 @@ impl<'a, T> Matcher<'a> for PinPattern<'a, T>
 where
   T: Fetchable<'a>,
   T: 'a,
+  T: std::fmt::Debug,
 {
   fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
     let sub_context = context.borrow().clone_with_name(self.get_name());
@@ -294,6 +299,10 @@ where
 
   fn add_pattern(&mut self, _: MatcherRef<'a>) {
     panic!("Can not add a pattern to a `Equals` matcher");
+  }
+
+  fn to_string(&self) -> String {
+    format!("{:?}", self)
   }
 }
 

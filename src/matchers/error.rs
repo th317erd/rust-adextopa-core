@@ -37,6 +37,7 @@ pub fn new_error_token_with_range(
   token
 }
 
+#[derive(Debug)]
 pub struct ErrorPattern<'a> {
   message: &'a str,
 }
@@ -67,6 +68,10 @@ impl<'a> Matcher<'a> for ErrorPattern<'a> {
 
   fn add_pattern(&mut self, _: MatcherRef<'a>) {
     panic!("Can not add a pattern to a `Error` matcher");
+  }
+
+  fn to_string(&self) -> String {
+    format!("{:?}", self)
   }
 }
 

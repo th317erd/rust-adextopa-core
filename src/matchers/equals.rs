@@ -12,6 +12,7 @@ use super::fetch::Fetchable;
 pub struct EqualsPattern<'a, T>
 where
   T: Fetchable<'a>,
+  T: std::fmt::Debug,
 {
   pattern: T,
   name: String,
@@ -19,10 +20,25 @@ where
   _phantom: PhantomData<&'a T>,
 }
 
+impl<'a, T> std::fmt::Debug for EqualsPattern<'a, T>
+where
+  T: Fetchable<'a>,
+  T: std::fmt::Debug,
+{
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.debug_struct("EqualsPattern")
+      .field("pattern", &self.pattern)
+      .field("name", &self.name)
+      .field("custom_name", &self.custom_name)
+      .finish()
+  }
+}
+
 impl<'a, T> EqualsPattern<'a, T>
 where
   T: Fetchable<'a>,
   T: 'a,
+  T: std::fmt::Debug,
 {
   pub fn new(pattern: T) -> MatcherRef<'a> {
     Rc::new(RefCell::new(Box::new(Self {
@@ -47,6 +63,7 @@ impl<'a, T> Matcher<'a> for EqualsPattern<'a, T>
 where
   T: Fetchable<'a>,
   T: 'a,
+  T: std::fmt::Debug,
 {
   fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
     let sub_context = context.borrow().clone_with_name(self.get_name());
@@ -81,6 +98,10 @@ where
 
   fn add_pattern(&mut self, _: MatcherRef<'a>) {
     panic!("Can not add a pattern to a `Equals` matcher");
+  }
+
+  fn to_string(&self) -> String {
+    format!("{:?}", self)
   }
 }
 

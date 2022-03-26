@@ -53,7 +53,7 @@ mod tests {
       assert_eq!(token.get_children().len(), 2);
 
       let first = token.get_children()[0].borrow();
-      assert_eq!(first.get_name(), "NotModifier");
+      assert_eq!(first.get_name(), "InnerNotModifier");
       assert_eq!(*first.get_value_range(), SourceRange::new(1, 2));
       assert_eq!(*first.get_raw_range(), SourceRange::new(1, 2));
       assert_eq!(first.value(), "!");

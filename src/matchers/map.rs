@@ -13,6 +13,18 @@ where
   map_func: F,
 }
 
+impl<'a, F> std::fmt::Debug for MapPattern<'a, F>
+where
+  F: Fn(TokenRef) -> Option<String>,
+  F: 'a,
+{
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.debug_struct("MapPattern")
+      .field("matcher", &self.matcher)
+      .finish()
+  }
+}
+
 impl<'a, F> MapPattern<'a, F>
 where
   F: Fn(TokenRef) -> Option<String>,
@@ -77,6 +89,10 @@ where
 
   fn add_pattern(&mut self, _: MatcherRef<'a>) {
     panic!("Can not add a pattern to a `Map` matcher");
+  }
+
+  fn to_string(&self) -> String {
+    format!("{:?}", self)
   }
 }
 

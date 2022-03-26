@@ -4,6 +4,7 @@ use std::rc::Rc;
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
 
+#[derive(Debug)]
 pub struct FatalPattern<'a> {
   message: &'a str,
 }
@@ -33,6 +34,10 @@ impl<'a> Matcher<'a> for FatalPattern<'a> {
 
   fn add_pattern(&mut self, _: MatcherRef<'a>) {
     panic!("Can not add a pattern to a `Fatal` matcher");
+  }
+
+  fn to_string(&self) -> String {
+    format!("{:?}", self)
   }
 }
 

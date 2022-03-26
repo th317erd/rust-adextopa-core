@@ -6,7 +6,7 @@ macro_rules! ScriptRepeatRange {
       $crate::ScriptWS0!(?),
       $crate::Matches!("Minimum"; r"\d+"),
       $crate::ScriptWS0!(?),
-      $crate::Optional!($crate::Equals!("Sep"; ",")),
+      $crate::Optional!($crate::Equals!("Seperator"; ",")),
       $crate::ScriptWS0!(?),
       $crate::Optional!($crate::Matches!("Maximum"; r"\d+")),
       $crate::ScriptWS0!(?),
@@ -77,7 +77,7 @@ mod tests {
       assert_eq!(first.raw_value(), "9");
 
       let second = token.get_children()[1].borrow();
-      assert_eq!(second.get_name(), "Sep");
+      assert_eq!(second.get_name(), "Seperator");
       assert_eq!(*second.get_value_range(), SourceRange::new(3, 4));
       assert_eq!(*second.get_raw_range(), SourceRange::new(3, 4));
       assert_eq!(second.value(), ",");
@@ -119,7 +119,7 @@ mod tests {
       assert_eq!(first.raw_value(), "19");
 
       let second = token.get_children()[1].borrow();
-      assert_eq!(second.get_name(), "Sep");
+      assert_eq!(second.get_name(), "Seperator");
       assert_eq!(*second.get_value_range(), SourceRange::new(3, 4));
       assert_eq!(*second.get_raw_range(), SourceRange::new(3, 4));
       assert_eq!(second.value(), ",");

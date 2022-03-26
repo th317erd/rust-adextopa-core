@@ -4,6 +4,7 @@ use std::rc::Rc;
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
 
+#[derive(Debug)]
 pub struct BreakPattern<'a> {
   loop_name: &'a str,
 }
@@ -36,6 +37,10 @@ impl<'a> Matcher<'a> for BreakPattern<'a> {
 
   fn add_pattern(&mut self, _: MatcherRef<'a>) {
     panic!("Can not add a pattern to a `Break` matcher");
+  }
+
+  fn to_string(&self) -> String {
+    format!("{:?}", self)
   }
 }
 

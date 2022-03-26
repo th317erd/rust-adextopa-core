@@ -25,11 +25,13 @@ where
   range
 }
 
+#[derive(Debug)]
 pub enum MatchAction {
   Continue,
   Stop,
 }
 
+#[derive(Debug)]
 pub struct ProgramPattern<'a> {
   patterns: Vec<MatcherRef<'a>>,
   name: String,
@@ -109,7 +111,11 @@ impl<'a> ProgramPattern<'a> {
     })))
   }
 
-  pub fn new_loop_with_name<T>(patterns: Vec<MatcherRef<'a>>, name: &'a str, r: T) -> MatcherRef<'a>
+  pub fn new_loop_with_name_and_range<T>(
+    patterns: Vec<MatcherRef<'a>>,
+    name: &'a str,
+    r: T,
+  ) -> MatcherRef<'a>
   where
     T: RangeBounds<usize>,
   {
@@ -734,6 +740,10 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
   fn add_pattern(&mut self, pattern: MatcherRef<'a>) {
     self.patterns.push(pattern);
   }
+
+  fn to_string(&self) -> String {
+    format!("{:?}", self)
+  }
 }
 
 #[macro_export]
@@ -834,6 +844,22 @@ macro_rules! Loop {
       {
         let mut lm = loop_program.borrow_mut();
         lm.set_name($name);
+
+        $(
+          lm.add_pattern($args);
+        )*
+      }
+
+      loop_program
+    }
+  };
+
+  ($range:expr; $($args:expr),+ $(,)?) => {
+    {
+      let loop_program = $crate::matchers::program::ProgramPattern::new_blank_loop($range);
+
+      {
+        let mut lm = loop_program.borrow_mut();
 
         $(
           lm.add_pattern($args);

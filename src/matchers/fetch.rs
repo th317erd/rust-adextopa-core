@@ -76,6 +76,7 @@ impl<'a> Fetchable<'a> for String {
   }
 }
 
+#[derive(Debug)]
 pub struct FetchPattern {
   name: String,
 }
@@ -115,6 +116,10 @@ impl<'a> Matcher<'a> for FetchPattern {
 
   fn add_pattern(&mut self, _: MatcherRef<'a>) {
     panic!("Can not add a pattern to a `Fetch` matcher");
+  }
+
+  fn to_string(&self) -> String {
+    format!("{:?}", self)
   }
 }
 

@@ -3,6 +3,7 @@ use crate::parser_context::ParserContextRef;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+#[derive(Debug)]
 pub struct OptionalPattern<'a> {
   matcher: MatcherRef<'a>,
 }
@@ -50,6 +51,10 @@ impl<'a> Matcher<'a> for OptionalPattern<'a> {
 
   fn add_pattern(&mut self, _: MatcherRef<'a>) {
     panic!("Can not add a pattern to a `Optional` matcher");
+  }
+
+  fn to_string(&self) -> String {
+    format!("{:?}", self)
   }
 }
 

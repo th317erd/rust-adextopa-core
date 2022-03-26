@@ -4,6 +4,7 @@ use std::rc::Rc;
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
 
+#[derive(Debug)]
 pub struct RefPattern<'a> {
   target_name: &'a str,
 }
@@ -37,6 +38,10 @@ impl<'a> Matcher<'a> for RefPattern<'a> {
 
   fn swap_with_reference_name(&self) -> Option<&'a str> {
     Some(self.target_name)
+  }
+
+  fn to_string(&self) -> String {
+    format!("{:?}", self)
   }
 }
 

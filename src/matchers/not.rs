@@ -4,6 +4,7 @@ use std::rc::Rc;
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
 
+#[derive(Debug)]
 pub struct NotPattern<'a> {
   matcher: MatcherRef<'a>,
 }
@@ -66,6 +67,10 @@ impl<'a> Matcher<'a> for NotPattern<'a> {
 
   fn add_pattern(&mut self, _: MatcherRef<'a>) {
     panic!("Can not add a pattern to a Not pattern");
+  }
+
+  fn to_string(&self) -> String {
+    format!("{:?}", self)
   }
 }
 
