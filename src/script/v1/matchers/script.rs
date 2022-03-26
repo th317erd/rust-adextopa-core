@@ -22,7 +22,7 @@ mod tests {
     parser::Parser,
     parser_context::{ParserContext, ParserContextRef},
     source_range::SourceRange,
-    ScriptProgramMatcher, ScriptSwitchMatcher,
+    Debug, ScriptProgramMatcher, ScriptSwitchMatcher,
   };
 
   fn register_matchers(parser_context: &ParserContextRef) {
@@ -36,7 +36,7 @@ mod tests {
     let source = " <='test'>\n\t(</test/i>)\n";
     let parser = Parser::new(source);
     let parser_context = ParserContext::new(&parser, "Test");
-    let matcher = Script!();
+    let matcher = Debug!(Script!());
 
     register_matchers(&parser_context);
 
@@ -44,6 +44,9 @@ mod tests {
 
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
+
+      println!("{:?}", token);
+
       assert_eq!(token.get_name(), "Script");
       assert_eq!(*token.get_value_range(), SourceRange::new(0, 24));
       assert_eq!(*token.get_raw_range(), SourceRange::new(0, 24));

@@ -171,38 +171,6 @@ impl<'a> ParserContext<'a> {
     }
   }
 
-  fn substitute_matcher_references(&self, matcher: MatcherRef<'a>) {
-    let children = matcher.borrow().get_children();
-
-    match children {
-      Some(children) => {
-        let mut index: usize = 0;
-
-        for child in children {
-          let ref_name = child.borrow().swap_with_reference_name();
-          match ref_name {
-            Some(name) => {
-              let ref_map = self.matcher_reference_map.borrow();
-              let reference = ref_map.get(&name.to_string());
-              match reference {
-                Some(matcher_ref) => matcher.borrow_mut().set_child(index, matcher_ref.clone()),
-                None => {
-                  panic!("Unable to find pattern reference named `{}`", name);
-                }
-              }
-            }
-            None => {
-              self.substitute_matcher_references(child.clone());
-            }
-          }
-
-          index += 1;
-        }
-      }
-      None => {}
-    }
-  }
-
   pub fn register_matchers(&self, matchers: Vec<MatcherRef<'a>>) {
     for matcher in matchers {
       self.capture_matcher_references(matcher.clone());
@@ -221,10 +189,6 @@ impl<'a> ParserContext<'a> {
     matcher: MatcherRef<'a>,
   ) -> Result<MatcherSuccess, MatcherFailure> {
     context.borrow().capture_matcher_references(matcher.clone());
-    context
-      .borrow()
-      .substitute_matcher_references(matcher.clone());
-
     matcher.borrow().exec(context.clone())
   }
 }

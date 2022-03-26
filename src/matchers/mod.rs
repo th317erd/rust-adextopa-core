@@ -11,6 +11,7 @@ pub mod flatten;
 pub mod map;
 pub mod matches;
 pub mod not;
+pub mod null;
 pub mod optional;
 pub mod r#panic;
 pub mod r#panic_not;

@@ -19,7 +19,7 @@ where
   }
 
   if let Bound::Excluded(end) = r.end_bound() {
-    range.start = *end;
+    range.end = *end;
   }
 
   range
@@ -31,13 +31,34 @@ pub enum MatchAction {
   Stop,
 }
 
-#[derive(Debug)]
 pub struct ProgramPattern<'a> {
   patterns: Vec<MatcherRef<'a>>,
   name: String,
   pub(self) iterate_range: Option<Range<usize>>,
-  pub(self) stop_on_first: MatchAction,
+  pub(self) on_first_match: MatchAction,
   custom_name: bool,
+}
+
+impl<'a> std::fmt::Debug for ProgramPattern<'a> {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    let name: &str;
+
+    if self.iterate_range.is_some() {
+      name = "LoopPattern";
+    } else if let MatchAction::Stop = self.on_first_match {
+      name = "SwitchPattern";
+    } else {
+      name = "ProgramPattern";
+    }
+
+    f.debug_struct(name)
+      .field("patterns", &self.patterns)
+      .field("name", &self.name)
+      .field("iterate_range", &self.iterate_range)
+      .field("on_first_match", &self.on_first_match)
+      .field("custom_name", &self.custom_name)
+      .finish()
+  }
 }
 
 impl<'a> ProgramPattern<'a> {
@@ -51,7 +72,7 @@ impl<'a> ProgramPattern<'a> {
       patterns: Vec::new(),
       iterate_range: None,
       name: name.to_string(),
-      stop_on_first,
+      on_first_match: stop_on_first,
       custom_name: false,
     })))
   }
@@ -64,7 +85,7 @@ impl<'a> ProgramPattern<'a> {
       patterns: Vec::new(),
       name: "Loop".to_string(),
       iterate_range: Some(get_range(r)),
-      stop_on_first: MatchAction::Continue,
+      on_first_match: MatchAction::Continue,
       custom_name: false,
     })))
   }
@@ -79,7 +100,7 @@ impl<'a> ProgramPattern<'a> {
       patterns,
       iterate_range: None,
       name: name.to_string(),
-      stop_on_first,
+      on_first_match: stop_on_first,
       custom_name: false,
     })))
   }
@@ -92,7 +113,7 @@ impl<'a> ProgramPattern<'a> {
       patterns,
       name: "Loop".to_string(),
       iterate_range: Some(get_range(r)),
-      stop_on_first: MatchAction::Continue,
+      on_first_match: MatchAction::Continue,
       custom_name: false,
     })))
   }
@@ -106,7 +127,7 @@ impl<'a> ProgramPattern<'a> {
       patterns,
       name: name.to_string(),
       iterate_range: None,
-      stop_on_first,
+      on_first_match: stop_on_first,
       custom_name: true,
     })))
   }
@@ -123,7 +144,7 @@ impl<'a> ProgramPattern<'a> {
       patterns,
       name: name.to_string(),
       iterate_range: Some(get_range(r)),
-      stop_on_first: MatchAction::Continue,
+      on_first_match: MatchAction::Continue,
       custom_name: true,
     })))
   }
@@ -144,13 +165,34 @@ fn finalize_program_token<'a>(
   children: Vec<TokenRef>,
   value_range: SourceRange,
   raw_range: SourceRange,
-  is_loop: bool,
+  iterate_range: &Option<Range<usize>>,
+  loop_count: usize,
+  fail_on_range_mismatch: bool,
 ) -> Result<MatcherSuccess, MatcherFailure> {
+  // On "Break" from loop, we skip
+  // this part, as we don't want
+  // to trigger a failure due to a range
+  // mismatch on a "Break"
+
+  if fail_on_range_mismatch {
+    if let Some(range) = iterate_range {
+      if range.start == 0 && loop_count == 0 && children.len() == 0 {
+        return Ok(MatcherSuccess::Skip(0));
+      }
+
+      // If we matched less than we were supposed to, then fail
+      if loop_count < range.start {
+        return Err(MatcherFailure::Fail);
+      }
+    }
+  }
+
+  // Fail if nothing was collected
   if value_range.start == usize::MAX || raw_range.start == usize::MAX {
     return Err(MatcherFailure::Fail);
   }
 
-  if is_loop && children.len() == 0 {
+  if children.len() < 1 {
     return Err(MatcherFailure::Fail);
   }
 
@@ -415,6 +457,7 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
       None => (0..1),
     };
     let mut iteration_result: Option<MatcherSuccess>;
+    let mut loop_count = 0;
 
     for _ in iterate_range {
       iteration_result = None;
@@ -433,7 +476,7 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
                 continue;
               }
 
-              match self.stop_on_first {
+              match self.on_first_match {
                 MatchAction::Stop => {
                   return Ok(MatcherSuccess::Token(token.clone()));
                 }
@@ -459,7 +502,7 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
                 continue;
               }
 
-              match self.stop_on_first {
+              match self.on_first_match {
                 MatchAction::Stop => {
                   return Ok(MatcherSuccess::ExtractChildren(token.clone()));
                 }
@@ -521,11 +564,13 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
                 children,
                 value_range,
                 raw_range,
-                is_loop,
+                &self.iterate_range,
+                loop_count,
+                false,
               );
             } else {
               match failure {
-                MatcherFailure::Fail => match self.stop_on_first {
+                MatcherFailure::Fail => match self.on_first_match {
                   MatchAction::Stop => {
                     continue;
                   }
@@ -598,7 +643,9 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
                 children,
                 value_range,
                 raw_range,
-                is_loop,
+                &self.iterate_range,
+                loop_count,
+                false,
               );
             } else {
               match &*data {
@@ -615,8 +662,15 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
                 _ => {}
               }
 
-              match finalize_program_token(program_token, children, value_range, raw_range, is_loop)
-              {
+              match finalize_program_token(
+                program_token,
+                children,
+                value_range,
+                raw_range,
+                &self.iterate_range,
+                loop_count,
+                false,
+              ) {
                 Ok(final_token) => {
                   return Ok(MatcherSuccess::Break((loop_name, Box::new(final_token))));
                 }
@@ -689,8 +743,15 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
                 _ => {}
               }
 
-              match finalize_program_token(program_token, children, value_range, raw_range, is_loop)
-              {
+              match finalize_program_token(
+                program_token,
+                children,
+                value_range,
+                raw_range,
+                &self.iterate_range,
+                loop_count,
+                false,
+              ) {
                 Ok(final_token) => {
                   return Ok(MatcherSuccess::Continue((loop_name, Box::new(final_token))));
                 }
@@ -705,11 +766,21 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
           }
           _ => unreachable!(),
         },
-        None => continue,
+        None => {}
       }
+
+      loop_count += 1;
     }
 
-    finalize_program_token(program_token, children, value_range, raw_range, is_loop)
+    finalize_program_token(
+      program_token,
+      children,
+      value_range,
+      raw_range,
+      &self.iterate_range,
+      loop_count,
+      true,
+    )
   }
 
   fn has_custom_name(&self) -> bool {
@@ -780,6 +851,12 @@ macro_rules! Program {
       program
     }
   };
+
+  () => {
+    {
+      $crate::matchers::program::ProgramPattern::new_blank_program($crate::matchers::program::MatchAction::Continue)
+    }
+  };
 }
 
 #[macro_export]
@@ -814,6 +891,12 @@ macro_rules! Switch {
       }
 
       program
+    }
+  };
+
+  () => {
+    {
+      $crate::matchers::program::ProgramPattern::new_blank_program($crate::matchers::program::MatchAction::Stop)
     }
   };
 }
@@ -883,6 +966,12 @@ macro_rules! Loop {
       }
 
       loop_program
+    }
+  };
+
+  () => {
+    {
+      $crate::matchers::program::ProgramPattern::new_blank_loop(0..)
     }
   };
 }

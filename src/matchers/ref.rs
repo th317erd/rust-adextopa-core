@@ -1,23 +1,68 @@
 use std::cell::RefCell;
+use std::marker::PhantomData;
 use std::rc::Rc;
 
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
 
-#[derive(Debug)]
-pub struct RefPattern<'a> {
-  target_name: &'a str,
+use super::fetch::Fetchable;
+
+pub struct RefPattern<'a, T>
+where
+  T: Fetchable<'a>,
+  T: 'a,
+  T: std::fmt::Debug,
+{
+  target_name: T,
+  _phantom: PhantomData<&'a T>,
 }
 
-impl<'a> RefPattern<'a> {
-  pub fn new(target_name: &'a str) -> MatcherRef<'a> {
-    Rc::new(RefCell::new(Box::new(RefPattern { target_name })))
+impl<'a, T> std::fmt::Debug for RefPattern<'a, T>
+where
+  T: Fetchable<'a>,
+  T: 'a,
+  T: std::fmt::Debug,
+{
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.debug_struct("RefPattern")
+      .field("target_name", &self.target_name)
+      .finish()
   }
 }
 
-impl<'a> Matcher<'a> for RefPattern<'a> {
-  fn exec(&self, _: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
-    panic!("`exec` called on a `Ref` pattern, which should never be executed. `Ref` matchers are only meant for reference substitution. Did you call `matcher.exec` instead of `PatternContext::tokenize`?")
+impl<'a, T> RefPattern<'a, T>
+where
+  T: Fetchable<'a>,
+  T: 'a,
+  T: std::fmt::Debug,
+{
+  pub fn new(target_name: T) -> MatcherRef<'a> {
+    Rc::new(RefCell::new(Box::new(RefPattern {
+      target_name,
+      _phantom: PhantomData,
+    })))
+  }
+}
+
+impl<'a, T> Matcher<'a> for RefPattern<'a, T>
+where
+  T: Fetchable<'a>,
+  T: 'a,
+  T: std::fmt::Debug,
+{
+  fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
+    let sub_context = context.borrow().clone_with_name(self.get_name());
+    let target_name = self.target_name.fetch_value(sub_context.clone());
+    let possible_matcher = sub_context.borrow().get_registered_matcher(&target_name);
+
+    if let Some(matcher) = possible_matcher {
+      matcher.borrow().exec(sub_context)
+    } else {
+      return Err(MatcherFailure::Error(format!(
+        "`Ref` matcher unable to locate target reference `{}`",
+        target_name
+      )));
+    }
   }
 
   fn get_name(&self) -> &str {
@@ -34,10 +79,6 @@ impl<'a> Matcher<'a> for RefPattern<'a> {
 
   fn add_pattern(&mut self, _: MatcherRef<'a>) {
     panic!("Can not add a pattern to a `Ref` matcher");
-  }
-
-  fn swap_with_reference_name(&self) -> Option<&'a str> {
-    Some(self.target_name)
   }
 
   fn to_string(&self) -> String {

@@ -14,7 +14,7 @@ macro_rules! ScriptRegexMatcher {
           // Is this the final closing / of the regex? ... if so, break
           $crate::Flatten!($crate::Program!(
             $crate::Discard!($crate::Equals!("/")),
-            $crate::Matches!("Flags"; r"[im]*"),
+            $crate::Matches!("Flags"; r"[imsU]*"),
             $crate::Break!("RegexCaptureLoop"),
           )),
           // Is this a character sequence?

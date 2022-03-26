@@ -9,7 +9,7 @@ use crate::{
   parser::{Parser, ParserRef},
   parser_context::{ParserContext, ParserContextRef},
   token::TokenRef,
-  Loop, Not, Optional, Visit,
+  Loop, Not, Optional, ScriptProgramMatcher, ScriptSwitchMatcher, Visit,
 };
 
 use super::matchers::repeat_specifier::get_repeat_specifier_range;
@@ -36,6 +36,82 @@ fn construct_matcher_from_inner_definition<'a>(
     }
 
     Ok(crate::Equals!(value))
+  } else if matcher_token_name == "RegexMatcher" {
+    let mut value = matcher_token.get_children()[0].borrow().value();
+    if value == "" {
+      return Err("Value can not be empty for a `Matches` pattern definition".to_string());
+    }
+
+    if let Some(flags) = matcher_token.find_child("Flags") {
+      value = format!("(?{}){}", flags.borrow().value(), &value);
+    }
+
+    Ok(crate::Matches!(&value))
+  } else if matcher_token_name == "SequenceMatcher" {
+    let start_pattern = matcher_token.get_children()[0].borrow();
+    let end_pattern = matcher_token.get_children()[1].borrow();
+    let escape_pattern = matcher_token.get_children()[2].borrow();
+
+    if start_pattern.value().len() == 0 {
+      panic!("Sequence `start` pattern of \"\" makes no sense");
+    }
+
+    if end_pattern.value().len() == 0 {
+      panic!("Sequence `end` pattern of \"\" makes no sense");
+    }
+
+    Ok(crate::Sequence!(
+      start_pattern.value(),
+      end_pattern.value(),
+      escape_pattern.value()
+    ))
+  } else if matcher_token_name == "CustomMatcher" {
+    let identifier = matcher_token.get_children()[0].borrow().value();
+    if identifier == "" {
+      return Err(
+        "Identifier can not be empty for a `CustomMatcher` pattern definition".to_string(),
+      );
+    }
+
+    Ok(crate::Ref!(identifier))
+  } else if matcher_token_name == "SwitchMatcher" {
+    let children = matcher_token.get_children();
+
+    // If this switch has no children...
+    // then just return a Null matcher instead
+    if children.len() == 0 {
+      return Ok(crate::Null!());
+    }
+
+    let switch_matcher = crate::Switch!();
+    let mut _switch_matcher = switch_matcher.borrow_mut();
+    for child in children {
+      let matcher = construct_matcher_from_pattern(parser_context.clone(), child.clone())?;
+      _switch_matcher.add_pattern(matcher);
+    }
+
+    drop(_switch_matcher);
+
+    Ok(switch_matcher)
+  } else if matcher_token_name == "ProgramMatcher" {
+    let children = matcher_token.get_children();
+
+    // If this switch has no children...
+    // then just return a Null matcher instead
+    if children.len() == 0 {
+      return Ok(crate::Null!());
+    }
+
+    let program_matcher = crate::Program!();
+    let mut _program_matcher = program_matcher.borrow_mut();
+    for child in children {
+      let matcher = construct_matcher_from_pattern(parser_context.clone(), child.clone())?;
+      _program_matcher.add_pattern(matcher);
+    }
+
+    drop(_program_matcher);
+
+    Ok(program_matcher)
   } else {
     Err("Unkown pattern type".to_string())
   }
@@ -104,6 +180,43 @@ fn construct_matcher_from_pattern_definition<'a>(
   Ok(matcher)
 }
 
+fn construct_matcher_from_pattern<'a>(
+  parser_context: ParserContextRef<'a>,
+  token: TokenRef,
+) -> Result<MatcherRef<'a>, String> {
+  let _token = token.borrow();
+  let token_name = _token.get_name();
+
+  if token_name == "PatternDefinitionCaptured" {
+    if let Some(name_token) = _token.find_child("MatcherName") {
+      let name_token = name_token.borrow();
+      let name_child = name_token.get_children()[0].borrow();
+      let name = name_child.get_name();
+
+      construct_matcher_from_pattern_definition(
+        parser_context,
+        _token.get_children()[1].clone(),
+        name,
+        true,
+      )
+    } else {
+      construct_matcher_from_pattern_definition(
+        parser_context,
+        _token.get_children()[0].clone(),
+        "",
+        true,
+      )
+    }
+  } else if token_name == "PatternDefinition" {
+    construct_matcher_from_pattern_definition(parser_context, token.clone(), "", false)
+  } else {
+    Err(format!(
+      "Expected a `PatternDefinitionCaptured`, or `PatternDefinition` token, but received a `{}` token instead",
+      token_name
+    ))
+  }
+}
+
 fn build_matcher_from_tokens<'a, 'b>(
   root_token: TokenRef,
   parser_context: ParserContextRef<'a>,
@@ -157,9 +270,14 @@ fn build_matcher_from_tokens<'a, 'b>(
 
 pub fn compile_script<'a>(parser: ParserRef) -> Result<MatcherRef<'a>, String> {
   let parser_context = ParserContext::new(&parser, "Script");
+
+  (*parser_context)
+    .borrow()
+    .register_matchers(vec![ScriptSwitchMatcher!(), ScriptProgramMatcher!()]);
+
   let pattern = crate::Script!();
 
-  let result = pattern.borrow().exec(parser_context.clone());
+  let result = ParserContext::tokenize(parser_context.clone(), pattern);
   match result {
     Ok(result) => match result {
       MatcherSuccess::Token(token) => {
@@ -211,6 +329,7 @@ mod tests {
     matcher::MatcherSuccess,
     parser::Parser,
     parser_context::{ParserContext, ParserContextRef},
+    script::current::parser::construct_matcher_from_pattern,
     source_range::SourceRange,
     ScriptPattern, ScriptPatternDefinition, ScriptProgramMatcher, ScriptSwitchMatcher,
   };
@@ -235,6 +354,89 @@ mod tests {
   fn it_can_construct_an_equals_matcher_from_a_pattern_token1() {
     let parser = Parser::new(r"<='test'>");
     let parser_context = ParserContext::new(&parser, "Test");
+    let matcher = ScriptPattern!();
+
+    register_matchers(&parser_context);
+
+    let result = ParserContext::tokenize(parser_context.clone(), matcher);
+
+    if let Ok(MatcherSuccess::Token(token)) = result {
+      let recreated_matcher = construct_matcher_from_pattern(parser_context.clone(), token.clone());
+
+      assert_eq!(recreated_matcher.is_ok(), true);
+      let recreated_matcher = recreated_matcher.unwrap();
+      let recreated_matcher = recreated_matcher.borrow();
+
+      assert_eq!(recreated_matcher.get_name(), "Discard");
+      assert_eq!(recreated_matcher.get_children().unwrap().len(), 1);
+
+      let children = recreated_matcher.get_children().unwrap();
+      let child = children[0].borrow();
+      assert_eq!(
+        child.to_string(),
+        "EqualsPattern { pattern: \"test\", name: \"Equals\", custom_name: false }"
+      );
+    } else {
+      unreachable!("Test failed!");
+    };
+  }
+
+  #[test]
+  fn it_can_construct_an_equals_matcher_from_a_pattern_token2() {
+    let parser = Parser::new(r"(<='test'>{2,3})");
+    let parser_context = ParserContext::new(&parser, "Test");
+    let matcher = ScriptPattern!();
+
+    register_matchers(&parser_context);
+
+    let result = ParserContext::tokenize(parser_context.clone(), matcher);
+
+    if let Ok(MatcherSuccess::Token(token)) = result {
+      let recreated_matcher = construct_matcher_from_pattern(parser_context.clone(), token.clone());
+
+      assert_eq!(recreated_matcher.is_ok(), true);
+      let recreated_matcher = recreated_matcher.unwrap();
+      let recreated_matcher = recreated_matcher.borrow();
+
+      assert_eq!(
+        recreated_matcher.to_string(),
+        "LoopPattern { patterns: [RefCell { value: EqualsPattern { pattern: \"test\", name: \"Equals\", custom_name: false } }], name: \"Loop\", iterate_range: Some(2..3), on_first_match: Continue, custom_name: false }"
+      );
+    } else {
+      unreachable!("Test failed!");
+    };
+  }
+
+  #[test]
+  fn it_can_construct_an_equals_matcher_from_a_pattern_token3() {
+    let parser = Parser::new(r"(?'Test'<='test'>+)");
+    let parser_context = ParserContext::new(&parser, "Test");
+    let matcher = ScriptPattern!();
+
+    register_matchers(&parser_context);
+
+    let result = ParserContext::tokenize(parser_context.clone(), matcher);
+
+    if let Ok(MatcherSuccess::Token(token)) = result {
+      let recreated_matcher = construct_matcher_from_pattern(parser_context.clone(), token.clone());
+
+      assert_eq!(recreated_matcher.is_ok(), true);
+      let recreated_matcher = recreated_matcher.unwrap();
+      let recreated_matcher = recreated_matcher.borrow();
+
+      assert_eq!(
+        recreated_matcher.to_string(),
+        "LoopPattern { patterns: [RefCell { value: EqualsPattern { pattern: \"test\", name: \"Name\", custom_name: true } }], name: \"Loop\", iterate_range: Some(1..18446744073709551615), on_first_match: Continue, custom_name: false }"
+      );
+    } else {
+      unreachable!("Test failed!");
+    };
+  }
+
+  #[test]
+  fn it_can_construct_a_regex_matcher_from_a_pattern_token1() {
+    let parser = Parser::new(r"</test/i>");
+    let parser_context = ParserContext::new(&parser, "Test");
     let matcher = ScriptPatternDefinition!();
 
     register_matchers(&parser_context);
@@ -242,7 +444,6 @@ mod tests {
     let result = ParserContext::tokenize(parser_context.clone(), matcher);
 
     if let Ok(MatcherSuccess::Token(token)) = result {
-      println!("{:?}", token.borrow());
       let recreated_matcher =
         construct_matcher_from_pattern_definition(parser_context.clone(), token.clone(), "", false);
 
@@ -257,7 +458,120 @@ mod tests {
       let child = children[0].borrow();
       assert_eq!(
         child.to_string(),
-        "EqualsPattern { pattern: \"test\", name: \"Equals\", custom_name: false }"
+        "MatchesPattern { regex: (?i)test, name: \"Matches\", custom_name: false }"
+      );
+    } else {
+      unreachable!("Test failed!");
+    };
+  }
+
+  #[test]
+  fn it_can_construct_a_sequence_matcher_from_a_pattern_token1() {
+    let parser = Parser::new(r"<%'[',']','\\'>");
+    let parser_context = ParserContext::new(&parser, "Test");
+    let matcher = ScriptPatternDefinition!();
+
+    register_matchers(&parser_context);
+
+    let result = ParserContext::tokenize(parser_context.clone(), matcher);
+
+    if let Ok(MatcherSuccess::Token(token)) = result {
+      let recreated_matcher =
+        construct_matcher_from_pattern_definition(parser_context.clone(), token.clone(), "", false);
+
+      assert_eq!(recreated_matcher.is_ok(), true);
+      let recreated_matcher = recreated_matcher.unwrap();
+      let recreated_matcher = recreated_matcher.borrow();
+
+      assert_eq!(recreated_matcher.get_name(), "Discard");
+      assert_eq!(recreated_matcher.get_children().unwrap().len(), 1);
+
+      let children = recreated_matcher.get_children().unwrap();
+      let child = children[0].borrow();
+      assert_eq!(
+        child.to_string(),
+        "SequencePattern { start: \"[\", end: \"]\", escape: \"\\\\\", name: \"Sequence\", custom_name: false }"
+      );
+    } else {
+      unreachable!("Test failed!");
+    };
+  }
+
+  #[test]
+  fn it_can_construct_a_custom_matcher_from_a_pattern_token1() {
+    let parser = Parser::new(r"<Test>");
+    let parser_context = ParserContext::new(&parser, "Test");
+    let matcher = ScriptPatternDefinition!();
+
+    register_matchers(&parser_context);
+
+    let result = ParserContext::tokenize(parser_context.clone(), matcher);
+
+    if let Ok(MatcherSuccess::Token(token)) = result {
+      let recreated_matcher =
+        construct_matcher_from_pattern_definition(parser_context.clone(), token.clone(), "", false);
+
+      assert_eq!(recreated_matcher.is_ok(), true);
+      let recreated_matcher = recreated_matcher.unwrap();
+      let recreated_matcher = recreated_matcher.borrow();
+
+      assert_eq!(recreated_matcher.get_name(), "Discard");
+      assert_eq!(recreated_matcher.get_children().unwrap().len(), 1);
+
+      let children = recreated_matcher.get_children().unwrap();
+      let child = children[0].borrow();
+      assert_eq!(child.to_string(), "RefPattern { target_name: \"Test\" }");
+    } else {
+      unreachable!("Test failed!");
+    };
+  }
+
+  #[test]
+  fn it_can_construct_a_switch_matcher_from_a_pattern_token1() {
+    let parser = Parser::new(r"(<[<='test'>|(?'Derp'</wow/i>)]>)");
+    let parser_context = ParserContext::new(&parser, "Test");
+    let matcher = ScriptPattern!();
+
+    register_matchers(&parser_context);
+
+    let result = ParserContext::tokenize(parser_context.clone(), matcher);
+
+    if let Ok(MatcherSuccess::Token(token)) = result {
+      let recreated_matcher = construct_matcher_from_pattern(parser_context.clone(), token.clone());
+
+      assert_eq!(recreated_matcher.is_ok(), true);
+      let recreated_matcher = recreated_matcher.unwrap();
+      let recreated_matcher = recreated_matcher.borrow();
+
+      assert_eq!(
+        recreated_matcher.to_string(),
+        "SwitchPattern { patterns: [RefCell { value: DiscardPattern { matcher: RefCell { value: EqualsPattern { pattern: \"test\", name: \"Equals\", custom_name: false } } } }, RefCell { value: MatchesPattern { regex: (?i)wow, name: \"Name\", custom_name: true } }], name: \"Switch\", iterate_range: None, on_first_match: Stop, custom_name: false }"
+      );
+    } else {
+      unreachable!("Test failed!");
+    };
+  }
+
+  #[test]
+  fn it_can_construct_a_program_matcher_from_a_pattern_token1() {
+    let parser = Parser::new(r"(<{<='test'>(?'Derp'</wow/i>)}>)");
+    let parser_context = ParserContext::new(&parser, "Test");
+    let matcher = ScriptPattern!();
+
+    register_matchers(&parser_context);
+
+    let result = ParserContext::tokenize(parser_context.clone(), matcher);
+
+    if let Ok(MatcherSuccess::Token(token)) = result {
+      let recreated_matcher = construct_matcher_from_pattern(parser_context.clone(), token.clone());
+
+      assert_eq!(recreated_matcher.is_ok(), true);
+      let recreated_matcher = recreated_matcher.unwrap();
+      let recreated_matcher = recreated_matcher.borrow();
+
+      assert_eq!(
+        recreated_matcher.to_string(),
+        "ProgramPattern { patterns: [RefCell { value: DiscardPattern { matcher: RefCell { value: EqualsPattern { pattern: \"test\", name: \"Equals\", custom_name: false } } } }, RefCell { value: MatchesPattern { regex: (?i)wow, name: \"Name\", custom_name: true } }], name: \"Program\", iterate_range: None, on_first_match: Continue, custom_name: false }"
       );
     } else {
       unreachable!("Test failed!");
