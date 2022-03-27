@@ -222,7 +222,19 @@ fn add_token_to_children<'a>(
 
       if assert_moving_forward && update_offsets {
         // Ensure that we are moving forward, and that the token doesn't have a zero width
-        assert!(token.get_raw_range().end != context.borrow().offset.start);
+        if token.get_raw_range().end == context.borrow().offset.start {
+          if context.borrow().debug_mode_level() > 1 {
+            print!("{{{}/AddChild}} ", program_token.borrow().get_name());
+          }
+
+          println!(
+            "`{}` Panic! Not moving forward when attempting to add child `{}`...",
+            program_token.borrow().get_name(),
+            token.get_name()
+          );
+
+          assert!(token.get_raw_range().end != context.borrow().offset.start);
+        }
       }
 
       if update_offsets {
@@ -277,10 +289,10 @@ fn handle_token(
   assert_moving_forward: bool,
   update_offsets: bool,
 ) {
-  if context.borrow().debug_mode_level() > 1 {
+  if context.borrow().debug_mode_level() > 0 {
     let token = token.borrow();
 
-    if context.borrow().debug_mode_level() > 2 {
+    if context.borrow().debug_mode_level() > 1 {
       print!("{{{}/Token}} ", program.get_name());
     }
 
@@ -307,7 +319,7 @@ fn handle_token(
   );
 
   if context.borrow().is_debug_mode() {
-    if context.borrow().debug_mode_level() > 2 {
+    if context.borrow().debug_mode_level() > 1 {
       print!("{{{}/Token}} ", program.get_name());
     }
 
@@ -336,7 +348,7 @@ fn handle_extract_token(
   let should_discard = token.should_discard();
 
   if context.borrow().is_debug_mode() {
-    if context.borrow().debug_mode_level() > 2 {
+    if context.borrow().debug_mode_level() > 1 {
       print!("{{{}/ExtractChildren}} ", program.get_name());
     }
 
@@ -355,8 +367,8 @@ fn handle_extract_token(
     contain_source_range(raw_range, &token.get_raw_range());
   }
 
-  if context.borrow().debug_mode_level() > 1 {
-    if context.borrow().debug_mode_level() > 2 {
+  if context.borrow().debug_mode_level() > 0 {
+    if context.borrow().debug_mode_level() > 1 {
       print!("{{{}/ExtractChildren}} ", program.get_name());
     }
 
@@ -374,10 +386,10 @@ fn handle_extract_token(
       continue;
     }
 
-    if context.borrow().debug_mode_level() > 1 {
+    if context.borrow().debug_mode_level() > 0 {
       let child = child.borrow();
 
-      if context.borrow().debug_mode_level() > 2 {
+      if context.borrow().debug_mode_level() > 1 {
         print!("{{{}/ExtractChildren}} ", program.get_name());
       }
 
@@ -397,7 +409,7 @@ fn handle_extract_token(
       value_range,
       raw_range,
       &child,
-      assert_moving_forward,
+      false,
       update_offsets && !should_discard,
     );
   }
@@ -414,7 +426,7 @@ fn handle_skip(
   let new_offset = context.borrow().offset.start + offset as usize;
 
   if context.borrow().is_debug_mode() {
-    if context.borrow().debug_mode_level() > 2 {
+    if context.borrow().debug_mode_level() > 1 {
       print!("{{{}/Skip}} ", program.get_name());
     }
 
@@ -524,6 +536,15 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
               );
             }
             MatcherSuccess::Skip(amount) => {
+              if amount > 0 {
+                match self.on_first_match {
+                  MatchAction::Stop => {
+                    return Ok(MatcherSuccess::Skip(amount));
+                  }
+                  _ => {}
+                }
+              }
+
               if pattern.borrow().is_consuming() {
                 handle_skip(
                   self,
@@ -545,12 +566,12 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
           Err(failure) => {
             let sub_context = sub_context.borrow();
             if sub_context.is_debug_mode() {
-              if sub_context.debug_mode_level() > 2 {
+              if sub_context.debug_mode_level() > 1 {
                 print!("{{{}/Failure}} ", program_token.borrow().get_name());
               }
 
               println!(
-                "`{}` failure! -->|{}|--> @[{}-{}]",
+                "`{}` Failure! -->|{}|--> @[{}-{}]",
                 self.get_name(),
                 sub_context.debug_range(10),
                 sub_context.offset.start,

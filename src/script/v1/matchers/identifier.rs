@@ -1,5 +1,9 @@
 #[macro_export]
 macro_rules! ScriptIdentifier {
+  ($name:expr) => {
+    $crate::Matches!($name; r"[a-zA-Z$_][a-zA-Z0-9$_]*")
+  };
+
   () => {
     $crate::Matches!("Identifier"; r"[a-zA-Z$_][a-zA-Z0-9$_]*")
   };

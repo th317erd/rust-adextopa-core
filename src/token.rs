@@ -52,7 +52,7 @@ impl core::fmt::Debug for TokenRefInner {
 
     let result = write!(
       f,
-      "{}{}(\n{}ValueRange({}, {}),\n{}RawRange({}, {}),\n{}Value({}),\n{}RawValue({}),\n{}Parent({}),\n{}Children [",
+      "{}{}(\n{}ValueRange({}, {}),\n{}RawRange({}, {}),\n{}Value({}),\n{}RawValue({}),\n{}Parent({}),\n{}Attributes {:?}\n{}Children [",
       tab_minus_one,
       self.get_name(),
       tabs,
@@ -67,6 +67,8 @@ impl core::fmt::Debug for TokenRefInner {
       self.raw_value(),
       tabs,
       get_parent_path_for_debug(Box::new(self)),
+      tabs,
+      self.get_attributes(),
       tabs,
     );
 

@@ -67,8 +67,8 @@ where
 {
   fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
     let sub_context = context.borrow().clone_with_name(self.get_name());
-    let pattern_value = self.pattern.fetch_value(sub_context);
-    let debug_mode = context.borrow().debug_mode_level();
+    let pattern_value = self.pattern.fetch_value(sub_context.clone());
+    let debug_mode = sub_context.borrow().debug_mode_level();
 
     match pattern_value {
       FetchableType::String(pattern_value) => {
@@ -76,19 +76,43 @@ where
           print!("{{Equals}} ");
         }
 
-        if let Some(range) = context.borrow().matches_str(pattern_value.as_str()) {
+        let _sc = sub_context.borrow();
+        if let Some(range) = _sc.matches_str(pattern_value.as_str()) {
           if debug_mode > 0 {
-            println!("Succeeded matching against -->|{}|--> @[{}-{}]", pattern_value, range.start, range.end);
+            println!("`{}` Succeeded matching against `{}` -->|{}|--> @[{}-{}]",
+              self.get_name(),
+              pattern_value,
+              _sc
+                .debug_range(10)
+                .as_str()
+                .replace("\n", r"\n")
+                .replace("\r", r"\r")
+                .replace("\t", r"\t"),
+              range.start,
+              range.end
+            );
           }
 
           Ok(MatcherSuccess::Token(StandardToken::new(
-            &context.borrow().parser,
+            &_sc.parser,
             self.name.to_string(),
             range,
           )))
         } else {
           if debug_mode > 0 {
-            println!("Failed to match against '{}'", pattern_value);
+            println!(
+              "`{}` Failed to match against `{}` -->|{}|--> @[{}-{}]",
+              self.get_name(),
+              pattern_value,
+              _sc
+                .debug_range(10)
+                .as_str()
+                .replace("\n", r"\n")
+                .replace("\r", r"\r")
+                .replace("\t", r"\t"),
+              _sc.offset.start,
+              std::cmp::min(_sc.offset.start + 10, _sc.offset.end),
+            );
           }
 
           Err(MatcherFailure::Fail)
@@ -129,7 +153,7 @@ where
 
 #[macro_export]
 macro_rules! Equals {
-  ($name:literal; $arg:expr) => {
+  ($name:expr; $arg:expr) => {
     $crate::matchers::equals::EqualsPattern::new_with_name($name, $arg.to_string())
   };
 

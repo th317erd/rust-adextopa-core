@@ -11,9 +11,10 @@
   # <expr>+: Loop one or more times
   # <expr>{1, 5} Loop one to five times
   # (<pattern>): Capture pattern (default is to discard)
+  # import { _ as Something, Derp, Stuff as Things } from '../some/path/to/script'
 
-  Identifier = {value=(/[a-zA-Z$_-][a-zA-Z0-9$_-]*/)}
-  AssignmentExpression = {(?'identifier'<Identifier attr1="true">), <?Whitespace>, /=/, (?'program'<Program>)}
+  Identifier = </[a-zA-Z$_-][a-zA-Z0-9$_-]*/>
+  AssignmentExpression = <{(?'identifier'<Identifier attr1="true">)<?Whitespace>(?'program'<Program>)}>
 -->
 
 <patterns><go><here>

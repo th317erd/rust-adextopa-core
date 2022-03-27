@@ -34,19 +34,68 @@ impl<'a> MatchesPattern {
 
 impl<'a> Matcher<'a> for MatchesPattern {
   fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
-    if let Some(range) = context.borrow().matches_regexp(&self.regex) {
+    let sub_context = context.borrow().clone_with_name(self.get_name());
+    let debug_mode = sub_context.borrow().debug_mode_level();
+
+    if debug_mode > 1 {
+      print!("{{Matches}} ");
+    }
+
+    let _sc = sub_context.borrow();
+    if let Some(range) = _sc.matches_regexp(&self.regex) {
       // We got a match, but it has zero length
       // In this case, respond with a "Skip"
       if range.start == range.end {
+        if debug_mode > 0 {
+          println!(
+            "`{}` Succeeded matching against `{}` -->|{}|--> @[{}-{}] (zero width/skipping)",
+            self.get_name(),
+            &self.regex,
+            _sc
+              .debug_range(10)
+              .as_str()
+              .replace("\n", r"\n")
+              .replace("\r", r"\r")
+              .replace("\t", r"\t"),
+            range.start,
+            range.end
+          );
+        }
+
         return Ok(MatcherSuccess::Skip(0));
       }
 
-      Ok(MatcherSuccess::Token(StandardToken::new(
-        &context.borrow().parser,
-        self.name.to_string(),
-        range,
-      )))
+      let token = StandardToken::new(&_sc.parser, self.name.to_string(), range);
+
+      if debug_mode > 0 {
+        println!(
+          "`{}` Succeeded matching against `{}` -->|{}|--> @[{}-{}]",
+          self.get_name(),
+          &self.regex,
+          token.borrow().value(),
+          range.start,
+          range.end
+        );
+      }
+
+      Ok(MatcherSuccess::Token(token))
     } else {
+      if debug_mode > 0 {
+        println!(
+          "`{}` Failed to match against `{}` -->|{}|--> @[{}-{}]",
+          self.get_name(),
+          &self.regex,
+          _sc
+            .debug_range(10)
+            .as_str()
+            .replace("\n", r"\n")
+            .replace("\r", r"\r")
+            .replace("\t", r"\t"),
+          _sc.offset.start,
+          std::cmp::min(_sc.offset.start + 10, _sc.offset.end),
+        );
+      }
+
       Err(MatcherFailure::Fail)
     }
   }
@@ -79,7 +128,7 @@ impl<'a> Matcher<'a> for MatchesPattern {
 
 #[macro_export]
 macro_rules! Matches {
-  ($name:literal; $arg:expr) => {
+  ($name:expr; $arg:expr) => {
     $crate::matchers::matches::MatchesPattern::new_with_name(
       $name,
       regex::Regex::new($arg).unwrap(),

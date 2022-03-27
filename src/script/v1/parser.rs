@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap};
+use std::collections::HashMap;
 
 use crate::{
   matcher::{MatcherRef, MatcherSuccess},
@@ -148,46 +148,44 @@ fn construct_matcher_from_pattern_definition<'a>(
     construct_matcher_from_inner_definition(parser_context.clone(), matcher_token.clone())?;
   let inner_matcher = matcher.clone();
 
-  // Handle attributes with a "Map" matcher
-  {
-    if let Some(attributes_token) = token.find_child("Attributes") {
-      let attributes_token = attributes_token.borrow();
-      let attributes_token_children = attributes_token.get_children();
-
-      if attributes_token_children.len() > 0 {
-        // First, collect attributes from token into a map
-        let mut attributes = HashMap::<String, String>::new();
-        for child in attributes_token_children {
-          let child = child.borrow();
-          let child_children = child.get_children();
-          let key = child_children[0].borrow().value();
-          let value = child_children[1].borrow().value();
-
-          attributes.insert(key, value);
-        }
-
-        // Next, move the attributes hashmap into the
-        // "Map" matcher, to apply the attributes
-        // to a generated token
-        matcher = crate::Map!(matcher, move |token| {
-          for attribute in &attributes {
-            let key = attribute.0;
-            if token.borrow().has_attribute(key) {
-              continue;
-            }
-
-            let value = attribute.1;
-            token.borrow_mut().set_attribute(key, value);
-          }
-
-          None
-        });
-      }
-    }
-  }
-
   if name != "" {
     matcher.borrow_mut().set_name(name);
+  }
+
+  // Handle attributes with a "Map" matcher
+  if let Some(attributes_token) = token.find_child("Attributes") {
+    let attributes_token = attributes_token.borrow();
+    let attributes_token_children = attributes_token.get_children();
+
+    if attributes_token_children.len() > 0 {
+      // First, collect attributes from token into a map
+      let mut attributes = HashMap::<String, String>::new();
+      for child in attributes_token_children {
+        let child = child.borrow();
+        let child_children = child.get_children();
+        let key = child_children[0].borrow().value();
+        let value = child_children[1].borrow().value();
+
+        attributes.insert(key, value);
+      }
+
+      // Next, move the attributes hashmap into the
+      // "Map" matcher, to apply the attributes
+      // to a generated token
+      matcher = crate::Map!(matcher.clone(), move |token| {
+        for attribute in &attributes {
+          let key = attribute.0;
+          if token.borrow().has_attribute(key) {
+            continue;
+          }
+
+          let value = attribute.1;
+          token.borrow_mut().set_attribute(key, value);
+        }
+
+        None
+      });
+    }
   }
 
   if has_inner_optional {
@@ -286,12 +284,12 @@ fn build_matcher_from_tokens<'a, 'b>(
         // Identifier is assigned to identifier...
         // so this is a reference
         register_matchers.borrow_mut().add_pattern(crate::Ref!(matcher_name.clone(); _value.value()));
-      } else if value_name == "PatternDefinition" || value_name == "PatternDefinitionCaptured" {
+      } else if value_name == "PatternDefinition" {
         // This is a pattern definition, so turn it into
         // a matcher, and store it as a reference
-        match construct_matcher_from_pattern(parser_context.clone(), value.clone()) {
+        match construct_matcher_from_pattern_definition(parser_context.clone(), value.clone(), &matcher_name, true) {
           Ok(defined_matchers) => {
-            register_matchers.borrow_mut().add_pattern(crate::Ref!(matcher_name; defined_matchers.1.clone()));
+            register_matchers.borrow_mut().add_pattern(crate::Ref!(matcher_name; defined_matchers.0.clone()));
           },
           Err(error) => {
             // TODO: Better error handling
@@ -399,7 +397,7 @@ mod tests {
     parser_context::{ParserContext, ParserContextRef},
     script::current::parser::construct_matcher_from_pattern,
     source_range::SourceRange,
-    Debug, ScriptPattern, ScriptPatternDefinition, ScriptProgramMatcher, ScriptSwitchMatcher,
+    ScriptPattern, ScriptPatternDefinition, ScriptProgramMatcher, ScriptSwitchMatcher,
   };
 
   use super::{compile_script_from_file, construct_matcher_from_pattern_definition};
@@ -411,8 +409,6 @@ mod tests {
     {
       let parser = Parser::new("test");
       let parser_context = ParserContext::new(&parser, "Test");
-
-      // let compiled_matcher = Debug!(3; compiled_matcher);
 
       let result = ParserContext::tokenize(parser_context, compiled_matcher.clone());
 
@@ -427,7 +423,7 @@ mod tests {
         assert_eq!(token.get_children().len(), 1);
 
         let first = token.get_children()[0].borrow();
-        assert_eq!(first.get_name(), "Equals");
+        assert_eq!(first.get_name(), "Identifier");
         assert_eq!(*first.get_value_range(), SourceRange::new(0, 4));
         assert_eq!(*first.get_raw_range(), SourceRange::new(0, 4));
         assert_eq!(first.value(), "test");
