@@ -3,8 +3,7 @@ macro_rules! ScriptRegexMatcher {
   () => {
     $crate::Program!("RegexMatcher";
       $crate::Discard!($crate::Equals!("/")),
-      $crate::Flatten!($crate::Loop!(
-        "RegexCaptureLoop";
+      $crate::Flatten!($crate::Loop!("RegexCaptureLoop";
         // Match all characters up to: \, /, or [
         $crate::Matches!("Part"; r"[^/\\\[]*"),
         // Test which sequence comes next

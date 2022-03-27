@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::{cell::RefCell, collections::HashMap};
 
 use crate::{
   matcher::{MatcherRef, MatcherSuccess},
@@ -125,7 +125,6 @@ fn construct_matcher_from_pattern_definition<'a>(
 ) -> Result<MatcherRef<'a>, String> {
   let token = token.borrow();
   let token_name = token.get_name();
-  let mut matcher: MatcherRef;
 
   if token_name != "PatternDefinition" {
     return Err(format!(
@@ -147,6 +146,44 @@ fn construct_matcher_from_pattern_definition<'a>(
   let matcher_token = matcher_token_result.unwrap();
   let mut matcher =
     construct_matcher_from_inner_definition(parser_context.clone(), matcher_token.clone())?;
+
+  // Handle attributes with a "Map" matcher
+  {
+    if let Some(attributes_token) = token.find_child("Attributes") {
+      let attributes_token = attributes_token.borrow();
+      let attributes_token_children = attributes_token.get_children();
+
+      if attributes_token_children.len() > 0 {
+        // First, collect attributes from token into a map
+        let mut attributes = HashMap::<String, String>::new();
+        for child in attributes_token_children {
+          let child = child.borrow();
+          let child_children = child.get_children();
+          let key = child_children[0].borrow().value();
+          let value = child_children[1].borrow().value();
+
+          attributes.insert(key, value);
+        }
+
+        // Next, move the attributes hashmap into the
+        // "Map" matcher, to apply the attributes
+        // to a generated token
+        matcher = crate::Map!(matcher, move |token| {
+          for attribute in &attributes {
+            let key = attribute.0;
+            if token.borrow().has_attribute(key) {
+              continue;
+            }
+
+            let value = attribute.1;
+            token.borrow_mut().set_attribute(key, value);
+          }
+
+          None
+        });
+      }
+    }
+  }
 
   if name != "" {
     matcher.borrow_mut().set_name(name);
@@ -325,6 +362,8 @@ pub fn compile_script_from_file<'a>(file_name: &'a str) -> Result<MatcherRef<'a>
 
 #[cfg(test)]
 mod tests {
+  use std::collections::HashMap;
+
   use crate::{
     matcher::MatcherSuccess,
     parser::Parser,
@@ -573,6 +612,55 @@ mod tests {
         recreated_matcher.to_string(),
         "ProgramPattern { patterns: [RefCell { value: DiscardPattern { matcher: RefCell { value: EqualsPattern { pattern: \"test\", name: \"Equals\", custom_name: false } } } }, RefCell { value: MatchesPattern { regex: (?i)wow, name: \"Name\", custom_name: true } }], name: \"Program\", iterate_range: None, on_first_match: Continue, custom_name: false }"
       );
+    } else {
+      unreachable!("Test failed!");
+    };
+  }
+
+  #[test]
+  fn it_can_collect_attributes_from_a_token() {
+    let parser = Parser::new(r"(</test/i test='1' hello='derp'>)");
+    let parser_context = ParserContext::new(&parser, "Test");
+    let matcher = ScriptPattern!();
+
+    register_matchers(&parser_context);
+
+    let result = ParserContext::tokenize(parser_context.clone(), matcher);
+
+    if let Ok(MatcherSuccess::Token(token)) = result {
+      let recreated_matcher = construct_matcher_from_pattern(parser_context.clone(), token.clone());
+
+      assert_eq!(recreated_matcher.is_ok(), true);
+      let recreated_matcher = recreated_matcher.unwrap();
+
+      assert_eq!(
+        recreated_matcher.borrow().to_string(),
+        "MapPattern { matcher: RefCell { value: MatchesPattern { regex: (?i)test, name: \"Matches\", custom_name: false } } }"
+      );
+
+      // Now see if we can use this matcher
+      let parser2 = Parser::new(r"test");
+      let parser_context2 = ParserContext::new(&parser2, "Test");
+
+      register_matchers(&parser_context2);
+
+      let result2 = ParserContext::tokenize(parser_context2.clone(), recreated_matcher);
+
+      if let Ok(MatcherSuccess::Token(token)) = result2 {
+        let token = token.borrow();
+        assert_eq!(token.get_name(), "Matches");
+        assert_eq!(*token.get_value_range(), SourceRange::new(0, 4));
+        assert_eq!(*token.get_raw_range(), SourceRange::new(0, 4));
+        assert_eq!(token.value(), "test");
+        assert_eq!(token.raw_value(), "test");
+
+        let attributes = token.get_attributes();
+        assert_eq!(attributes.len(), 2);
+        assert_eq!(attributes.get("test"), Some(&"1".to_string()));
+        assert_eq!(attributes.get("hello"), Some(&"derp".to_string()));
+      } else {
+        unreachable!("Test failed!");
+      };
     } else {
       unreachable!("Test failed!");
     };

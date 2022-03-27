@@ -130,6 +130,13 @@ pub trait Token {
   fn attribute_equals<'b>(&'b self, name: &str, value: &str) -> bool;
   fn set_attribute(&mut self, name: &str, value: &str) -> Option<String>;
 
+  fn has_attribute<'b>(&'b self, name: &str) -> bool {
+    match self.get_attribute(name) {
+      Some(_) => true,
+      None => false,
+    }
+  }
+
   fn find_child(&self, needle: &str) -> Option<crate::token::TokenRef> {
     let children = self.get_children();
     if children.len() == 0 {
