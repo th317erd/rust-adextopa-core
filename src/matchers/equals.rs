@@ -7,7 +7,7 @@ use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
 use crate::token::StandardToken;
 
-use super::fetch::Fetchable;
+use super::fetch::{Fetchable, FetchableType};
 
 pub struct EqualsPattern<'a, T>
 where
@@ -68,14 +68,36 @@ where
   fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
     let sub_context = context.borrow().clone_with_name(self.get_name());
     let pattern_value = self.pattern.fetch_value(sub_context);
-    if let Some(range) = context.borrow().matches_str(pattern_value.as_str()) {
-      Ok(MatcherSuccess::Token(StandardToken::new(
-        &context.borrow().parser,
-        self.name.to_string(),
-        range,
-      )))
-    } else {
-      Err(MatcherFailure::Fail)
+    let debug_mode = context.borrow().debug_mode_level();
+
+    match pattern_value {
+      FetchableType::String(pattern_value) => {
+        if debug_mode > 1 {
+          print!("{{Equals}} ");
+        }
+
+        if let Some(range) = context.borrow().matches_str(pattern_value.as_str()) {
+          if debug_mode > 0 {
+            println!("Succeeded matching against -->|{}|--> @[{}-{}]", pattern_value, range.start, range.end);
+          }
+
+          Ok(MatcherSuccess::Token(StandardToken::new(
+            &context.borrow().parser,
+            self.name.to_string(),
+            range,
+          )))
+        } else {
+          if debug_mode > 0 {
+            println!("Failed to match against '{}'", pattern_value);
+          }
+
+          Err(MatcherFailure::Fail)
+        }
+      }
+      FetchableType::Matcher(_) => Err(MatcherFailure::Error(
+        "`Equals` matcher received another matcher as a pattern... this makes no sense... aborting..."
+          .to_string(),
+      )),
     }
   }
 

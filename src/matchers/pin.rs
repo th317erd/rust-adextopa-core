@@ -2,7 +2,7 @@ extern crate adextopa_macros;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use super::fetch::Fetchable;
+use super::fetch::{Fetchable, FetchableType};
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser::ParserRef;
 use crate::parser_context::ParserContextRef;
@@ -242,7 +242,14 @@ where
   fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
     let sub_context = context.borrow().clone_with_name(self.get_name());
     let offset_value_fetchable = self.offset.fetch_value(sub_context.clone());
-    let offset_value = offset_value_fetchable.as_str();
+    let offset_value = match offset_value_fetchable {
+      FetchableType::String(value) => value,
+      FetchableType::Matcher(_) => return Err(MatcherFailure::Error(
+        "`Pin` matcher received another matcher as an offset... this makes no sense... aborting..."
+          .to_string(),
+      )),
+    };
+
     let offset_value_parts: Vec<&str> = offset_value.split("..").collect();
 
     // Set start offset

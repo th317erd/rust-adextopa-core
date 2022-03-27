@@ -1,18 +1,7 @@
 <!--[adextopa:v1]
-  # Comment
-  # <{<Program1><Program2>}>: Multiple patterns in one
-  # <[<switch1>|<switch2>]>: Select first matching
-  # </RegExp/>: Regular expressions
-  # <="value">: Equals
-  # <%"'","'","\\">: Sequence
-  # <!pattern>: Invert pattern: i.e.: <!="value">
-  # <?optional>: Optional expression
-  # <expr>*: Loop zero or more times
-  # <expr>+: Loop one or more times
-  # <expr>{1, 5} Loop one to five times
-  # (<pattern>): Capture pattern (default is to discard)
+  # Simply match against "test"
 
-  Identifier = <='test'>
+  Identifier = <='test' hello='world'>
 -->
 
-<patterns><go><here>
+(<Identifier>)

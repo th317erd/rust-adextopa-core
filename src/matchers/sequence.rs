@@ -7,7 +7,7 @@ use crate::parser_context::ParserContextRef;
 use crate::source_range::SourceRange;
 use crate::token::StandardToken;
 
-use super::fetch::Fetchable;
+use super::fetch::{Fetchable, FetchableType};
 
 pub struct SequencePattern<'a, T>
 where
@@ -85,7 +85,13 @@ where
     let sub_context = context.borrow().clone_with_name(self.get_name());
 
     let start_fetchable = self.start.fetch_value(sub_context.clone());
-    let start_pattern = start_fetchable.as_str();
+    let start_pattern = match start_fetchable {
+      FetchableType::String(ref value) => value,
+      FetchableType::Matcher(_) => return Err(MatcherFailure::Error(
+        "`Sequence` matcher received another matcher as a `start_pattern`... this makes no sense... aborting..."
+          .to_string(),
+      )),
+    };
 
     if start_pattern.len() == 0 {
       panic!("Sequence `start` pattern of \"\" makes no sense");
@@ -102,13 +108,25 @@ where
     }
 
     let end_fetchable = self.end.fetch_value(sub_context.clone());
-    let end_pattern = end_fetchable.as_str();
+    let end_pattern = match end_fetchable {
+      FetchableType::String(ref value) => value,
+      FetchableType::Matcher(_) => return Err(MatcherFailure::Error(
+        "`Sequence` matcher received another matcher as a `end_pattern`... this makes no sense... aborting..."
+          .to_string(),
+      )),
+    };
     if end_pattern.len() == 0 {
       panic!("Sequence `end` pattern of \"\" makes no sense");
     }
 
     let escape_fetchable = self.escape.fetch_value(sub_context);
-    let escape_pattern = escape_fetchable.as_str();
+    let escape_pattern = match escape_fetchable {
+      FetchableType::String(ref value) => value,
+      FetchableType::Matcher(_) => return Err(MatcherFailure::Error(
+        "`Sequence` matcher received another matcher as a `end_pattern`... this makes no sense... aborting..."
+          .to_string(),
+      )),
+    };
 
     let mut index = scan_start;
     let mut previous_index = scan_start;

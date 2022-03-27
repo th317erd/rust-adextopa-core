@@ -1,12 +1,17 @@
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::{ParserContextRef, VariableType};
 
+pub enum FetchableType<'a> {
+  String(String),
+  Matcher(MatcherRef<'a>),
+}
+
 pub trait Fetchable<'a> {
-  fn fetch_value(&self, context: ParserContextRef) -> String;
+  fn fetch_value(&self, context: ParserContextRef) -> FetchableType<'a>;
 }
 
 impl<'a> Fetchable<'a> for FetchPattern {
-  fn fetch_value(&self, context: ParserContextRef) -> String {
+  fn fetch_value(&self, context: ParserContextRef) -> FetchableType<'a> {
     let name = self.get_name();
     let name_path: Vec<&str> = name.split(".").collect();
 
@@ -22,7 +27,7 @@ impl<'a> Fetchable<'a> for FetchPattern {
         let token = token.borrow();
         let sub_name = name_path[1];
 
-        if sub_name == "value" {
+        let value = if sub_name == "value" {
           token.value()
         } else if sub_name == "raw_value" {
           token.raw_value()
@@ -45,7 +50,9 @@ impl<'a> Fetchable<'a> for FetchPattern {
             "Invalid variable reference `{}`: Don't know how to fetch this value on a Token reference",
             name
           );
-        }
+        };
+
+        FetchableType::String(value)
       }
       Some(VariableType::String(ref value)) => {
         if name_path.len() > 1 {
@@ -55,7 +62,7 @@ impl<'a> Fetchable<'a> for FetchPattern {
           );
         }
 
-        value.clone()
+        FetchableType::String(value.clone())
       }
       None => {
         panic!("Invalid variable reference `{}`: Not found", name);
@@ -65,14 +72,20 @@ impl<'a> Fetchable<'a> for FetchPattern {
 }
 
 impl<'a> Fetchable<'a> for &'a str {
-  fn fetch_value(&self, _: ParserContextRef) -> String {
-    self.to_string()
+  fn fetch_value(&self, _: ParserContextRef) -> FetchableType<'a> {
+    FetchableType::String(self.to_string())
   }
 }
 
 impl<'a> Fetchable<'a> for String {
-  fn fetch_value(&self, _: ParserContextRef) -> String {
-    self.clone()
+  fn fetch_value(&self, _: ParserContextRef) -> FetchableType<'a> {
+    FetchableType::String(self.clone())
+  }
+}
+
+impl<'a> Fetchable<'a> for MatcherRef<'a> {
+  fn fetch_value(&self, _: ParserContextRef) -> FetchableType<'a> {
+    FetchableType::Matcher(self.clone())
   }
 }
 

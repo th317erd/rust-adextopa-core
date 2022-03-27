@@ -120,12 +120,12 @@ impl<'a> ProgramPattern<'a> {
 
   pub fn new_program_with_name(
     patterns: Vec<MatcherRef<'a>>,
-    name: &'a str,
+    name: String,
     stop_on_first: MatchAction,
   ) -> MatcherRef<'a> {
     Rc::new(RefCell::new(Box::new(Self {
       patterns,
-      name: name.to_string(),
+      name,
       iterate_range: None,
       on_first_match: stop_on_first,
       custom_name: true,
@@ -134,7 +134,7 @@ impl<'a> ProgramPattern<'a> {
 
   pub fn new_loop_with_name_and_range<T>(
     patterns: Vec<MatcherRef<'a>>,
-    name: &'a str,
+    name: String,
     r: T,
   ) -> MatcherRef<'a>
   where
@@ -142,7 +142,7 @@ impl<'a> ProgramPattern<'a> {
   {
     Rc::new(RefCell::new(Box::new(Self {
       patterns,
-      name: name.to_string(),
+      name,
       iterate_range: Some(get_range(r)),
       on_first_match: MatchAction::Continue,
       custom_name: true,
@@ -281,7 +281,7 @@ fn handle_token(
     let token = token.borrow();
 
     if context.borrow().debug_mode_level() > 2 {
-      print!("{{Token}} ");
+      print!("{{{}/Token}} ", program.get_name());
     }
 
     println!(
@@ -308,7 +308,7 @@ fn handle_token(
 
   if context.borrow().is_debug_mode() {
     if context.borrow().debug_mode_level() > 2 {
-      print!("{{Token}} ");
+      print!("{{{}/Token}} ", program.get_name());
     }
 
     println!(
@@ -337,7 +337,7 @@ fn handle_extract_token(
 
   if context.borrow().is_debug_mode() {
     if context.borrow().debug_mode_level() > 2 {
-      print!("{{ExtractChildren}} ");
+      print!("{{{}/ExtractChildren}} ", program.get_name());
     }
 
     println!(
@@ -357,7 +357,7 @@ fn handle_extract_token(
 
   if context.borrow().debug_mode_level() > 1 {
     if context.borrow().debug_mode_level() > 2 {
-      print!("{{ExtractChildren}} ");
+      print!("{{{}/ExtractChildren}} ", program.get_name());
     }
 
     let count = target_children.len();
@@ -378,7 +378,7 @@ fn handle_extract_token(
       let child = child.borrow();
 
       if context.borrow().debug_mode_level() > 2 {
-        print!("{{ExtractChildren}} ");
+        print!("{{{}/ExtractChildren}} ", program.get_name());
       }
 
       println!(
@@ -415,7 +415,7 @@ fn handle_skip(
 
   if context.borrow().is_debug_mode() {
     if context.borrow().debug_mode_level() > 2 {
-      print!("{{Skip}} ");
+      print!("{{{}/Skip}} ", program.get_name());
     }
 
     println!(
@@ -546,7 +546,7 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
             let sub_context = sub_context.borrow();
             if sub_context.is_debug_mode() {
               if sub_context.debug_mode_level() > 2 {
-                print!("{{Failure}} ");
+                print!("{{{}/Failure}} ", program_token.borrow().get_name());
               }
 
               println!(

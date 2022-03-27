@@ -26,7 +26,7 @@ pub struct ParserContext<'a> {
 }
 
 impl<'a> ParserContext<'a> {
-  pub fn new<'b>(parser: &ParserRef, name: &'b str) -> ParserContextRef<'b> {
+  pub fn new<'b>(parser: &ParserRef, name: &str) -> ParserContextRef<'b> {
     std::rc::Rc::new(std::cell::RefCell::new(ParserContext {
       matcher_reference_map: Rc::new(RefCell::new(HashMap::new())),
       variable_context: Rc::new(RefCell::new(HashMap::new())),
@@ -40,7 +40,7 @@ impl<'a> ParserContext<'a> {
   pub fn new_with_offset<'b>(
     parser: &ParserRef,
     offset: SourceRange,
-    name: &'b str,
+    name: &str,
   ) -> ParserContextRef<'b> {
     std::rc::Rc::new(std::cell::RefCell::new(ParserContext {
       matcher_reference_map: Rc::new(RefCell::new(HashMap::new())),
@@ -153,8 +153,14 @@ impl<'a> ParserContext<'a> {
 
   fn capture_matcher_references(&self, matcher: MatcherRef<'a>) {
     let m = matcher.borrow();
+
     if m.has_custom_name() {
       let name = m.get_name();
+
+      if self.debug_mode > 1 {
+        println!("Registering matcher `{}`", name);
+      }
+
       self
         .matcher_reference_map
         .borrow_mut()

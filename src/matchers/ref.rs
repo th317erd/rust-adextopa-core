@@ -5,7 +5,7 @@ use std::rc::Rc;
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
 
-use super::fetch::Fetchable;
+use super::fetch::{Fetchable, FetchableType};
 
 pub struct RefPattern<'a, T>
 where
@@ -13,7 +13,9 @@ where
   T: 'a,
   T: std::fmt::Debug,
 {
-  target_name: T,
+  name: String,
+  target: T,
+  custom_name: bool,
   _phantom: PhantomData<&'a T>,
 }
 
@@ -25,7 +27,9 @@ where
 {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     f.debug_struct("RefPattern")
-      .field("target_name", &self.target_name)
+      .field("name", &self.name)
+      .field("target", &self.target)
+      .field("custom_name", &self.custom_name)
       .finish()
   }
 }
@@ -36,9 +40,20 @@ where
   T: 'a,
   T: std::fmt::Debug,
 {
-  pub fn new(target_name: T) -> MatcherRef<'a> {
+  pub fn new(target: T) -> MatcherRef<'a> {
     Rc::new(RefCell::new(Box::new(RefPattern {
-      target_name,
+      name: "Ref".to_string(),
+      target,
+      custom_name: false,
+      _phantom: PhantomData,
+    })))
+  }
+
+  pub fn new_with_name(target: T, name: String) -> MatcherRef<'a> {
+    Rc::new(RefCell::new(Box::new(RefPattern {
+      name,
+      target,
+      custom_name: true,
       _phantom: PhantomData,
     })))
   }
@@ -52,25 +67,36 @@ where
 {
   fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
     let sub_context = context.borrow().clone_with_name(self.get_name());
-    let target_name = self.target_name.fetch_value(sub_context.clone());
-    let possible_matcher = sub_context.borrow().get_registered_matcher(&target_name);
+    let target = self.target.fetch_value(sub_context.clone());
 
-    if let Some(matcher) = possible_matcher {
-      matcher.borrow().exec(sub_context)
-    } else {
-      return Err(MatcherFailure::Error(format!(
-        "`Ref` matcher unable to locate target reference `{}`",
-        target_name
-      )));
+    match target {
+      FetchableType::String(ref target_name) => {
+        let possible_matcher = sub_context.borrow().get_registered_matcher(target_name);
+
+        if let Some(matcher) = possible_matcher {
+          matcher.borrow().exec(sub_context)
+        } else {
+          return Err(MatcherFailure::Error(format!(
+            "`Ref` matcher unable to locate target reference `{}`",
+            target_name
+          )));
+        }
+      }
+      FetchableType::Matcher(matcher) => matcher.borrow().exec(sub_context),
     }
   }
 
-  fn get_name(&self) -> &str {
-    "Ref"
+  fn has_custom_name(&self) -> bool {
+    self.custom_name
   }
 
-  fn set_name(&mut self, _: &str) {
-    panic!("Can not set `name` on a `Ref` matcher");
+  fn get_name(&self) -> &str {
+    self.name.as_str()
+  }
+
+  fn set_name(&mut self, name: &str) {
+    self.name = name.to_string();
+    self.custom_name = true;
   }
 
   fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {
@@ -88,6 +114,10 @@ where
 
 #[macro_export]
 macro_rules! Ref {
+  ($name:expr; $arg:expr) => {
+    $crate::matchers::r#ref::RefPattern::new_with_name($arg, $name)
+  };
+
   ($arg:expr) => {
     $crate::matchers::r#ref::RefPattern::new($arg)
   };
