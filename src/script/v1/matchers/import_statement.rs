@@ -49,7 +49,6 @@ mod tests {
     parser::Parser,
     parser_context::ParserContext,
     source_range::SourceRange,
-    Debug,
   };
 
   #[test]
@@ -63,11 +62,11 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "ImportStatement");
-      assert_eq!(*token.get_value_range(), SourceRange::new(0, 57));
+      assert_eq!(*token.get_value_range(), SourceRange::new(9, 56));
       assert_eq!(*token.get_raw_range(), SourceRange::new(0, 57));
       assert_eq!(
         token.value(),
-        "import { _ as derp, Stuff as Things, Wow } from '../test'"
+        "_ as derp, Stuff as Things, Wow } from '../test"
       );
       assert_eq!(
         token.raw_value(),
@@ -77,25 +76,25 @@ mod tests {
 
       let first = token.get_children()[0].borrow();
       assert_eq!(first.get_name(), "ImportIdentifiers");
-      assert_eq!(*first.get_value_range(), SourceRange::new(7, 42));
+      assert_eq!(*first.get_value_range(), SourceRange::new(9, 40));
       assert_eq!(*first.get_raw_range(), SourceRange::new(7, 42));
-      assert_eq!(first.value(), "{ _ as derp, Stuff as Things, Wow }");
+      assert_eq!(first.value(), "_ as derp, Stuff as Things, Wow");
       assert_eq!(first.raw_value(), "{ _ as derp, Stuff as Things, Wow }");
       assert_eq!(first.get_children().len(), 3);
 
       let ident_first = first.get_children()[0].borrow();
       assert_eq!(ident_first.get_name(), "ImportIdentifier");
-      assert_eq!(*ident_first.get_value_range(), SourceRange::new(9, 19));
+      assert_eq!(*ident_first.get_value_range(), SourceRange::new(9, 18));
       assert_eq!(*ident_first.get_raw_range(), SourceRange::new(9, 19));
-      assert_eq!(ident_first.value(), "_ as derp,");
+      assert_eq!(ident_first.value(), "_ as derp");
       assert_eq!(ident_first.raw_value(), "_ as derp,");
       assert_eq!(ident_first.get_children().len(), 2);
 
       let ident_second = first.get_children()[1].borrow();
       assert_eq!(ident_second.get_name(), "ImportIdentifier");
-      assert_eq!(*ident_second.get_value_range(), SourceRange::new(20, 36));
+      assert_eq!(*ident_second.get_value_range(), SourceRange::new(20, 35));
       assert_eq!(*ident_second.get_raw_range(), SourceRange::new(20, 36));
-      assert_eq!(ident_second.value(), "Stuff as Things,");
+      assert_eq!(ident_second.value(), "Stuff as Things");
       assert_eq!(ident_second.raw_value(), "Stuff as Things,");
       assert_eq!(ident_second.get_children().len(), 2);
 

@@ -35,9 +35,9 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "RepeatRange");
-      assert_eq!(*token.get_value_range(), SourceRange::new(0, 4));
+      assert_eq!(*token.get_value_range(), SourceRange::new(1, 3));
       assert_eq!(*token.get_raw_range(), SourceRange::new(0, 4));
-      assert_eq!(token.value(), r"{10}");
+      assert_eq!(token.value(), r"10");
       assert_eq!(token.raw_value(), r"{10}");
       assert_eq!(token.get_children().len(), 1);
 
@@ -63,9 +63,9 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "RepeatRange");
-      assert_eq!(*token.get_value_range(), SourceRange::new(0, 9));
+      assert_eq!(*token.get_value_range(), SourceRange::new(2, 7));
       assert_eq!(*token.get_raw_range(), SourceRange::new(0, 9));
-      assert_eq!(token.value(), r"{ 9, 11 }");
+      assert_eq!(token.value(), r"9, 11");
       assert_eq!(token.raw_value(), r"{ 9, 11 }");
       assert_eq!(token.get_children().len(), 3);
 
@@ -105,9 +105,9 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "RepeatRange");
-      assert_eq!(*token.get_value_range(), SourceRange::new(0, 5));
+      assert_eq!(*token.get_value_range(), SourceRange::new(1, 4));
       assert_eq!(*token.get_raw_range(), SourceRange::new(0, 5));
-      assert_eq!(token.value(), r"{19,}");
+      assert_eq!(token.value(), r"19,");
       assert_eq!(token.raw_value(), r"{19,}");
       assert_eq!(token.get_children().len(), 2);
 

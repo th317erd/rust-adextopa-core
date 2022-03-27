@@ -240,7 +240,7 @@ fn add_token_to_children<'a>(
       if update_offsets {
         // value_range is set to raw_range because the program
         // should always span the range of all child tokens
-        contain_source_range(value_range, &token.get_raw_range());
+        contain_source_range(value_range, &token.get_value_range());
         contain_source_range(raw_range, &token.get_raw_range());
       }
     } else {
@@ -258,7 +258,7 @@ fn add_token_to_children<'a>(
       if update_offsets {
         // value_range is set to raw_range because the program
         // should always span the range of all child tokens
-        contain_source_range(value_range, &token.get_raw_range());
+        contain_source_range(value_range, &token.get_value_range());
         contain_source_range(raw_range, &token.get_raw_range());
       }
     }
@@ -340,7 +340,6 @@ fn handle_extract_token(
   value_range: &mut SourceRange,
   raw_range: &mut SourceRange,
   token: &TokenRef,
-  assert_moving_forward: bool,
   update_offsets: bool,
 ) {
   let token = token.borrow();
@@ -363,7 +362,7 @@ fn handle_extract_token(
   if update_offsets && !should_discard {
     context.borrow_mut().set_start(token.get_raw_range().end);
 
-    contain_source_range(value_range, &token.get_raw_range());
+    contain_source_range(value_range, &token.get_value_range());
     contain_source_range(raw_range, &token.get_raw_range());
   }
 
@@ -443,7 +442,6 @@ fn handle_skip(
 
   let range = SourceRange::new(start_offset, new_offset);
 
-  contain_source_range(value_range, &range);
   contain_source_range(raw_range, &range);
 }
 
@@ -531,7 +529,6 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
                 &mut value_range,
                 &mut raw_range,
                 &token,
-                is_consuming,
                 is_consuming,
               );
             }
@@ -637,7 +634,6 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
                     &mut value_range,
                     &mut raw_range,
                     &token,
-                    false,
                     true,
                   );
 
@@ -729,7 +725,6 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
                     &mut value_range,
                     &mut raw_range,
                     &token,
-                    false,
                     true,
                   );
 
@@ -1046,6 +1041,7 @@ mod tests {
       assert_eq!(token.get_name(), "Equals");
       assert_eq!(*token.get_value_range(), SourceRange::new(0, 7));
       assert_eq!(token.value(), "Testing");
+      assert_eq!(token.raw_value(), "Testing");
     } else {
       unreachable!("Test failed!");
     };
@@ -1062,6 +1058,7 @@ mod tests {
       assert_eq!(token.get_name(), "Loop");
       assert_eq!(*token.get_value_range(), SourceRange::new(0, 12));
       assert_eq!(token.value(), parser.borrow().source);
+      assert_eq!(token.raw_value(), parser.borrow().source);
 
       assert_eq!(token.get_children().len(), 12);
 
@@ -1098,6 +1095,7 @@ mod tests {
       assert_eq!(token.get_name(), "Loop");
       assert_eq!(*token.get_value_range(), SourceRange::new(0, 12));
       assert_eq!(token.value(), parser.borrow().source);
+      assert_eq!(token.raw_value(), parser.borrow().source);
 
       assert_eq!(token.get_children().len(), 6);
 
@@ -1141,6 +1139,7 @@ mod tests {
       assert_eq!(token.get_name(), "Loop");
       assert_eq!(*token.get_value_range(), SourceRange::new(0, 11));
       assert_eq!(token.value(), "A B C break");
+      assert_eq!(token.raw_value(), "A B C break");
 
       assert_eq!(token.get_children().len(), 4);
 
@@ -1176,6 +1175,12 @@ mod tests {
       );
       assert_eq!(
         program_token.borrow().get_children()[0].borrow().value(),
+        "break"
+      );
+      assert_eq!(
+        program_token.borrow().get_children()[0]
+          .borrow()
+          .raw_value(),
         "break"
       );
     } else {

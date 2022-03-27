@@ -32,9 +32,9 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "SequenceMatcher");
-      assert_eq!(*token.get_value_range(), SourceRange::new(0, 11));
+      assert_eq!(*token.get_value_range(), SourceRange::new(2, 10));
       assert_eq!(*token.get_raw_range(), SourceRange::new(0, 11));
-      assert_eq!(token.value(), r"%'{','}',''");
+      assert_eq!(token.value(), r"{','}','");
       assert_eq!(token.raw_value(), r"%'{','}',''");
       assert_eq!(token.get_children().len(), 3);
 
@@ -74,9 +74,9 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "SequenceMatcher");
-      assert_eq!(*token.get_value_range(), SourceRange::new(0, 17));
+      assert_eq!(*token.get_value_range(), SourceRange::new(2, 16));
       assert_eq!(*token.get_raw_range(), SourceRange::new(0, 17));
-      assert_eq!(token.value(), r"%'{' , '}',  '\\'");
+      assert_eq!(token.value(), r"{' , '}',  '\\");
       assert_eq!(token.raw_value(), r"%'{' , '}',  '\\'");
       assert_eq!(token.get_children().len(), 3);
 

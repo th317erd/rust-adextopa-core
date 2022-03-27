@@ -39,9 +39,9 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Attribute");
-      assert_eq!(*token.get_value_range(), SourceRange::new(0, 11));
+      assert_eq!(*token.get_value_range(), SourceRange::new(0, 10));
       assert_eq!(*token.get_raw_range(), SourceRange::new(0, 11));
-      assert_eq!(token.value(), "test='derp'");
+      assert_eq!(token.value(), "test='derp");
       assert_eq!(token.raw_value(), "test='derp'");
       assert_eq!(token.get_children().len(), 2);
 
@@ -74,9 +74,9 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Attribute");
-      assert_eq!(*token.get_value_range(), SourceRange::new(0, 12));
+      assert_eq!(*token.get_value_range(), SourceRange::new(0, 11));
       assert_eq!(*token.get_raw_range(), SourceRange::new(0, 12));
-      assert_eq!(token.value(), "_test='derp'");
+      assert_eq!(token.value(), "_test='derp");
       assert_eq!(token.raw_value(), "_test='derp'");
       assert_eq!(token.get_children().len(), 3);
 

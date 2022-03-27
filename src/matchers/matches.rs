@@ -72,7 +72,7 @@ impl<'a> Matcher<'a> for MatchesPattern {
           "`{}` Succeeded matching against `{}` -->|{}|--> @[{}-{}]",
           self.get_name(),
           &self.regex,
-          token.borrow().value(),
+          token.borrow().raw_value(),
           range.start,
           range.end
         );

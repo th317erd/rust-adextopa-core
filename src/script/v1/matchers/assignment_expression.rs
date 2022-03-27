@@ -43,9 +43,9 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "AssignmentExpression");
-      assert_eq!(*token.get_value_range(), SourceRange::new(0, 16));
+      assert_eq!(*token.get_value_range(), SourceRange::new(0, 14));
       assert_eq!(*token.get_raw_range(), SourceRange::new(0, 16));
-      assert_eq!(token.value(), "test = <='derp'>");
+      assert_eq!(token.value(), "test = <='derp");
       assert_eq!(token.raw_value(), "test = <='derp'>");
       assert_eq!(token.get_children().len(), 2);
 
@@ -58,9 +58,9 @@ mod tests {
 
       let second = token.get_children()[1].borrow();
       assert_eq!(second.get_name(), "PatternDefinition");
-      assert_eq!(*second.get_value_range(), SourceRange::new(7, 16));
+      assert_eq!(*second.get_value_range(), SourceRange::new(10, 14));
       assert_eq!(*second.get_raw_range(), SourceRange::new(7, 16));
-      assert_eq!(second.value(), "<='derp'>");
+      assert_eq!(second.value(), "derp");
       assert_eq!(second.raw_value(), "<='derp'>");
     } else {
       unreachable!("Test failed!");

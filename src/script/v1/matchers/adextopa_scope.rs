@@ -59,9 +59,12 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "AdextopaScope");
-      assert_eq!(*token.get_value_range(), SourceRange::new(0, 90));
+      assert_eq!(*token.get_value_range(), SourceRange::new(15, 86));
       assert_eq!(*token.get_raw_range(), SourceRange::new(0, 90));
-      assert_eq!(token.value(), source);
+      assert_eq!(
+        token.value(),
+        "1]\n\t# Just a test comment\n\ttest = <='derp'>\n\ttest2=test#another comment"
+      );
       assert_eq!(token.raw_value(), source);
       assert_eq!(token.get_children().len(), 2);
 
@@ -74,11 +77,11 @@ mod tests {
 
       let scope = token.get_children()[1].borrow();
       assert_eq!(scope.get_name(), "Scope");
-      assert_eq!(*scope.get_value_range(), SourceRange::new(17, 87));
+      assert_eq!(*scope.get_value_range(), SourceRange::new(19, 86));
       assert_eq!(*scope.get_raw_range(), SourceRange::new(17, 87));
       assert_eq!(
         scope.value(),
-        "\n\t# Just a test comment\n\ttest = <='derp'>\n\ttest2=test#another comment\n"
+        "# Just a test comment\n\ttest = <='derp'>\n\ttest2=test#another comment"
       );
       assert_eq!(
         scope.raw_value(),
@@ -95,9 +98,9 @@ mod tests {
 
       let second = scope.get_children()[1].borrow();
       assert_eq!(second.get_name(), "AssignmentExpression");
-      assert_eq!(*second.get_value_range(), SourceRange::new(42, 58));
+      assert_eq!(*second.get_value_range(), SourceRange::new(42, 56));
       assert_eq!(*second.get_raw_range(), SourceRange::new(42, 58));
-      assert_eq!(second.value(), "test = <='derp'>");
+      assert_eq!(second.value(), "test = <='derp");
       assert_eq!(second.raw_value(), "test = <='derp'>");
 
       let third = scope.get_children()[2].borrow();
@@ -132,9 +135,9 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "AdextopaScope");
-      assert_eq!(*token.get_value_range(), SourceRange::new(0, 20));
+      assert_eq!(*token.get_value_range(), SourceRange::new(15, 16));
       assert_eq!(*token.get_raw_range(), SourceRange::new(0, 20));
-      assert_eq!(token.value(), source);
+      assert_eq!(token.value(), "1");
       assert_eq!(token.raw_value(), source);
       assert_eq!(token.get_children().len(), 1);
 
