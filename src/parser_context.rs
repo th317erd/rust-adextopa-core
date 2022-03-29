@@ -23,6 +23,7 @@ pub struct ParserContext<'a> {
   pub offset: SourceRange,
   pub parser: ParserRef,
   pub name: String,
+  pub scope_name: String,
 }
 
 impl<'a> ParserContext<'a> {
@@ -34,6 +35,7 @@ impl<'a> ParserContext<'a> {
       parser: parser.clone(),
       debug_mode: 0,
       name: name.to_string(),
+      scope_name: name.to_string(),
     }))
   }
 
@@ -49,6 +51,7 @@ impl<'a> ParserContext<'a> {
       parser: parser.clone(),
       debug_mode: 0,
       name: name.to_string(),
+      scope_name: name.to_string(),
     }))
   }
 
@@ -82,16 +85,41 @@ impl<'a> ParserContext<'a> {
     self.offset = range;
   }
 
-  pub fn get_variable(&self, name: &str) -> Option<VariableType> {
-    match self.variable_context.borrow().get(name) {
+  fn get_full_scope_name(&self, scope: Option<&str>, name: &str) -> String {
+    match scope {
+      Some(scope) => {
+        // println!("Getting scope with custom name: [{}:{}]", scope, name);
+        format!("{}:{}", scope, name)
+      }
+      None => {
+        // println!("Getting scope with no name: [{}:{}]", self.scope_name, name);
+        format!("{}:{}", self.scope_name, name)
+      }
+    }
+  }
+
+  pub fn get_variable(&self, scope: Option<&str>, name: &str) -> Option<VariableType> {
+    match self
+      .variable_context
+      .borrow()
+      .get(&self.get_full_scope_name(scope, name))
+    {
       Some(VariableType::Token(value)) => Some(VariableType::Token(value.clone())),
       Some(VariableType::String(value)) => Some(VariableType::String(value.clone())),
       None => None,
     }
   }
 
-  pub fn set_variable(&mut self, name: String, value: VariableType) -> Option<VariableType> {
-    self.variable_context.borrow_mut().insert(name, value)
+  pub fn set_variable(
+    &mut self,
+    scope: Option<&str>,
+    name: String,
+    value: VariableType,
+  ) -> Option<VariableType> {
+    self
+      .variable_context
+      .borrow_mut()
+      .insert(self.get_full_scope_name(scope, &name), value)
   }
 
   pub fn matches_str(&self, pattern: &str) -> Option<SourceRange> {
@@ -151,7 +179,9 @@ impl<'a> ParserContext<'a> {
     parser.source[self.offset.start..end_offset].to_string()
   }
 
-  fn capture_matcher_references(&self, matcher: MatcherRef<'a>) {
+  fn capture_matcher_references(&self, scope: Option<&str>, matcher: MatcherRef<'a>) {
+    matcher.borrow_mut().set_scope(scope);
+
     let m = matcher.borrow();
 
     if m.has_custom_name() {
@@ -164,27 +194,31 @@ impl<'a> ParserContext<'a> {
       self
         .matcher_reference_map
         .borrow_mut()
-        .insert(name.to_string(), matcher.clone());
+        .insert(self.get_full_scope_name(scope, name), matcher.clone());
     }
 
     match m.get_children() {
       Some(children) => {
         for child in children {
-          self.capture_matcher_references(child.clone());
+          self.capture_matcher_references(scope, child.clone());
         }
       }
       None => {}
     }
   }
 
-  pub fn register_matchers(&self, matchers: Vec<MatcherRef<'a>>) {
+  pub fn register_matchers(&self, scope: Option<&str>, matchers: Vec<MatcherRef<'a>>) {
     for matcher in matchers {
-      self.capture_matcher_references(matcher.clone());
+      self.capture_matcher_references(scope, matcher.clone());
     }
   }
 
-  pub fn get_registered_matcher(&self, name: &str) -> Option<MatcherRef<'a>> {
-    match self.matcher_reference_map.borrow().get(name) {
+  pub fn get_registered_matcher(&self, scope: Option<&str>, name: &str) -> Option<MatcherRef<'a>> {
+    match self
+      .matcher_reference_map
+      .borrow()
+      .get(&self.get_full_scope_name(scope, name))
+    {
       Some(matcher) => Some(matcher.clone()),
       None => None,
     }
@@ -194,7 +228,10 @@ impl<'a> ParserContext<'a> {
     context: ParserContextRef<'a>,
     matcher: MatcherRef<'a>,
   ) -> Result<MatcherSuccess, MatcherFailure> {
-    context.borrow().capture_matcher_references(matcher.clone());
+    let scope_name = &context.borrow().scope_name;
+    context
+      .borrow()
+      .capture_matcher_references(Some(scope_name), matcher.clone());
     matcher.borrow().exec(context.clone())
   }
 }

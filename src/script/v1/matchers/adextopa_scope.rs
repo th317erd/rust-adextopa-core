@@ -41,7 +41,7 @@ mod tests {
   fn register_matchers(parser_context: &ParserContextRef) {
     (*parser_context)
       .borrow()
-      .register_matchers(vec![ScriptSwitchMatcher!(), ScriptProgramMatcher!()]);
+      .register_matchers(None, vec![ScriptSwitchMatcher!(), ScriptProgramMatcher!()]);
   }
 
   #[test]

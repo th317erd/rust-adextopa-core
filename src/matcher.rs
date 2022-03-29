@@ -47,6 +47,10 @@ pub trait Matcher<'a> {
   fn get_children(&self) -> Option<Vec<MatcherRef<'a>>>;
   fn to_string(&self) -> String;
 
+  fn set_scope(&mut self, scope: Option<&str>) {
+    // NO-OP
+  }
+
   fn set_child(&mut self, _: usize, _: MatcherRef<'a>) {
     panic!(
       "Can not call `set_child` on a `{}` matcher: Operation not supported",

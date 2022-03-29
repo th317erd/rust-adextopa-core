@@ -14,6 +14,7 @@ where
   T: std::fmt::Debug,
 {
   name: String,
+  scope: Option<String>,
   target: T,
   custom_name: bool,
   _phantom: PhantomData<&'a T>,
@@ -43,6 +44,7 @@ where
   pub fn new(target: T) -> MatcherRef<'a> {
     Rc::new(RefCell::new(Box::new(RefPattern {
       name: "Ref".to_string(),
+      scope: None,
       target,
       custom_name: false,
       _phantom: PhantomData,
@@ -52,10 +54,18 @@ where
   pub fn new_with_name(target: T, name: String) -> MatcherRef<'a> {
     Rc::new(RefCell::new(Box::new(RefPattern {
       name,
+      scope: None,
       target,
       custom_name: true,
       _phantom: PhantomData,
     })))
+  }
+
+  pub fn get_scope(&self) -> Option<&str> {
+    match &self.scope {
+      Some(name) => Some(name.as_str()),
+      None => None,
+    }
   }
 }
 
@@ -71,7 +81,9 @@ where
 
     match target {
       FetchableType::String(ref target_name) => {
-        let possible_matcher = sub_context.borrow().get_registered_matcher(target_name);
+        let possible_matcher = sub_context
+          .borrow()
+          .get_registered_matcher(self.get_scope(), target_name);
 
         if let Some(matcher) = possible_matcher {
           matcher.borrow().exec(sub_context)
@@ -109,6 +121,13 @@ where
 
   fn to_string(&self) -> String {
     format!("{:?}", self)
+  }
+
+  fn set_scope(&mut self, scope: Option<&str>) {
+    match scope {
+      Some(name) => self.scope = Some(name.to_string()),
+      None => self.scope = None,
+    }
   }
 }
 

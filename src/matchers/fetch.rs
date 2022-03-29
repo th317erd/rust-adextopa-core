@@ -15,7 +15,10 @@ impl<'a> Fetchable<'a> for FetchPattern {
     let name = self.get_name();
     let name_path: Vec<&str> = name.split(".").collect();
 
-    match context.borrow().get_variable(name_path[0]) {
+    match context
+      .borrow()
+      .get_variable(self.get_scope(), name_path[0])
+    {
       Some(VariableType::Token(ref token)) => {
         if name_path.len() != 2 {
           panic!(
@@ -92,12 +95,21 @@ impl<'a> Fetchable<'a> for MatcherRef<'a> {
 #[derive(Debug)]
 pub struct FetchPattern {
   name: String,
+  scope: Option<String>,
 }
 
 impl FetchPattern {
   pub fn new(name: &str) -> Self {
     FetchPattern {
       name: name.to_string(),
+      scope: None,
+    }
+  }
+
+  pub fn get_scope(&self) -> Option<&str> {
+    match &self.scope {
+      Some(name) => Some(name.as_str()),
+      None => None,
     }
   }
 }
@@ -133,6 +145,13 @@ impl<'a> Matcher<'a> for FetchPattern {
 
   fn to_string(&self) -> String {
     format!("{:?}", self)
+  }
+
+  fn set_scope(&mut self, scope: Option<&str>) {
+    match scope {
+      Some(scope) => self.scope = Some(scope.to_string()),
+      None => self.scope = None,
+    }
   }
 }
 

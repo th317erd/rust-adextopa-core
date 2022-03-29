@@ -336,7 +336,7 @@ pub fn compile_script<'a>(parser: ParserRef, name: String) -> Result<MatcherRef<
 
   (*parser_context)
     .borrow()
-    .register_matchers(vec![ScriptSwitchMatcher!(), ScriptProgramMatcher!()]);
+    .register_matchers(None, vec![ScriptSwitchMatcher!(), ScriptProgramMatcher!()]);
 
   let pattern = crate::Script!();
 
@@ -441,7 +441,7 @@ mod tests {
   fn register_matchers(parser_context: &ParserContextRef) {
     (*parser_context)
       .borrow()
-      .register_matchers(vec![ScriptSwitchMatcher!(), ScriptProgramMatcher!()]);
+      .register_matchers(None, vec![ScriptSwitchMatcher!(), ScriptProgramMatcher!()]);
   }
 
   #[test]

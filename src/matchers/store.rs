@@ -14,6 +14,7 @@ pub enum StorePatternType<'a> {
 pub struct StorePattern<'a> {
   pattern: StorePatternType<'a>,
   name: String,
+  scope: Option<String>,
   custom_name: bool,
 }
 
@@ -26,6 +27,7 @@ impl<'a> StorePattern<'a> {
     Rc::new(RefCell::new(Box::new(StorePattern {
       pattern: StorePatternType::String(pattern.to_string()),
       name: name.to_string(),
+      scope: None,
       custom_name: true,
     })))
   }
@@ -38,8 +40,16 @@ impl<'a> StorePattern<'a> {
     Rc::new(RefCell::new(Box::new(StorePattern {
       pattern: StorePatternType::Matcher(pattern),
       name: name.to_string(),
+      scope: None,
       custom_name: true,
     })))
+  }
+
+  pub fn get_scope(&self) -> Option<&str> {
+    match &self.scope {
+      Some(name) => Some(name.as_str()),
+      None => None,
+    }
   }
 }
 
@@ -48,13 +58,15 @@ impl<'a> Matcher<'a> for StorePattern<'a> {
     match &self.pattern {
       StorePatternType::Matcher(matcher) => {
         let sub_context = context.borrow().clone_with_name(self.get_name());
-        let result = matcher.borrow().exec(sub_context);
+        let result = matcher.borrow().exec(sub_context.clone());
 
         match result {
           Ok(MatcherSuccess::Token(ref token)) => {
-            context
-              .borrow_mut()
-              .set_variable(self.name.to_string(), VariableType::Token(token.clone()));
+            sub_context.borrow_mut().set_variable(
+              self.get_scope(),
+              self.name.to_string(),
+              VariableType::Token(token.clone()),
+            );
           }
           _ => {}
         }
@@ -62,9 +74,11 @@ impl<'a> Matcher<'a> for StorePattern<'a> {
         result
       }
       StorePatternType::String(value) => {
-        context
-          .borrow_mut()
-          .set_variable(self.name.to_string(), VariableType::String(value.clone()));
+        context.borrow_mut().set_variable(
+          self.get_scope(),
+          self.name.to_string(),
+          VariableType::String(value.clone()),
+        );
 
         Ok(MatcherSuccess::Skip(0))
       }
@@ -105,6 +119,13 @@ impl<'a> Matcher<'a> for StorePattern<'a> {
   fn to_string(&self) -> String {
     format!("{:?}", self)
   }
+
+  fn set_scope(&mut self, scope: Option<&str>) {
+    match scope {
+      Some(name) => self.scope = Some(name.to_string()),
+      None => self.scope = None,
+    }
+  }
 }
 
 #[macro_export]
@@ -144,7 +165,7 @@ mod tests {
       assert_eq!(token.value(), "Testing");
       assert_eq!(token.raw_value(), "Testing");
 
-      let variable = parser_context.borrow().get_variable("test");
+      let variable = parser_context.borrow().get_variable(None, "test");
       if let Some(VariableType::Token(variable_token)) = variable {
         let variable_token = variable_token.borrow();
         assert_eq!(variable_token.get_name(), "Equals");
@@ -176,7 +197,7 @@ mod tests {
       assert_eq!(token.value(), "Testing");
       assert_eq!(token.raw_value(), "Testing");
 
-      let variable = parser_context.borrow().get_variable("test");
+      let variable = parser_context.borrow().get_variable(None, "test");
       if let Some(VariableType::String(value)) = variable {
         assert_eq!(value, "This is a test!");
       } else {
