@@ -45,6 +45,13 @@ impl<'a> StorePattern<'a> {
     })))
   }
 
+  fn set_scope(&mut self, scope: Option<&str>) {
+    match scope {
+      Some(scope) => self.scope = Some(scope.to_string()),
+      None => self.scope = None,
+    }
+  }
+
   pub fn get_scope(&self) -> Option<&str> {
     match &self.scope {
       Some(name) => Some(name.as_str()),
@@ -121,10 +128,11 @@ impl<'a> Matcher<'a> for StorePattern<'a> {
   }
 
   fn set_scope(&mut self, scope: Option<&str>) {
-    match scope {
-      Some(name) => self.scope = Some(name.to_string()),
-      None => self.scope = None,
-    }
+    self.set_scope(scope)
+  }
+
+  fn get_scope(&self) -> Option<&str> {
+    self.get_scope()
   }
 }
 

@@ -51,6 +51,10 @@ pub trait Matcher<'a> {
     // NO-OP
   }
 
+  fn get_scope(&self) -> Option<&str> {
+    None
+  }
+
   fn set_child(&mut self, _: usize, _: MatcherRef<'a>) {
     panic!(
       "Can not call `set_child` on a `{}` matcher: Operation not supported",

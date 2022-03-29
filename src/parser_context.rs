@@ -180,7 +180,9 @@ impl<'a> ParserContext<'a> {
   }
 
   fn capture_matcher_references(&self, scope: Option<&str>, matcher: MatcherRef<'a>) {
-    matcher.borrow_mut().set_scope(scope);
+    if matcher.borrow().get_scope().is_none() {
+      matcher.borrow_mut().set_scope(scope);
+    }
 
     let m = matcher.borrow();
 
