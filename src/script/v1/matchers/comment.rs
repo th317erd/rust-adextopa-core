@@ -26,8 +26,8 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Comment");
-      assert_eq!(*token.get_value_range(), SourceRange::new(0, 9));
-      assert_eq!(*token.get_raw_range(), SourceRange::new(0, 9));
+      assert_eq!(*token.get_captured_range(), SourceRange::new(0, 9));
+      assert_eq!(*token.get_matched_range(), SourceRange::new(0, 9));
       assert_eq!(token.value(), "# Testing");
       assert_eq!(token.raw_value(), "# Testing");
       assert_eq!(token.get_children().len(), 0);
@@ -51,30 +51,30 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Loop");
-      assert_eq!(*token.get_value_range(), SourceRange::new(0, 14));
-      assert_eq!(*token.get_raw_range(), SourceRange::new(0, 14));
+      assert_eq!(*token.get_captured_range(), SourceRange::new(0, 14));
+      assert_eq!(*token.get_matched_range(), SourceRange::new(0, 14));
       assert_eq!(token.value(), r"1234 # Testing");
       assert_eq!(token.raw_value(), r"1234 # Testing");
       assert_eq!(token.get_children().len(), 3);
 
       let first = token.get_children()[0].borrow();
       assert_eq!(first.get_name(), "Number");
-      assert_eq!(*first.get_value_range(), SourceRange::new(0, 4));
-      assert_eq!(*first.get_raw_range(), SourceRange::new(0, 4));
+      assert_eq!(*first.get_captured_range(), SourceRange::new(0, 4));
+      assert_eq!(*first.get_matched_range(), SourceRange::new(0, 4));
       assert_eq!(first.value(), r"1234");
       assert_eq!(first.raw_value(), r"1234");
 
       let second = token.get_children()[1].borrow();
       assert_eq!(second.get_name(), "Whitespace");
-      assert_eq!(*second.get_value_range(), SourceRange::new(4, 5));
-      assert_eq!(*second.get_raw_range(), SourceRange::new(4, 5));
+      assert_eq!(*second.get_captured_range(), SourceRange::new(4, 5));
+      assert_eq!(*second.get_matched_range(), SourceRange::new(4, 5));
       assert_eq!(second.value(), r" ");
       assert_eq!(second.raw_value(), r" ");
 
       let second = token.get_children()[2].borrow();
       assert_eq!(second.get_name(), "Comment");
-      assert_eq!(*second.get_value_range(), SourceRange::new(5, 14));
-      assert_eq!(*second.get_raw_range(), SourceRange::new(5, 14));
+      assert_eq!(*second.get_captured_range(), SourceRange::new(5, 14));
+      assert_eq!(*second.get_matched_range(), SourceRange::new(5, 14));
       assert_eq!(second.value(), r"# Testing");
       assert_eq!(second.raw_value(), r"# Testing");
     } else {

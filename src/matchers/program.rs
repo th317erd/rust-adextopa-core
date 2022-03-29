@@ -163,8 +163,8 @@ fn contain_source_range(tsr: &mut SourceRange, ssr: &SourceRange) {
 fn finalize_program_token<'a>(
   program_token: TokenRef,
   children: Vec<TokenRef>,
-  value_range: SourceRange,
-  raw_range: SourceRange,
+  captured_range: SourceRange,
+  matched_range: SourceRange,
   iterate_range: &Option<Range<usize>>,
   loop_count: usize,
   fail_on_range_mismatch: bool,
@@ -188,7 +188,7 @@ fn finalize_program_token<'a>(
   }
 
   // Fail if nothing was collected
-  if value_range.start == usize::MAX || raw_range.start == usize::MAX {
+  if captured_range.start == usize::MAX || matched_range.start == usize::MAX {
     return Err(MatcherFailure::Fail);
   }
 
@@ -199,8 +199,8 @@ fn finalize_program_token<'a>(
   {
     let mut program_token = program_token.borrow_mut();
     program_token.set_children(children);
-    program_token.set_value_range(value_range);
-    program_token.set_raw_range(raw_range);
+    program_token.set_captured_range(captured_range);
+    program_token.set_matched_range(matched_range);
   }
 
   Ok(MatcherSuccess::Token(program_token))
@@ -210,8 +210,8 @@ fn add_token_to_children<'a>(
   program_token: &TokenRef,
   context: &ParserContextRef,
   children: &mut Vec<TokenRef>,
-  value_range: &mut SourceRange,
-  raw_range: &mut SourceRange,
+  captured_range: &mut SourceRange,
+  matched_range: &mut SourceRange,
   token: &TokenRef,
   assert_moving_forward: bool,
   update_offsets: bool,
@@ -222,7 +222,7 @@ fn add_token_to_children<'a>(
 
       if assert_moving_forward && update_offsets {
         // Ensure that we are moving forward, and that the token doesn't have a zero width
-        if token.get_raw_range().end == context.borrow().offset.start {
+        if token.get_matched_range().end == context.borrow().offset.start {
           if context.borrow().debug_mode_level() > 1 {
             print!("{{{}/AddChild}} ", program_token.borrow().get_name());
           }
@@ -233,33 +233,33 @@ fn add_token_to_children<'a>(
             token.get_name()
           );
 
-          assert!(token.get_raw_range().end != context.borrow().offset.start);
+          assert!(token.get_matched_range().end != context.borrow().offset.start);
         }
       }
 
       if update_offsets {
-        // value_range is set to raw_range because the program
+        // captured_range is set to matched_range because the program
         // should always span the range of all child tokens
-        contain_source_range(value_range, &token.get_value_range());
-        contain_source_range(raw_range, &token.get_raw_range());
+        contain_source_range(captured_range, &token.get_captured_range());
+        contain_source_range(matched_range, &token.get_matched_range());
       }
     } else {
       let mut token = token.borrow_mut();
-      let source_range = token.get_raw_range();
+      let source_range = token.get_matched_range();
 
       if source_range.start == source_range.end {
         let mut new_source_range = source_range.clone();
-        new_source_range.start = raw_range.start;
+        new_source_range.start = matched_range.start;
 
-        token.set_value_range(new_source_range);
-        token.set_raw_range(new_source_range);
+        token.set_captured_range(new_source_range);
+        token.set_matched_range(new_source_range);
       }
 
       if update_offsets {
-        // value_range is set to raw_range because the program
+        // captured_range is set to matched_range because the program
         // should always span the range of all child tokens
-        contain_source_range(value_range, &token.get_value_range());
-        contain_source_range(raw_range, &token.get_raw_range());
+        contain_source_range(captured_range, &token.get_captured_range());
+        contain_source_range(matched_range, &token.get_matched_range());
       }
     }
   }
@@ -267,7 +267,7 @@ fn add_token_to_children<'a>(
   if update_offsets {
     context
       .borrow_mut()
-      .set_start(token.borrow().get_raw_range().end);
+      .set_start(token.borrow().get_matched_range().end);
   }
 
   {
@@ -283,8 +283,8 @@ fn handle_token(
   program_token: &TokenRef,
   context: &ParserContextRef,
   children: &mut Vec<TokenRef>,
-  value_range: &mut SourceRange,
-  raw_range: &mut SourceRange,
+  captured_range: &mut SourceRange,
+  matched_range: &mut SourceRange,
   token: &TokenRef,
   assert_moving_forward: bool,
   update_offsets: bool,
@@ -300,8 +300,8 @@ fn handle_token(
       "`{}` Adding child `{}` @[{}-{}]",
       program.get_name(),
       token.get_name(),
-      token.get_raw_range().start,
-      token.get_raw_range().end
+      token.get_matched_range().start,
+      token.get_matched_range().end
     );
   }
 
@@ -311,8 +311,8 @@ fn handle_token(
     &program_token,
     &context,
     children,
-    value_range,
-    raw_range,
+    captured_range,
+    matched_range,
     token,
     assert_moving_forward,
     update_offsets && !should_discard,
@@ -327,7 +327,7 @@ fn handle_token(
       "`{}` Setting to offset to: {} -> {}",
       program.get_name(),
       context.borrow().offset.start,
-      token.borrow().get_raw_range().end
+      token.borrow().get_matched_range().end
     );
   }
 }
@@ -337,8 +337,8 @@ fn handle_extract_token(
   program_token: &TokenRef,
   context: &ParserContextRef,
   children: &mut Vec<TokenRef>,
-  value_range: &mut SourceRange,
-  raw_range: &mut SourceRange,
+  captured_range: &mut SourceRange,
+  matched_range: &mut SourceRange,
   token: &TokenRef,
   update_offsets: bool,
 ) {
@@ -355,15 +355,17 @@ fn handle_extract_token(
       "`{}` Setting to offset to: {} -> {}",
       program.get_name(),
       context.borrow().offset.start,
-      token.get_raw_range().end
+      token.get_matched_range().end
     );
   }
 
   if update_offsets && !should_discard {
-    context.borrow_mut().set_start(token.get_raw_range().end);
+    context
+      .borrow_mut()
+      .set_start(token.get_matched_range().end);
 
-    contain_source_range(value_range, &token.get_value_range());
-    contain_source_range(raw_range, &token.get_raw_range());
+    contain_source_range(captured_range, &token.get_captured_range());
+    contain_source_range(matched_range, &token.get_matched_range());
   }
 
   if context.borrow().debug_mode_level() > 0 {
@@ -396,8 +398,8 @@ fn handle_extract_token(
         "`{}` Adding child `{}` @[{}-{}]",
         program.get_name(),
         child.get_name(),
-        child.get_raw_range().start,
-        child.get_raw_range().end
+        child.get_matched_range().start,
+        child.get_matched_range().end
       );
     }
 
@@ -405,8 +407,8 @@ fn handle_extract_token(
       program_token,
       context,
       children,
-      value_range,
-      raw_range,
+      captured_range,
+      matched_range,
       &child,
       false,
       update_offsets && !should_discard,
@@ -417,8 +419,8 @@ fn handle_extract_token(
 fn handle_skip(
   program: &ProgramPattern,
   context: &ParserContextRef,
-  value_range: &mut SourceRange,
-  raw_range: &mut SourceRange,
+  captured_range: &mut SourceRange,
+  matched_range: &mut SourceRange,
   start_offset: usize,
   offset: isize,
 ) {
@@ -442,7 +444,7 @@ fn handle_skip(
 
   let range = SourceRange::new(start_offset, new_offset);
 
-  contain_source_range(raw_range, &range);
+  contain_source_range(matched_range, &range);
 }
 
 impl<'a> Matcher<'a> for ProgramPattern<'a> {
@@ -456,8 +458,8 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
       SourceRange::new_blank(),
     );
     let mut children = Vec::<TokenRef>::with_capacity(self.patterns.len());
-    let mut value_range = SourceRange::new(usize::MAX, 0);
-    let mut raw_range = SourceRange::new(usize::MAX, 0);
+    let mut captured_range = SourceRange::new(usize::MAX, 0);
+    let mut matched_range = SourceRange::new(usize::MAX, 0);
     let is_loop = match &self.iterate_range {
       Some(_) => true,
       None => false,
@@ -500,8 +502,8 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
                 &program_token,
                 &sub_context,
                 &mut children,
-                &mut value_range,
-                &mut raw_range,
+                &mut captured_range,
+                &mut matched_range,
                 &token,
                 is_consuming,
                 is_consuming,
@@ -526,8 +528,8 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
                 &program_token,
                 &sub_context,
                 &mut children,
-                &mut value_range,
-                &mut raw_range,
+                &mut captured_range,
+                &mut matched_range,
                 &token,
                 is_consuming,
               );
@@ -546,8 +548,8 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
                 handle_skip(
                   self,
                   &sub_context,
-                  &mut value_range,
-                  &mut raw_range,
+                  &mut captured_range,
+                  &mut matched_range,
                   start_offset,
                   amount,
                 );
@@ -580,8 +582,8 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
               return finalize_program_token(
                 program_token,
                 children,
-                value_range,
-                raw_range,
+                captured_range,
+                matched_range,
                 &self.iterate_range,
                 loop_count,
                 false,
@@ -616,8 +618,8 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
                     &program_token,
                     &sub_context,
                     &mut children,
-                    &mut value_range,
-                    &mut raw_range,
+                    &mut captured_range,
+                    &mut matched_range,
                     &token,
                     false,
                     true,
@@ -631,8 +633,8 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
                     &program_token,
                     &sub_context,
                     &mut children,
-                    &mut value_range,
-                    &mut raw_range,
+                    &mut captured_range,
+                    &mut matched_range,
                     &token,
                     true,
                   );
@@ -643,8 +645,8 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
                   handle_skip(
                     self,
                     &sub_context,
-                    &mut value_range,
-                    &mut raw_range,
+                    &mut captured_range,
+                    &mut matched_range,
                     start_offset,
                     *amount,
                   );
@@ -658,8 +660,8 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
               return finalize_program_token(
                 program_token,
                 children,
-                value_range,
-                raw_range,
+                captured_range,
+                matched_range,
                 &self.iterate_range,
                 loop_count,
                 false,
@@ -670,8 +672,8 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
                   handle_skip(
                     self,
                     &sub_context,
-                    &mut value_range,
-                    &mut raw_range,
+                    &mut captured_range,
+                    &mut matched_range,
                     start_offset,
                     *amount,
                   );
@@ -682,8 +684,8 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
               match finalize_program_token(
                 program_token,
                 children,
-                value_range,
-                raw_range,
+                captured_range,
+                matched_range,
                 &self.iterate_range,
                 loop_count,
                 false,
@@ -707,8 +709,8 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
                     &program_token,
                     &sub_context,
                     &mut children,
-                    &mut value_range,
-                    &mut raw_range,
+                    &mut captured_range,
+                    &mut matched_range,
                     &token,
                     false,
                     true,
@@ -722,8 +724,8 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
                     &program_token,
                     &sub_context,
                     &mut children,
-                    &mut value_range,
-                    &mut raw_range,
+                    &mut captured_range,
+                    &mut matched_range,
                     &token,
                     true,
                   );
@@ -734,8 +736,8 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
                   handle_skip(
                     self,
                     &sub_context,
-                    &mut value_range,
-                    &mut raw_range,
+                    &mut captured_range,
+                    &mut matched_range,
                     start_offset,
                     *amount,
                   );
@@ -750,8 +752,8 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
                   handle_skip(
                     self,
                     &sub_context,
-                    &mut value_range,
-                    &mut raw_range,
+                    &mut captured_range,
+                    &mut matched_range,
                     start_offset,
                     *amount,
                   );
@@ -762,8 +764,8 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
               match finalize_program_token(
                 program_token,
                 children,
-                value_range,
-                raw_range,
+                captured_range,
+                matched_range,
                 &self.iterate_range,
                 loop_count,
                 false,
@@ -791,8 +793,8 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
     finalize_program_token(
       program_token,
       children,
-      value_range,
-      raw_range,
+      captured_range,
+      matched_range,
       &self.iterate_range,
       loop_count,
       true,
@@ -1011,7 +1013,7 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Program");
-      assert_eq!(*token.get_value_range(), SourceRange::new(0, 12));
+      assert_eq!(*token.get_captured_range(), SourceRange::new(0, 12));
       assert_eq!(token.value(), parser.borrow().source);
     } else {
       unreachable!("Test failed!");
@@ -1039,7 +1041,7 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Equals");
-      assert_eq!(*token.get_value_range(), SourceRange::new(0, 7));
+      assert_eq!(*token.get_captured_range(), SourceRange::new(0, 7));
       assert_eq!(token.value(), "Testing");
       assert_eq!(token.raw_value(), "Testing");
     } else {
@@ -1056,7 +1058,7 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Loop");
-      assert_eq!(*token.get_value_range(), SourceRange::new(0, 12));
+      assert_eq!(*token.get_captured_range(), SourceRange::new(0, 12));
       assert_eq!(token.value(), parser.borrow().source);
       assert_eq!(token.raw_value(), parser.borrow().source);
 
@@ -1093,7 +1095,7 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Loop");
-      assert_eq!(*token.get_value_range(), SourceRange::new(0, 12));
+      assert_eq!(*token.get_captured_range(), SourceRange::new(0, 12));
       assert_eq!(token.value(), parser.borrow().source);
       assert_eq!(token.raw_value(), parser.borrow().source);
 
@@ -1137,7 +1139,7 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Loop");
-      assert_eq!(*token.get_value_range(), SourceRange::new(0, 11));
+      assert_eq!(*token.get_captured_range(), SourceRange::new(0, 11));
       assert_eq!(token.value(), "A B C break");
       assert_eq!(token.raw_value(), "A B C break");
 

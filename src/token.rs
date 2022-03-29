@@ -56,11 +56,11 @@ impl core::fmt::Debug for TokenRefInner {
       tab_minus_one,
       self.get_name(),
       tabs,
-      self.get_value_range().start,
-      self.get_value_range().end,
+      self.get_captured_range().start,
+      self.get_captured_range().end,
       tabs,
-      self.get_raw_range().start,
-      self.get_raw_range().end,
+      self.get_matched_range().start,
+      self.get_matched_range().end,
       tabs,
       self.value(),
       tabs,
@@ -104,20 +104,20 @@ impl std::fmt::Display for TokenRefInner {
 impl PartialEq for TokenRefInner {
   fn eq(&self, other: &Self) -> bool {
     *self.get_name() == *other.get_name()
-      && *self.get_value_range() == *other.get_value_range()
-      && *self.get_raw_range() == *other.get_raw_range()
+      && *self.get_captured_range() == *other.get_captured_range()
+      && *self.get_matched_range() == *other.get_matched_range()
   }
 }
 
 // Token<'a> is required because name: &'a str is required (name lives as long as the underlying struct)
 pub trait Token {
   fn get_parser(&self) -> crate::parser::ParserRef;
-  fn get_value_range(&self) -> &crate::source_range::SourceRange;
-  fn get_value_range_mut(&mut self) -> &mut crate::source_range::SourceRange;
-  fn set_value_range(&mut self, range: crate::source_range::SourceRange);
-  fn get_raw_range(&self) -> &crate::source_range::SourceRange;
-  fn get_raw_range_mut(&mut self) -> &mut crate::source_range::SourceRange;
-  fn set_raw_range(&mut self, range: crate::source_range::SourceRange);
+  fn get_captured_range(&self) -> &crate::source_range::SourceRange;
+  fn get_captured_range_mut(&mut self) -> &mut crate::source_range::SourceRange;
+  fn set_captured_range(&mut self, range: crate::source_range::SourceRange);
+  fn get_matched_range(&self) -> &crate::source_range::SourceRange;
+  fn get_matched_range_mut(&mut self) -> &mut crate::source_range::SourceRange;
+  fn set_matched_range(&mut self, range: crate::source_range::SourceRange);
   fn get_name(&self) -> &String;
   fn set_name(&mut self, name: &str);
   fn get_parent(&self) -> Option<crate::token::TokenRef>;
@@ -186,8 +186,8 @@ pub trait Token {
 #[derive(adextopa_macros::Token)]
 pub struct StandardToken {
   parser: ParserRef,
-  pub value_range: SourceRange,
-  pub raw_range: SourceRange,
+  pub captured_range: SourceRange,
+  pub matched_range: SourceRange,
   pub name: String,
   pub parent: Option<TokenRef>,
   pub children: Vec<TokenRef>,
@@ -195,11 +195,11 @@ pub struct StandardToken {
 }
 
 impl StandardToken {
-  pub fn new(parser: &ParserRef, name: String, value_range: SourceRange) -> TokenRef {
+  pub fn new(parser: &ParserRef, name: String, captured_range: SourceRange) -> TokenRef {
     Rc::new(RefCell::new(Box::new(StandardToken {
       parser: parser.clone(),
-      value_range,
-      raw_range: value_range.clone(),
+      captured_range,
+      matched_range: captured_range.clone(),
       name,
       parent: None,
       children: Vec::new(),
@@ -207,16 +207,16 @@ impl StandardToken {
     })))
   }
 
-  pub fn new_with_raw_range(
+  pub fn new_with_matched_range(
     parser: &ParserRef,
     name: String,
-    value_range: SourceRange,
-    raw_range: SourceRange,
+    captured_range: SourceRange,
+    matched_range: SourceRange,
   ) -> TokenRef {
     Rc::new(RefCell::new(Box::new(StandardToken {
       parser: parser.clone(),
-      value_range,
-      raw_range,
+      captured_range,
+      matched_range,
       name,
       parent: None,
       children: Vec::new(),

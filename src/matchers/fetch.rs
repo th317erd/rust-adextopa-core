@@ -35,18 +35,18 @@ impl<'a> Fetchable<'a> for FetchPattern {
         } else if sub_name == "raw_value" {
           token.raw_value()
         } else if sub_name == "start" {
-          format!("{}", token.get_raw_range().start)
+          format!("{}", token.get_matched_range().start)
         } else if sub_name == "end" {
-          format!("{}", token.get_raw_range().end)
+          format!("{}", token.get_matched_range().end)
         } else if sub_name == "value_start" {
-          format!("{}", token.get_value_range().start)
+          format!("{}", token.get_captured_range().start)
         } else if sub_name == "value_end" {
-          format!("{}", token.get_value_range().end)
+          format!("{}", token.get_captured_range().end)
         } else if sub_name == "range" {
-          let range = token.get_raw_range();
+          let range = token.get_matched_range();
           format!("{}..{}", range.start, range.end)
-        } else if sub_name == "value_range" {
-          let range = token.get_value_range();
+        } else if sub_name == "captured_range" {
+          let range = token.get_captured_range();
           format!("{}..{}", range.start, range.end)
         } else {
           panic!(
@@ -188,8 +188,8 @@ mod tests {
     {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Equals");
-      assert_eq!(*token.get_value_range(), SourceRange::new(0, 7));
-      assert_eq!(*token.get_raw_range(), SourceRange::new(0, 7));
+      assert_eq!(*token.get_captured_range(), SourceRange::new(0, 7));
+      assert_eq!(*token.get_matched_range(), SourceRange::new(0, 7));
       assert_eq!(token.value(), "Testing");
       assert_eq!(token.raw_value(), "Testing");
     } else {
@@ -212,22 +212,22 @@ mod tests {
     {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Program");
-      assert_eq!(*token.get_value_range(), SourceRange::new(0, 15));
-      assert_eq!(*token.get_raw_range(), SourceRange::new(0, 15));
+      assert_eq!(*token.get_captured_range(), SourceRange::new(0, 15));
+      assert_eq!(*token.get_matched_range(), SourceRange::new(0, 15));
       assert_eq!(token.value(), "Testing Testing");
       assert_eq!(token.raw_value(), "Testing Testing");
 
       let first = token.get_children()[0].borrow();
       assert_eq!(first.get_name(), "Matches");
-      assert_eq!(*first.get_value_range(), SourceRange::new(0, 7));
-      assert_eq!(*first.get_raw_range(), SourceRange::new(0, 7));
+      assert_eq!(*first.get_captured_range(), SourceRange::new(0, 7));
+      assert_eq!(*first.get_matched_range(), SourceRange::new(0, 7));
       assert_eq!(first.value(), "Testing");
       assert_eq!(first.raw_value(), "Testing");
 
       let second = token.get_children()[1].borrow();
       assert_eq!(second.get_name(), "Equals");
-      assert_eq!(*second.get_value_range(), SourceRange::new(8, 15));
-      assert_eq!(*second.get_raw_range(), SourceRange::new(8, 15));
+      assert_eq!(*second.get_captured_range(), SourceRange::new(8, 15));
+      assert_eq!(*second.get_matched_range(), SourceRange::new(8, 15));
       assert_eq!(second.value(), "Testing");
       assert_eq!(second.raw_value(), "Testing");
     } else {

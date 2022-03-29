@@ -54,7 +54,7 @@ where
               crate::matchers::error::new_error_token_with_range(
                 context,
                 result.as_str(),
-                token.borrow().get_raw_range().clone(),
+                token.borrow().get_matched_range().clone(),
               ),
             ));
           }
@@ -118,11 +118,14 @@ mod tests {
     let parser = Parser::new("Testing 1234");
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Map!(Equals!("Testing"), |token| {
-      let value_range = token.borrow().get_value_range().clone();
+      let captured_range = token.borrow().get_captured_range().clone();
       let mut token = token.borrow_mut();
 
       token.set_name("WOW");
-      token.set_value_range(SourceRange::new(value_range.start + 1, value_range.end - 1));
+      token.set_captured_range(SourceRange::new(
+        captured_range.start + 1,
+        captured_range.end - 1,
+      ));
       token.set_attribute("was_mapped", "true");
 
       None
@@ -131,8 +134,8 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "WOW");
-      assert_eq!(*token.get_value_range(), SourceRange::new(1, 6));
-      assert_eq!(*token.get_raw_range(), SourceRange::new(0, 7));
+      assert_eq!(*token.get_captured_range(), SourceRange::new(1, 6));
+      assert_eq!(*token.get_matched_range(), SourceRange::new(0, 7));
       assert_eq!(token.value(), "estin");
       assert_eq!(token.raw_value(), "Testing");
     } else {
@@ -151,8 +154,8 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Error");
-      assert_eq!(*token.get_value_range(), SourceRange::new(0, 7));
-      assert_eq!(*token.get_raw_range(), SourceRange::new(0, 7));
+      assert_eq!(*token.get_captured_range(), SourceRange::new(0, 7));
+      assert_eq!(*token.get_matched_range(), SourceRange::new(0, 7));
       assert_eq!(token.value(), "Testing");
       assert_eq!(token.raw_value(), "Testing");
       assert_eq!(

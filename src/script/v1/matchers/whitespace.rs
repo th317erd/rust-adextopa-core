@@ -72,8 +72,8 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Whitespace");
-      assert_eq!(*token.get_value_range(), SourceRange::new(0, 2));
-      assert_eq!(*token.get_raw_range(), SourceRange::new(0, 2));
+      assert_eq!(*token.get_captured_range(), SourceRange::new(0, 2));
+      assert_eq!(*token.get_matched_range(), SourceRange::new(0, 2));
       assert_eq!(token.value(), "  ");
       assert_eq!(token.raw_value(), "  ");
     } else {
@@ -92,8 +92,8 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Whitespace");
-      assert_eq!(*token.get_value_range(), SourceRange::new(0, 2));
-      assert_eq!(*token.get_raw_range(), SourceRange::new(0, 2));
+      assert_eq!(*token.get_captured_range(), SourceRange::new(0, 2));
+      assert_eq!(*token.get_matched_range(), SourceRange::new(0, 2));
       assert_eq!(token.value(), "  ");
       assert_eq!(token.raw_value(), "  ");
     } else {

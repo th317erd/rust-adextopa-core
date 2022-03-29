@@ -147,8 +147,8 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Equals");
-      assert_eq!(*token.get_value_range(), SourceRange::new(0, 7));
-      assert_eq!(*token.get_raw_range(), SourceRange::new(0, 7));
+      assert_eq!(*token.get_captured_range(), SourceRange::new(0, 7));
+      assert_eq!(*token.get_matched_range(), SourceRange::new(0, 7));
       assert_eq!(token.value(), "Testing");
       assert_eq!(token.raw_value(), "Testing");
     } else {

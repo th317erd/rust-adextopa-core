@@ -74,23 +74,23 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "PatternDefinition");
-      assert_eq!(*token.get_value_range(), SourceRange::new(1, 9));
-      assert_eq!(*token.get_raw_range(), SourceRange::new(0, 10));
+      assert_eq!(*token.get_captured_range(), SourceRange::new(1, 9));
+      assert_eq!(*token.get_matched_range(), SourceRange::new(0, 10));
       assert_eq!(token.value(), "!/test/i");
       assert_eq!(token.raw_value(), "<!/test/i>");
       assert_eq!(token.get_children().len(), 2);
 
       let first = token.get_children()[0].borrow();
       assert_eq!(first.get_name(), "InnerNotModifier");
-      assert_eq!(*first.get_value_range(), SourceRange::new(1, 2));
-      assert_eq!(*first.get_raw_range(), SourceRange::new(1, 2));
+      assert_eq!(*first.get_captured_range(), SourceRange::new(1, 2));
+      assert_eq!(*first.get_matched_range(), SourceRange::new(1, 2));
       assert_eq!(first.value(), "!");
       assert_eq!(first.raw_value(), "!");
 
       let second = token.get_children()[1].borrow();
       assert_eq!(second.get_name(), "RegexMatcher");
-      assert_eq!(*second.get_value_range(), SourceRange::new(3, 9));
-      assert_eq!(*second.get_raw_range(), SourceRange::new(2, 9));
+      assert_eq!(*second.get_captured_range(), SourceRange::new(3, 9));
+      assert_eq!(*second.get_matched_range(), SourceRange::new(2, 9));
       assert_eq!(second.value(), "test/i");
       assert_eq!(second.raw_value(), "/test/i");
     } else {
@@ -112,45 +112,45 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "PatternDefinition");
-      assert_eq!(*token.get_value_range(), SourceRange::new(1, 36));
-      assert_eq!(*token.get_raw_range(), SourceRange::new(0, 38));
+      assert_eq!(*token.get_captured_range(), SourceRange::new(1, 36));
+      assert_eq!(*token.get_matched_range(), SourceRange::new(0, 38));
       assert_eq!(token.value(), "!/test/i attr1='test' attr2 = 'derp");
       assert_eq!(token.raw_value(), "<!/test/i attr1='test' attr2 = 'derp'>");
       assert_eq!(token.get_children().len(), 3);
 
       let first = token.get_children()[0].borrow();
       assert_eq!(first.get_name(), "InnerNotModifier");
-      assert_eq!(*first.get_value_range(), SourceRange::new(1, 2));
-      assert_eq!(*first.get_raw_range(), SourceRange::new(1, 2));
+      assert_eq!(*first.get_captured_range(), SourceRange::new(1, 2));
+      assert_eq!(*first.get_matched_range(), SourceRange::new(1, 2));
       assert_eq!(first.value(), "!");
       assert_eq!(first.raw_value(), "!");
 
       let second = token.get_children()[1].borrow();
       assert_eq!(second.get_name(), "RegexMatcher");
-      assert_eq!(*second.get_value_range(), SourceRange::new(3, 9));
-      assert_eq!(*second.get_raw_range(), SourceRange::new(2, 9));
+      assert_eq!(*second.get_captured_range(), SourceRange::new(3, 9));
+      assert_eq!(*second.get_matched_range(), SourceRange::new(2, 9));
       assert_eq!(second.value(), "test/i");
       assert_eq!(second.raw_value(), "/test/i");
 
       let third = token.get_children()[2].borrow();
       assert_eq!(third.get_name(), "Attributes");
-      assert_eq!(*third.get_value_range(), SourceRange::new(10, 36));
-      assert_eq!(*third.get_raw_range(), SourceRange::new(10, 37));
+      assert_eq!(*third.get_captured_range(), SourceRange::new(10, 36));
+      assert_eq!(*third.get_matched_range(), SourceRange::new(10, 37));
       assert_eq!(third.value(), "attr1='test' attr2 = 'derp");
       assert_eq!(third.raw_value(), "attr1='test' attr2 = 'derp'");
       assert_eq!(third.get_children().len(), 2);
 
       let attr1 = third.get_children()[0].borrow();
       assert_eq!(attr1.get_name(), "Attribute");
-      assert_eq!(*attr1.get_value_range(), SourceRange::new(10, 21));
-      assert_eq!(*attr1.get_raw_range(), SourceRange::new(10, 22));
+      assert_eq!(*attr1.get_captured_range(), SourceRange::new(10, 21));
+      assert_eq!(*attr1.get_matched_range(), SourceRange::new(10, 22));
       assert_eq!(attr1.value(), "attr1='test");
       assert_eq!(attr1.raw_value(), "attr1='test'");
 
       let attr2 = third.get_children()[1].borrow();
       assert_eq!(attr2.get_name(), "Attribute");
-      assert_eq!(*attr2.get_value_range(), SourceRange::new(23, 36));
-      assert_eq!(*attr2.get_raw_range(), SourceRange::new(23, 37));
+      assert_eq!(*attr2.get_captured_range(), SourceRange::new(23, 36));
+      assert_eq!(*attr2.get_matched_range(), SourceRange::new(23, 37));
       assert_eq!(attr2.value(), "attr2 = 'derp");
       assert_eq!(attr2.raw_value(), "attr2 = 'derp'");
     } else {
@@ -172,23 +172,23 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "PatternDefinition");
-      assert_eq!(*token.get_value_range(), SourceRange::new(0, 8));
-      assert_eq!(*token.get_raw_range(), SourceRange::new(0, 10));
+      assert_eq!(*token.get_captured_range(), SourceRange::new(0, 8));
+      assert_eq!(*token.get_matched_range(), SourceRange::new(0, 10));
       assert_eq!(token.value(), "!<='test");
       assert_eq!(token.raw_value(), "!<='test'>");
       assert_eq!(token.get_children().len(), 2);
 
       let first = token.get_children()[0].borrow();
       assert_eq!(first.get_name(), "OuterNotModifier");
-      assert_eq!(*first.get_value_range(), SourceRange::new(0, 1));
-      assert_eq!(*first.get_raw_range(), SourceRange::new(0, 1));
+      assert_eq!(*first.get_captured_range(), SourceRange::new(0, 1));
+      assert_eq!(*first.get_matched_range(), SourceRange::new(0, 1));
       assert_eq!(first.value(), "!");
       assert_eq!(first.raw_value(), "!");
 
       let second = token.get_children()[1].borrow();
       assert_eq!(second.get_name(), "EqualsMatcher");
-      assert_eq!(*second.get_value_range(), SourceRange::new(4, 8));
-      assert_eq!(*second.get_raw_range(), SourceRange::new(2, 9));
+      assert_eq!(*second.get_captured_range(), SourceRange::new(4, 8));
+      assert_eq!(*second.get_matched_range(), SourceRange::new(2, 9));
       assert_eq!(second.value(), "test");
       assert_eq!(second.raw_value(), "='test'");
     } else {
@@ -210,23 +210,23 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "PatternDefinition");
-      assert_eq!(*token.get_value_range(), SourceRange::new(1, 8));
-      assert_eq!(*token.get_raw_range(), SourceRange::new(0, 10));
+      assert_eq!(*token.get_captured_range(), SourceRange::new(1, 8));
+      assert_eq!(*token.get_matched_range(), SourceRange::new(0, 10));
       assert_eq!(token.value(), "?='test");
       assert_eq!(token.raw_value(), "<?='test'>");
       assert_eq!(token.get_children().len(), 2);
 
       let first = token.get_children()[0].borrow();
       assert_eq!(first.get_name(), "InnerOptionalModifier");
-      assert_eq!(*first.get_value_range(), SourceRange::new(1, 2));
-      assert_eq!(*first.get_raw_range(), SourceRange::new(1, 2));
+      assert_eq!(*first.get_captured_range(), SourceRange::new(1, 2));
+      assert_eq!(*first.get_matched_range(), SourceRange::new(1, 2));
       assert_eq!(first.value(), "?");
       assert_eq!(first.raw_value(), "?");
 
       let second = token.get_children()[1].borrow();
       assert_eq!(second.get_name(), "EqualsMatcher");
-      assert_eq!(*second.get_value_range(), SourceRange::new(4, 8));
-      assert_eq!(*second.get_raw_range(), SourceRange::new(2, 9));
+      assert_eq!(*second.get_captured_range(), SourceRange::new(4, 8));
+      assert_eq!(*second.get_matched_range(), SourceRange::new(2, 9));
       assert_eq!(second.value(), "test");
       assert_eq!(second.raw_value(), "='test'");
     } else {
@@ -248,16 +248,16 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "PatternDefinition");
-      assert_eq!(*token.get_value_range(), SourceRange::new(4, 12));
-      assert_eq!(*token.get_raw_range(), SourceRange::new(0, 15));
+      assert_eq!(*token.get_captured_range(), SourceRange::new(4, 12));
+      assert_eq!(*token.get_matched_range(), SourceRange::new(0, 15));
       assert_eq!(token.value(), "[',']','");
       assert_eq!(token.raw_value(), "< %'[',']','' >");
       assert_eq!(token.get_children().len(), 1);
 
       let first = token.get_children()[0].borrow();
       assert_eq!(first.get_name(), "SequenceMatcher");
-      assert_eq!(*first.get_value_range(), SourceRange::new(4, 12));
-      assert_eq!(*first.get_raw_range(), SourceRange::new(2, 13));
+      assert_eq!(*first.get_captured_range(), SourceRange::new(4, 12));
+      assert_eq!(*first.get_matched_range(), SourceRange::new(2, 13));
       assert_eq!(first.value(), "[',']','");
       assert_eq!(first.raw_value(), "%'[',']',''");
     } else {
@@ -279,23 +279,23 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "PatternDefinition");
-      assert_eq!(*token.get_value_range(), SourceRange::new(3, 10));
-      assert_eq!(*token.get_raw_range(), SourceRange::new(0, 10));
+      assert_eq!(*token.get_captured_range(), SourceRange::new(3, 10));
+      assert_eq!(*token.get_matched_range(), SourceRange::new(0, 10));
       assert_eq!(token.value(), "test'>+");
       assert_eq!(token.raw_value(), "<='test'>+");
       assert_eq!(token.get_children().len(), 2);
 
       let first = token.get_children()[0].borrow();
       assert_eq!(first.get_name(), "EqualsMatcher");
-      assert_eq!(*first.get_value_range(), SourceRange::new(3, 7));
-      assert_eq!(*first.get_raw_range(), SourceRange::new(1, 8));
+      assert_eq!(*first.get_captured_range(), SourceRange::new(3, 7));
+      assert_eq!(*first.get_matched_range(), SourceRange::new(1, 8));
       assert_eq!(first.value(), "test");
       assert_eq!(first.raw_value(), "='test'");
 
       let second = token.get_children()[1].borrow();
       assert_eq!(second.get_name(), "RepeatOneOrMore");
-      assert_eq!(*second.get_value_range(), SourceRange::new(9, 10));
-      assert_eq!(*second.get_raw_range(), SourceRange::new(9, 10));
+      assert_eq!(*second.get_captured_range(), SourceRange::new(9, 10));
+      assert_eq!(*second.get_matched_range(), SourceRange::new(9, 10));
       assert_eq!(second.value(), "+");
       assert_eq!(second.raw_value(), "+");
     } else {
@@ -317,23 +317,23 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "PatternDefinition");
-      assert_eq!(*token.get_value_range(), SourceRange::new(3, 10));
-      assert_eq!(*token.get_raw_range(), SourceRange::new(0, 10));
+      assert_eq!(*token.get_captured_range(), SourceRange::new(3, 10));
+      assert_eq!(*token.get_matched_range(), SourceRange::new(0, 10));
       assert_eq!(token.value(), "test'>*");
       assert_eq!(token.raw_value(), "<='test'>*");
       assert_eq!(token.get_children().len(), 2);
 
       let first = token.get_children()[0].borrow();
       assert_eq!(first.get_name(), "EqualsMatcher");
-      assert_eq!(*first.get_value_range(), SourceRange::new(3, 7));
-      assert_eq!(*first.get_raw_range(), SourceRange::new(1, 8));
+      assert_eq!(*first.get_captured_range(), SourceRange::new(3, 7));
+      assert_eq!(*first.get_matched_range(), SourceRange::new(1, 8));
       assert_eq!(first.value(), "test");
       assert_eq!(first.raw_value(), "='test'");
 
       let second = token.get_children()[1].borrow();
       assert_eq!(second.get_name(), "RepeatZeroOrMore");
-      assert_eq!(*second.get_value_range(), SourceRange::new(9, 10));
-      assert_eq!(*second.get_raw_range(), SourceRange::new(9, 10));
+      assert_eq!(*second.get_captured_range(), SourceRange::new(9, 10));
+      assert_eq!(*second.get_matched_range(), SourceRange::new(9, 10));
       assert_eq!(second.value(), "*");
       assert_eq!(second.raw_value(), "*");
     } else {
@@ -355,23 +355,23 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "PatternDefinition");
-      assert_eq!(*token.get_value_range(), SourceRange::new(3, 12));
-      assert_eq!(*token.get_raw_range(), SourceRange::new(0, 13));
+      assert_eq!(*token.get_captured_range(), SourceRange::new(3, 12));
+      assert_eq!(*token.get_matched_range(), SourceRange::new(0, 13));
       assert_eq!(token.value(), "test'>{2,");
       assert_eq!(token.raw_value(), "<='test'>{2,}");
       assert_eq!(token.get_children().len(), 2);
 
       let first = token.get_children()[0].borrow();
       assert_eq!(first.get_name(), "EqualsMatcher");
-      assert_eq!(*first.get_value_range(), SourceRange::new(3, 7));
-      assert_eq!(*first.get_raw_range(), SourceRange::new(1, 8));
+      assert_eq!(*first.get_captured_range(), SourceRange::new(3, 7));
+      assert_eq!(*first.get_matched_range(), SourceRange::new(1, 8));
       assert_eq!(first.value(), "test");
       assert_eq!(first.raw_value(), "='test'");
 
       let second = token.get_children()[1].borrow();
       assert_eq!(second.get_name(), "RepeatRange");
-      assert_eq!(*second.get_value_range(), SourceRange::new(10, 12));
-      assert_eq!(*second.get_raw_range(), SourceRange::new(9, 13));
+      assert_eq!(*second.get_captured_range(), SourceRange::new(10, 12));
+      assert_eq!(*second.get_matched_range(), SourceRange::new(9, 13));
       assert_eq!(second.value(), "2,");
       assert_eq!(second.raw_value(), "{2,}");
     } else {
@@ -393,16 +393,16 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "PatternDefinition");
-      assert_eq!(*token.get_value_range(), SourceRange::new(1, 9));
-      assert_eq!(*token.get_raw_range(), SourceRange::new(0, 11));
+      assert_eq!(*token.get_captured_range(), SourceRange::new(1, 9));
+      assert_eq!(*token.get_matched_range(), SourceRange::new(0, 11));
       assert_eq!(token.value(), "?!='test");
       assert_eq!(token.raw_value(), "<?!='test'>");
       assert_eq!(token.get_children().len(), 2);
 
       let first = token.get_children()[0].borrow();
       assert_eq!(first.get_name(), "Error");
-      assert_eq!(*first.get_value_range(), SourceRange::new(1, 3));
-      assert_eq!(*first.get_raw_range(), SourceRange::new(1, 3));
+      assert_eq!(*first.get_captured_range(), SourceRange::new(1, 3));
+      assert_eq!(*first.get_matched_range(), SourceRange::new(1, 3));
       assert_eq!(first.value(), "?!");
       assert_eq!(first.raw_value(), "?!");
       assert_eq!(
@@ -415,8 +415,8 @@ mod tests {
 
       let second = token.get_children()[1].borrow();
       assert_eq!(second.get_name(), "EqualsMatcher");
-      assert_eq!(*second.get_value_range(), SourceRange::new(5, 9));
-      assert_eq!(*second.get_raw_range(), SourceRange::new(3, 10));
+      assert_eq!(*second.get_captured_range(), SourceRange::new(5, 9));
+      assert_eq!(*second.get_matched_range(), SourceRange::new(3, 10));
       assert_eq!(second.value(), "test");
       assert_eq!(second.raw_value(), "='test'");
     } else {
@@ -438,16 +438,16 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "PatternDefinition");
-      assert_eq!(*token.get_value_range(), SourceRange::new(0, 9));
-      assert_eq!(*token.get_raw_range(), SourceRange::new(0, 11));
+      assert_eq!(*token.get_captured_range(), SourceRange::new(0, 9));
+      assert_eq!(*token.get_matched_range(), SourceRange::new(0, 11));
       assert_eq!(token.value(), "!?<='test");
       assert_eq!(token.raw_value(), "!?<='test'>");
       assert_eq!(token.get_children().len(), 2);
 
       let first = token.get_children()[0].borrow();
       assert_eq!(first.get_name(), "Error");
-      assert_eq!(*first.get_value_range(), SourceRange::new(0, 2));
-      assert_eq!(*first.get_raw_range(), SourceRange::new(0, 2));
+      assert_eq!(*first.get_captured_range(), SourceRange::new(0, 2));
+      assert_eq!(*first.get_matched_range(), SourceRange::new(0, 2));
       assert_eq!(first.value(), "!?");
       assert_eq!(first.raw_value(), "!?");
       assert_eq!(
@@ -460,8 +460,8 @@ mod tests {
 
       let second = token.get_children()[1].borrow();
       assert_eq!(second.get_name(), "EqualsMatcher");
-      assert_eq!(*second.get_value_range(), SourceRange::new(5, 9));
-      assert_eq!(*second.get_raw_range(), SourceRange::new(3, 10));
+      assert_eq!(*second.get_captured_range(), SourceRange::new(5, 9));
+      assert_eq!(*second.get_matched_range(), SourceRange::new(3, 10));
       assert_eq!(second.value(), "test");
       assert_eq!(second.raw_value(), "='test'");
     } else {

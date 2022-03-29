@@ -1,7 +1,7 @@
 <!--[adextopa:v1]
   # Simply match against "test"
 
-  Identifier = <='test' hello='world'>
+  Word = </\w+/i hello='world'>
 -->
 
-(<Identifier>)
+(<Word>)

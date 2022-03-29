@@ -158,7 +158,7 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Matches");
-      assert_eq!(*token.get_value_range(), SourceRange::new(0, 7));
+      assert_eq!(*token.get_captured_range(), SourceRange::new(0, 7));
       assert_eq!(token.value(), "Testing");
     } else {
       unreachable!("Test failed!");
@@ -176,7 +176,7 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Matches");
-      assert_eq!(*token.get_value_range(), SourceRange::new(8, 12));
+      assert_eq!(*token.get_captured_range(), SourceRange::new(8, 12));
       assert_eq!(token.value(), "1234");
     } else {
       unreachable!("Test failed!");

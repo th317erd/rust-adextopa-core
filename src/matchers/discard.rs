@@ -29,8 +29,8 @@ fn collect_errors<'a, 'b>(error_token: TokenRef, walk_token: TokenRef) {
     error_token.get_children_mut().push(walk_token.clone());
 
     let walk_token = walk_token.borrow();
-    let walk_token_range = walk_token.get_raw_range();
-    let error_token_range = error_token.get_raw_range();
+    let walk_token_range = walk_token.get_matched_range();
+    let error_token_range = error_token.get_matched_range();
     let mut new_start = error_token_range.start;
     let mut new_end = error_token_range.end;
 
@@ -44,7 +44,7 @@ fn collect_errors<'a, 'b>(error_token: TokenRef, walk_token: TokenRef) {
 
     if new_start != error_token_range.start || new_end != error_token_range.end {
       let new_source_range = SourceRange::new(new_start, new_end);
-      error_token.set_raw_range(new_source_range);
+      error_token.set_matched_range(new_source_range);
     }
   }
 
@@ -58,7 +58,7 @@ fn collect_errors<'a, 'b>(error_token: TokenRef, walk_token: TokenRef) {
 }
 
 fn skip_token(context: ParserContextRef, start_offset: usize, token: TokenRef) -> MatcherSuccess {
-  let end_offset = token.borrow().get_raw_range().end;
+  let end_offset = token.borrow().get_matched_range().end;
 
   // Check to see if any errors are in the result
   // If there are, continue to proxy them upstream
@@ -215,8 +215,8 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Error");
-      assert_eq!(*token.get_value_range(), SourceRange::new(0, 7));
-      assert_eq!(*token.get_raw_range(), SourceRange::new(0, 7));
+      assert_eq!(*token.get_captured_range(), SourceRange::new(0, 7));
+      assert_eq!(*token.get_matched_range(), SourceRange::new(0, 7));
       assert_eq!(token.value(), "Testing");
       assert_eq!(token.raw_value(), "Testing");
       assert_eq!(token.get_children().len(), 1);
@@ -224,8 +224,8 @@ mod tests {
 
       let first = token.get_children()[0].borrow();
       assert_eq!(first.get_name(), "Error");
-      assert_eq!(*first.get_value_range(), SourceRange::new(0, 7));
-      assert_eq!(*first.get_raw_range(), SourceRange::new(0, 7));
+      assert_eq!(*first.get_captured_range(), SourceRange::new(0, 7));
+      assert_eq!(*first.get_matched_range(), SourceRange::new(0, 7));
       assert_eq!(first.value(), "Testing");
       assert_eq!(first.raw_value(), "Testing");
       assert_eq!(first.get_children().len(), 0);

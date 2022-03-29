@@ -20,28 +20,28 @@ pub fn token_derive(input: TokenStream) -> TokenStream {
         self.parser.clone()
       }
 
-      fn get_value_range(&self) -> &crate::source_range::SourceRange {
-        &self.value_range
+      fn get_captured_range(&self) -> &crate::source_range::SourceRange {
+        &self.captured_range
       }
 
-      fn get_value_range_mut(&mut self) -> &mut crate::source_range::SourceRange {
-        &mut self.value_range
+      fn get_captured_range_mut(&mut self) -> &mut crate::source_range::SourceRange {
+        &mut self.captured_range
       }
 
-      fn set_value_range(&mut self, range: crate::source_range::SourceRange) {
-        self.value_range = range;
+      fn set_captured_range(&mut self, range: crate::source_range::SourceRange) {
+        self.captured_range = range;
       }
 
-      fn get_raw_range(&self) -> &crate::source_range::SourceRange {
-        &self.raw_range
+      fn get_matched_range(&self) -> &crate::source_range::SourceRange {
+        &self.matched_range
       }
 
-      fn get_raw_range_mut(&mut self) -> &mut crate::source_range::SourceRange {
-        &mut self.raw_range
+      fn get_matched_range_mut(&mut self) -> &mut crate::source_range::SourceRange {
+        &mut self.matched_range
       }
 
-      fn set_raw_range(&mut self, range: crate::source_range::SourceRange) {
-        self.raw_range = range;
+      fn set_matched_range(&mut self, range: crate::source_range::SourceRange) {
+        self.matched_range = range;
       }
 
       fn get_name(&self) -> &String {
@@ -84,7 +84,7 @@ pub fn token_derive(input: TokenStream) -> TokenStream {
           None => {}
         }
 
-        self.value_range.to_string(&self.parser)
+        self.captured_range.to_string(&self.parser)
       }
 
       fn raw_value(&self) -> String {
@@ -96,7 +96,7 @@ pub fn token_derive(input: TokenStream) -> TokenStream {
           None => {}
         }
 
-        self.raw_range.to_string(&self.parser)
+        self.matched_range.to_string(&self.parser)
       }
 
       fn get_attributes<'b>(&'b self) -> &'b std::collections::HashMap<String, String> {

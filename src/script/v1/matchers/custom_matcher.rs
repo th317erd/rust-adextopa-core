@@ -27,8 +27,8 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "CustomMatcher");
-      assert_eq!(*token.get_value_range(), SourceRange::new(0, 4));
-      assert_eq!(*token.get_raw_range(), SourceRange::new(0, 4));
+      assert_eq!(*token.get_captured_range(), SourceRange::new(0, 4));
+      assert_eq!(*token.get_matched_range(), SourceRange::new(0, 4));
       assert_eq!(token.value(), "test");
       assert_eq!(token.raw_value(), "test");
     } else {

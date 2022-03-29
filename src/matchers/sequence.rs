@@ -182,7 +182,7 @@ where
 
         index = source_range.end;
 
-        let token = StandardToken::new_with_raw_range(
+        let token = StandardToken::new_with_matched_range(
           &_sc.parser,
           self.name.to_string(),
           SourceRange::new(start + start_pattern.len(), index - end_pattern.len()),
@@ -193,7 +193,7 @@ where
 
         if debug_mode > 0 {
           let _token = token.borrow();
-          let range = _token.get_raw_range();
+          let range = _token.get_matched_range();
           let full_size = range.end - range.start;
 
           println!(
@@ -289,8 +289,8 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Sequence");
-      assert_eq!(*token.get_value_range(), SourceRange::new(1, 34));
-      assert_eq!(*token.get_raw_range(), SourceRange::new(0, 35));
+      assert_eq!(*token.get_captured_range(), SourceRange::new(1, 34));
+      assert_eq!(*token.get_matched_range(), SourceRange::new(0, 35));
       assert_eq!(token.value(), "This is a \"cool\\beans\" string!");
       assert_eq!(
         token.raw_value(),

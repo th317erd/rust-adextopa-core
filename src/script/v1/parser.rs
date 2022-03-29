@@ -397,7 +397,7 @@ mod tests {
     parser_context::{ParserContext, ParserContextRef},
     script::current::parser::construct_matcher_from_pattern,
     source_range::SourceRange,
-    ScriptPattern, ScriptPatternDefinition, ScriptProgramMatcher, ScriptSwitchMatcher,
+    Debug, ScriptPattern, ScriptPatternDefinition, ScriptProgramMatcher, ScriptSwitchMatcher,
   };
 
   use super::{compile_script_from_file, construct_matcher_from_pattern_definition};
@@ -405,27 +405,33 @@ mod tests {
   #[test]
   fn it_compiles_a_script_and_returns_a_matcher() {
     if let Ok(compiled_matcher) =
-      compile_script_from_file("./src/script/v1/tests/script/test01.axo")
+      compile_script_from_file("./src/script/v1/tests/script/test_word.axo")
     {
       let parser = Parser::new("test");
       let parser_context = ParserContext::new(&parser, "Test");
+
+      println!("MATCHER: {:?}", compiled_matcher);
+      let compiled_matcher = Debug!(compiled_matcher);
 
       let result = ParserContext::tokenize(parser_context, compiled_matcher.clone());
 
       if let Ok(MatcherSuccess::Token(token)) = result {
         let token = token.borrow();
 
-        assert_eq!(token.get_name(), "./src/script/v1/tests/script/test01.axo");
-        assert_eq!(*token.get_value_range(), SourceRange::new(0, 4));
-        assert_eq!(*token.get_raw_range(), SourceRange::new(0, 4));
+        assert_eq!(
+          token.get_name(),
+          "./src/script/v1/tests/script/test_word.axo"
+        );
+        assert_eq!(*token.get_captured_range(), SourceRange::new(0, 1));
+        assert_eq!(*token.get_matched_range(), SourceRange::new(0, 1));
         assert_eq!(token.value(), "test");
         assert_eq!(token.raw_value(), "test");
         assert_eq!(token.get_children().len(), 1);
 
         let first = token.get_children()[0].borrow();
         assert_eq!(first.get_name(), "Identifier");
-        assert_eq!(*first.get_value_range(), SourceRange::new(0, 4));
-        assert_eq!(*first.get_raw_range(), SourceRange::new(0, 4));
+        assert_eq!(*first.get_captured_range(), SourceRange::new(0, 4));
+        assert_eq!(*first.get_matched_range(), SourceRange::new(0, 4));
         assert_eq!(first.value(), "test");
         assert_eq!(first.raw_value(), "test");
 
@@ -707,8 +713,8 @@ mod tests {
       if let Ok(MatcherSuccess::Token(token)) = result2 {
         let token = token.borrow();
         assert_eq!(token.get_name(), "Matches");
-        assert_eq!(*token.get_value_range(), SourceRange::new(0, 4));
-        assert_eq!(*token.get_raw_range(), SourceRange::new(0, 4));
+        assert_eq!(*token.get_captured_range(), SourceRange::new(0, 4));
+        assert_eq!(*token.get_matched_range(), SourceRange::new(0, 4));
         assert_eq!(token.value(), "test");
         assert_eq!(token.raw_value(), "test");
 

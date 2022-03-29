@@ -88,27 +88,27 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Program");
-      assert_eq!(*token.get_value_range(), SourceRange::new(0, 11));
-      assert_eq!(*token.get_raw_range(), SourceRange::new(0, 11));
+      assert_eq!(*token.get_captured_range(), SourceRange::new(0, 11));
+      assert_eq!(*token.get_matched_range(), SourceRange::new(0, 11));
       assert_eq!(token.value(), "Hello World");
       assert_eq!(token.get_children().len(), 3);
 
       let first = token.get_children()[0].borrow();
       assert_eq!(first.get_name(), "Word");
-      assert_eq!(*first.get_value_range(), SourceRange::new(0, 5));
-      assert_eq!(*first.get_raw_range(), SourceRange::new(0, 5));
+      assert_eq!(*first.get_captured_range(), SourceRange::new(0, 5));
+      assert_eq!(*first.get_matched_range(), SourceRange::new(0, 5));
       assert_eq!(first.value(), "Hello");
 
       let second = token.get_children()[1].borrow();
       assert_eq!(second.get_name(), "Matches");
-      assert_eq!(*second.get_value_range(), SourceRange::new(5, 6));
-      assert_eq!(*second.get_raw_range(), SourceRange::new(5, 6));
+      assert_eq!(*second.get_captured_range(), SourceRange::new(5, 6));
+      assert_eq!(*second.get_matched_range(), SourceRange::new(5, 6));
       assert_eq!(second.value(), " ");
 
       let third = token.get_children()[2].borrow();
       assert_eq!(third.get_name(), "Word");
-      assert_eq!(*third.get_value_range(), SourceRange::new(6, 11));
-      assert_eq!(*third.get_raw_range(), SourceRange::new(6, 11));
+      assert_eq!(*third.get_captured_range(), SourceRange::new(6, 11));
+      assert_eq!(*third.get_matched_range(), SourceRange::new(6, 11));
       assert_eq!(third.value(), "World");
     } else {
       unreachable!("Test failed!");

@@ -168,8 +168,8 @@ mod tests {
     {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Equals");
-      assert_eq!(*token.get_value_range(), SourceRange::new(0, 7));
-      assert_eq!(*token.get_raw_range(), SourceRange::new(0, 7));
+      assert_eq!(*token.get_captured_range(), SourceRange::new(0, 7));
+      assert_eq!(*token.get_matched_range(), SourceRange::new(0, 7));
       assert_eq!(token.value(), "Testing");
       assert_eq!(token.raw_value(), "Testing");
 
@@ -177,8 +177,8 @@ mod tests {
       if let Some(VariableType::Token(variable_token)) = variable {
         let variable_token = variable_token.borrow();
         assert_eq!(variable_token.get_name(), "Equals");
-        assert_eq!(*variable_token.get_value_range(), SourceRange::new(0, 7));
-        assert_eq!(*variable_token.get_raw_range(), SourceRange::new(0, 7));
+        assert_eq!(*variable_token.get_captured_range(), SourceRange::new(0, 7));
+        assert_eq!(*variable_token.get_matched_range(), SourceRange::new(0, 7));
         assert_eq!(variable_token.value(), "Testing");
         assert_eq!(variable_token.raw_value(), "Testing");
       } else {
@@ -200,8 +200,8 @@ mod tests {
     {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Equals");
-      assert_eq!(*token.get_value_range(), SourceRange::new(0, 7));
-      assert_eq!(*token.get_raw_range(), SourceRange::new(0, 7));
+      assert_eq!(*token.get_captured_range(), SourceRange::new(0, 7));
+      assert_eq!(*token.get_matched_range(), SourceRange::new(0, 7));
       assert_eq!(token.value(), "Testing");
       assert_eq!(token.raw_value(), "Testing");
 

@@ -8,8 +8,8 @@ use crate::token::{StandardToken, TokenRef};
 
 pub fn new_error_token(context: ParserContextRef, message: &str) -> TokenRef {
   let context = context.borrow();
-  let value_range = SourceRange::new(context.offset.start, context.offset.start);
-  let token = StandardToken::new(&context.parser, "Error".to_string(), value_range);
+  let captured_range = SourceRange::new(context.offset.start, context.offset.start);
+  let token = StandardToken::new(&context.parser, "Error".to_string(), captured_range);
 
   {
     let mut token = token.borrow_mut();
@@ -23,10 +23,10 @@ pub fn new_error_token(context: ParserContextRef, message: &str) -> TokenRef {
 pub fn new_error_token_with_range(
   context: ParserContextRef,
   message: &str,
-  raw_range: SourceRange,
+  matched_range: SourceRange,
 ) -> TokenRef {
   let context = context.borrow();
-  let token = StandardToken::new(&context.parser, "Error".to_string(), raw_range);
+  let token = StandardToken::new(&context.parser, "Error".to_string(), matched_range);
 
   {
     let mut token = token.borrow_mut();
@@ -103,16 +103,16 @@ mod tests {
     if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Program");
-      assert_eq!(*token.get_value_range(), SourceRange::new(0, 12));
-      assert_eq!(*token.get_raw_range(), SourceRange::new(0, 12));
+      assert_eq!(*token.get_captured_range(), SourceRange::new(0, 12));
+      assert_eq!(*token.get_matched_range(), SourceRange::new(0, 12));
       assert_eq!(token.value(), "Testing 1234");
       assert_eq!(token.raw_value(), "Testing 1234");
       assert_eq!(token.get_children().len(), 3);
 
       let second = token.get_children()[1].borrow();
       assert_eq!(second.get_name(), "Error");
-      assert_eq!(*second.get_value_range(), SourceRange::new(0, 7));
-      assert_eq!(*second.get_raw_range(), SourceRange::new(0, 7));
+      assert_eq!(*second.get_captured_range(), SourceRange::new(0, 7));
+      assert_eq!(*second.get_matched_range(), SourceRange::new(0, 7));
       assert_eq!(second.value(), "Testing");
       assert_eq!(second.raw_value(), "Testing");
       assert_eq!(
