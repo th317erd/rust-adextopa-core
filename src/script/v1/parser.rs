@@ -30,20 +30,28 @@ fn construct_matcher_from_inner_definition<'a>(
   let matcher_token_name = matcher_token.get_name();
 
   if matcher_token_name == "EqualsMatcher" {
-    let value = matcher_token.get_children()[0].borrow().value();
+    let value: String = matcher_token.get_children()[0]
+      .borrow()
+      .get_captured_value()
+      .clone();
+
     if value == "" {
       return Err("Value can not be empty for an `Equals` pattern definition".to_string());
     }
 
     Ok(crate::Equals!(value))
   } else if matcher_token_name == "RegexMatcher" {
-    let mut value = matcher_token.get_children()[0].borrow().value();
+    let mut value: String = matcher_token.get_children()[0]
+      .borrow()
+      .get_captured_value()
+      .clone();
+
     if value == "" {
       return Err("Value can not be empty for a `Matches` pattern definition".to_string());
     }
 
     if let Some(flags) = matcher_token.find_child("Flags") {
-      value = format!("(?{}){}", flags.borrow().value(), &value);
+      value = format!("(?{}){}", flags.borrow().get_captured_value(), value);
     }
 
     Ok(crate::Matches!(&value))
@@ -52,21 +60,25 @@ fn construct_matcher_from_inner_definition<'a>(
     let end_pattern = matcher_token.get_children()[1].borrow();
     let escape_pattern = matcher_token.get_children()[2].borrow();
 
-    if start_pattern.value().len() == 0 {
+    if start_pattern.get_captured_value().len() == 0 {
       panic!("Sequence `start` pattern of \"\" makes no sense");
     }
 
-    if end_pattern.value().len() == 0 {
+    if end_pattern.get_captured_value().len() == 0 {
       panic!("Sequence `end` pattern of \"\" makes no sense");
     }
 
     Ok(crate::Sequence!(
-      start_pattern.value(),
-      end_pattern.value(),
-      escape_pattern.value()
+      start_pattern.get_captured_value().clone(),
+      end_pattern.get_captured_value().clone(),
+      escape_pattern.get_captured_value().clone()
     ))
   } else if matcher_token_name == "CustomMatcher" {
-    let identifier = matcher_token.get_children()[0].borrow().value();
+    let identifier = matcher_token.get_children()[0]
+      .borrow()
+      .get_captured_value()
+      .clone();
+
     if identifier == "" {
       return Err(
         "Identifier can not be empty for a `CustomMatcher` pattern definition".to_string(),
@@ -163,8 +175,8 @@ fn construct_matcher_from_pattern_definition<'a>(
       for child in attributes_token_children {
         let child = child.borrow();
         let child_children = child.get_children();
-        let key = child_children[0].borrow().value();
-        let value = child_children[1].borrow().value();
+        let key = child_children[0].borrow().get_captured_value().clone();
+        let value = child_children[1].borrow().get_captured_value().clone();
 
         attributes.insert(key, value);
       }
@@ -275,7 +287,7 @@ fn build_matcher_from_tokens<'a, 'b>(
       let _token = token.borrow();
       let token_children = _token.get_children();
       let identifier = token_children[0].borrow();
-      let matcher_name = identifier.value();
+      let matcher_name = identifier.get_captured_value().clone();
       let value = &token_children[1];
       let _value = value.borrow();
       let value_name = _value.get_name();
@@ -283,7 +295,7 @@ fn build_matcher_from_tokens<'a, 'b>(
       if value_name == "Identifier" {
         // Identifier is assigned to identifier...
         // so this is a reference
-        register_matchers.borrow_mut().add_pattern(crate::Ref!(matcher_name.clone(); _value.value()));
+        register_matchers.borrow_mut().add_pattern(crate::Ref!(matcher_name; _token.get_captured_value().clone()));
       } else if value_name == "PatternDefinition" {
         // This is a pattern definition, so turn it into
         // a matcher, and store it as a reference
@@ -424,16 +436,16 @@ mod tests {
         );
         assert_eq!(*token.get_captured_range(), SourceRange::new(0, 1));
         assert_eq!(*token.get_matched_range(), SourceRange::new(0, 1));
-        assert_eq!(token.value(), "test");
-        assert_eq!(token.raw_value(), "test");
+        assert_eq!(token.get_captured_value(), "test");
+        assert_eq!(token.get_matched_value(), "test");
         assert_eq!(token.get_children().len(), 1);
 
         let first = token.get_children()[0].borrow();
         assert_eq!(first.get_name(), "Identifier");
         assert_eq!(*first.get_captured_range(), SourceRange::new(0, 4));
         assert_eq!(*first.get_matched_range(), SourceRange::new(0, 4));
-        assert_eq!(first.value(), "test");
-        assert_eq!(first.raw_value(), "test");
+        assert_eq!(first.get_captured_value(), "test");
+        assert_eq!(first.get_matched_value(), "test");
 
         assert_eq!(first.get_attribute("hello"), Some(&"world".to_string()));
       } else {
@@ -715,8 +727,8 @@ mod tests {
         assert_eq!(token.get_name(), "Matches");
         assert_eq!(*token.get_captured_range(), SourceRange::new(0, 4));
         assert_eq!(*token.get_matched_range(), SourceRange::new(0, 4));
-        assert_eq!(token.value(), "test");
-        assert_eq!(token.raw_value(), "test");
+        assert_eq!(token.get_captured_value(), "test");
+        assert_eq!(token.get_matched_value(), "test");
 
         let attributes = token.get_attributes();
         assert_eq!(attributes.len(), 2);

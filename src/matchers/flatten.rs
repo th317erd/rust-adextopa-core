@@ -127,26 +127,26 @@ mod tests {
       assert_eq!(token.get_name(), "Loop");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 12));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 12));
-      assert_eq!(token.value(), "Testing 1234");
+      assert_eq!(token.get_captured_value(), "Testing 1234");
       assert_eq!(token.get_children().len(), 3);
 
       let first = token.get_children()[0].borrow();
       assert_eq!(first.get_name(), "Word");
       assert_eq!(*first.get_captured_range(), SourceRange::new(0, 7));
       assert_eq!(*first.get_matched_range(), SourceRange::new(0, 7));
-      assert_eq!(first.value(), "Testing");
+      assert_eq!(first.get_captured_value(), "Testing");
 
       let second = token.get_children()[1].borrow();
       assert_eq!(second.get_name(), "Whitespace");
       assert_eq!(*second.get_captured_range(), SourceRange::new(7, 8));
       assert_eq!(*second.get_matched_range(), SourceRange::new(7, 8));
-      assert_eq!(second.value(), " ");
+      assert_eq!(second.get_captured_value(), " ");
 
       let third = token.get_children()[2].borrow();
       assert_eq!(third.get_name(), "Number");
       assert_eq!(*third.get_captured_range(), SourceRange::new(8, 12));
       assert_eq!(*third.get_matched_range(), SourceRange::new(8, 12));
-      assert_eq!(third.value(), "1234");
+      assert_eq!(third.get_captured_value(), "1234");
     } else {
       unreachable!("Test failed!");
     };

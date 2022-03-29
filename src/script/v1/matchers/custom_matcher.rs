@@ -29,8 +29,8 @@ mod tests {
       assert_eq!(token.get_name(), "CustomMatcher");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 4));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 4));
-      assert_eq!(token.value(), "test");
-      assert_eq!(token.raw_value(), "test");
+      assert_eq!(token.get_captured_value(), "test");
+      assert_eq!(token.get_matched_value(), "test");
     } else {
       unreachable!("Test failed!");
     };

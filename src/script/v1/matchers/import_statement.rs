@@ -65,11 +65,11 @@ mod tests {
       assert_eq!(*token.get_captured_range(), SourceRange::new(9, 56));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 57));
       assert_eq!(
-        token.value(),
+        token.get_captured_value(),
         "_ as derp, Stuff as Things, Wow } from '../test"
       );
       assert_eq!(
-        token.raw_value(),
+        token.get_matched_value(),
         "import { _ as derp, Stuff as Things, Wow } from '../test'"
       );
       assert_eq!(token.get_children().len(), 2);
@@ -78,40 +78,46 @@ mod tests {
       assert_eq!(first.get_name(), "ImportIdentifiers");
       assert_eq!(*first.get_captured_range(), SourceRange::new(9, 40));
       assert_eq!(*first.get_matched_range(), SourceRange::new(7, 42));
-      assert_eq!(first.value(), "_ as derp, Stuff as Things, Wow");
-      assert_eq!(first.raw_value(), "{ _ as derp, Stuff as Things, Wow }");
+      assert_eq!(
+        first.get_captured_value(),
+        "_ as derp, Stuff as Things, Wow"
+      );
+      assert_eq!(
+        first.get_matched_value(),
+        "{ _ as derp, Stuff as Things, Wow }"
+      );
       assert_eq!(first.get_children().len(), 3);
 
       let ident_first = first.get_children()[0].borrow();
       assert_eq!(ident_first.get_name(), "ImportIdentifier");
       assert_eq!(*ident_first.get_captured_range(), SourceRange::new(9, 18));
       assert_eq!(*ident_first.get_matched_range(), SourceRange::new(9, 19));
-      assert_eq!(ident_first.value(), "_ as derp");
-      assert_eq!(ident_first.raw_value(), "_ as derp,");
+      assert_eq!(ident_first.get_captured_value(), "_ as derp");
+      assert_eq!(ident_first.get_matched_value(), "_ as derp,");
       assert_eq!(ident_first.get_children().len(), 2);
 
       let ident_second = first.get_children()[1].borrow();
       assert_eq!(ident_second.get_name(), "ImportIdentifier");
       assert_eq!(*ident_second.get_captured_range(), SourceRange::new(20, 35));
       assert_eq!(*ident_second.get_matched_range(), SourceRange::new(20, 36));
-      assert_eq!(ident_second.value(), "Stuff as Things");
-      assert_eq!(ident_second.raw_value(), "Stuff as Things,");
+      assert_eq!(ident_second.get_captured_value(), "Stuff as Things");
+      assert_eq!(ident_second.get_matched_value(), "Stuff as Things,");
       assert_eq!(ident_second.get_children().len(), 2);
 
       let ident_third = first.get_children()[2].borrow();
       assert_eq!(ident_third.get_name(), "ImportIdentifier");
       assert_eq!(*ident_third.get_captured_range(), SourceRange::new(37, 40));
       assert_eq!(*ident_third.get_matched_range(), SourceRange::new(37, 40));
-      assert_eq!(ident_third.value(), "Wow");
-      assert_eq!(ident_third.raw_value(), "Wow");
+      assert_eq!(ident_third.get_captured_value(), "Wow");
+      assert_eq!(ident_third.get_matched_value(), "Wow");
       assert_eq!(ident_third.get_children().len(), 1);
 
       let second = token.get_children()[1].borrow();
       assert_eq!(second.get_name(), "Path");
       assert_eq!(*second.get_captured_range(), SourceRange::new(49, 56));
       assert_eq!(*second.get_matched_range(), SourceRange::new(48, 57));
-      assert_eq!(second.value(), "../test");
-      assert_eq!(second.raw_value(), "'../test'");
+      assert_eq!(second.get_captured_value(), "../test");
+      assert_eq!(second.get_matched_value(), "'../test'");
     } else {
       unreachable!("Test failed!");
     };

@@ -30,17 +30,17 @@ impl<'a> Fetchable<'a> for FetchPattern {
         let token = token.borrow();
         let sub_name = name_path[1];
 
-        let value = if sub_name == "value" {
-          token.value()
-        } else if sub_name == "raw_value" {
-          token.raw_value()
+        let value = if sub_name == "captured_value" {
+          token.get_captured_value().clone()
+        } else if sub_name == "matched_value" {
+          token.get_matched_value().clone()
         } else if sub_name == "start" {
           format!("{}", token.get_matched_range().start)
         } else if sub_name == "end" {
           format!("{}", token.get_matched_range().end)
-        } else if sub_name == "value_start" {
+        } else if sub_name == "captured_start" {
           format!("{}", token.get_captured_range().start)
-        } else if sub_name == "value_end" {
+        } else if sub_name == "captured_end" {
           format!("{}", token.get_captured_range().end)
         } else if sub_name == "range" {
           let range = token.get_matched_range();
@@ -83,6 +83,12 @@ impl<'a> Fetchable<'a> for &'a str {
 impl<'a> Fetchable<'a> for String {
   fn fetch_value(&self, _: ParserContextRef) -> FetchableType<'a> {
     FetchableType::String(self.clone())
+  }
+}
+
+impl<'a> Fetchable<'a> for &String {
+  fn fetch_value(&self, _: ParserContextRef) -> FetchableType<'a> {
+    FetchableType::String((*self).clone())
   }
 }
 
@@ -190,8 +196,8 @@ mod tests {
       assert_eq!(token.get_name(), "Equals");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 7));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 7));
-      assert_eq!(token.value(), "Testing");
-      assert_eq!(token.raw_value(), "Testing");
+      assert_eq!(token.get_captured_value(), "Testing");
+      assert_eq!(token.get_matched_value(), "Testing");
     } else {
       unreachable!("Test failed!");
     };
@@ -204,7 +210,7 @@ mod tests {
     let matcher = Program!(
       Store!("test"; Matches!(r"\w+")),
       Discard!(Matches!(r"\s+")),
-      Equals!(Fetch!("test.value"))
+      Equals!(Fetch!("test.captured_value"))
     );
 
     if let Ok(MatcherSuccess::Token(token)) =
@@ -214,22 +220,22 @@ mod tests {
       assert_eq!(token.get_name(), "Program");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 15));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 15));
-      assert_eq!(token.value(), "Testing Testing");
-      assert_eq!(token.raw_value(), "Testing Testing");
+      assert_eq!(token.get_captured_value(), "Testing Testing");
+      assert_eq!(token.get_matched_value(), "Testing Testing");
 
       let first = token.get_children()[0].borrow();
       assert_eq!(first.get_name(), "Matches");
       assert_eq!(*first.get_captured_range(), SourceRange::new(0, 7));
       assert_eq!(*first.get_matched_range(), SourceRange::new(0, 7));
-      assert_eq!(first.value(), "Testing");
-      assert_eq!(first.raw_value(), "Testing");
+      assert_eq!(first.get_captured_value(), "Testing");
+      assert_eq!(first.get_matched_value(), "Testing");
 
       let second = token.get_children()[1].borrow();
       assert_eq!(second.get_name(), "Equals");
       assert_eq!(*second.get_captured_range(), SourceRange::new(8, 15));
       assert_eq!(*second.get_matched_range(), SourceRange::new(8, 15));
-      assert_eq!(second.value(), "Testing");
-      assert_eq!(second.raw_value(), "Testing");
+      assert_eq!(second.get_captured_value(), "Testing");
+      assert_eq!(second.get_matched_value(), "Testing");
     } else {
       unreachable!("Test failed!");
     };

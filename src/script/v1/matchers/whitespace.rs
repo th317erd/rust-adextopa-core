@@ -74,8 +74,8 @@ mod tests {
       assert_eq!(token.get_name(), "Whitespace");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 2));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 2));
-      assert_eq!(token.value(), "  ");
-      assert_eq!(token.raw_value(), "  ");
+      assert_eq!(token.get_captured_value(), "  ");
+      assert_eq!(token.get_matched_value(), "  ");
     } else {
       unreachable!("Test failed!");
     };
@@ -94,8 +94,8 @@ mod tests {
       assert_eq!(token.get_name(), "Whitespace");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 2));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 2));
-      assert_eq!(token.value(), "  ");
-      assert_eq!(token.raw_value(), "  ");
+      assert_eq!(token.get_captured_value(), "  ");
+      assert_eq!(token.get_matched_value(), "  ");
     } else {
       unreachable!("Test failed!");
     };

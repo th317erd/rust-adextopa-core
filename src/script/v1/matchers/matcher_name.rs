@@ -30,8 +30,8 @@ mod tests {
       assert_eq!(token.get_name(), "MatcherName");
       assert_eq!(*token.get_captured_range(), SourceRange::new(2, 6));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 7));
-      assert_eq!(token.value(), "test");
-      assert_eq!(token.raw_value(), "?'test'");
+      assert_eq!(token.get_captured_value(), "test");
+      assert_eq!(token.get_matched_value(), "?'test'");
       assert_eq!(token.get_children().len(), 1);
     } else {
       unreachable!("Test failed!");

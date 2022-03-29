@@ -170,8 +170,8 @@ mod tests {
       assert_eq!(token.get_name(), "Equals");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 7));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 7));
-      assert_eq!(token.value(), "Testing");
-      assert_eq!(token.raw_value(), "Testing");
+      assert_eq!(token.get_captured_value(), "Testing");
+      assert_eq!(token.get_matched_value(), "Testing");
 
       let variable = parser_context.borrow().get_variable(None, "test");
       if let Some(VariableType::Token(variable_token)) = variable {
@@ -179,8 +179,8 @@ mod tests {
         assert_eq!(variable_token.get_name(), "Equals");
         assert_eq!(*variable_token.get_captured_range(), SourceRange::new(0, 7));
         assert_eq!(*variable_token.get_matched_range(), SourceRange::new(0, 7));
-        assert_eq!(variable_token.value(), "Testing");
-        assert_eq!(variable_token.raw_value(), "Testing");
+        assert_eq!(variable_token.get_captured_value(), "Testing");
+        assert_eq!(variable_token.get_matched_value(), "Testing");
       } else {
         unreachable!("Test failed!");
       }
@@ -202,8 +202,8 @@ mod tests {
       assert_eq!(token.get_name(), "Equals");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 7));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 7));
-      assert_eq!(token.value(), "Testing");
-      assert_eq!(token.raw_value(), "Testing");
+      assert_eq!(token.get_captured_value(), "Testing");
+      assert_eq!(token.get_matched_value(), "Testing");
 
       let variable = parser_context.borrow().get_variable(None, "test");
       if let Some(VariableType::String(value)) = variable {

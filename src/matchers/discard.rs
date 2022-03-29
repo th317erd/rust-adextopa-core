@@ -217,8 +217,8 @@ mod tests {
       assert_eq!(token.get_name(), "Error");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 7));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 7));
-      assert_eq!(token.value(), "Testing");
-      assert_eq!(token.raw_value(), "Testing");
+      assert_eq!(token.get_captured_value(), "Testing");
+      assert_eq!(token.get_matched_value(), "Testing");
       assert_eq!(token.get_children().len(), 1);
       assert_eq!(token.get_attribute("__message"), None);
 
@@ -226,8 +226,8 @@ mod tests {
       assert_eq!(first.get_name(), "Error");
       assert_eq!(*first.get_captured_range(), SourceRange::new(0, 7));
       assert_eq!(*first.get_matched_range(), SourceRange::new(0, 7));
-      assert_eq!(first.value(), "Testing");
-      assert_eq!(first.raw_value(), "Testing");
+      assert_eq!(first.get_captured_value(), "Testing");
+      assert_eq!(first.get_matched_value(), "Testing");
       assert_eq!(first.get_children().len(), 0);
       assert_eq!(
         first.attribute_equals("__message", "This is an error"),

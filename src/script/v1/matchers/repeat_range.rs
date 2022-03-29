@@ -37,16 +37,16 @@ mod tests {
       assert_eq!(token.get_name(), "RepeatRange");
       assert_eq!(*token.get_captured_range(), SourceRange::new(1, 3));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 4));
-      assert_eq!(token.value(), r"10");
-      assert_eq!(token.raw_value(), r"{10}");
+      assert_eq!(token.get_captured_value(), r"10");
+      assert_eq!(token.get_matched_value(), r"{10}");
       assert_eq!(token.get_children().len(), 1);
 
       let first = token.get_children()[0].borrow();
       assert_eq!(first.get_name(), "Minimum");
       assert_eq!(*first.get_captured_range(), SourceRange::new(1, 3));
       assert_eq!(*first.get_matched_range(), SourceRange::new(1, 3));
-      assert_eq!(first.value(), "10");
-      assert_eq!(first.raw_value(), "10");
+      assert_eq!(first.get_captured_value(), "10");
+      assert_eq!(first.get_matched_value(), "10");
     } else {
       unreachable!("Test failed!");
     };
@@ -65,30 +65,30 @@ mod tests {
       assert_eq!(token.get_name(), "RepeatRange");
       assert_eq!(*token.get_captured_range(), SourceRange::new(2, 7));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 9));
-      assert_eq!(token.value(), r"9, 11");
-      assert_eq!(token.raw_value(), r"{ 9, 11 }");
+      assert_eq!(token.get_captured_value(), r"9, 11");
+      assert_eq!(token.get_matched_value(), r"{ 9, 11 }");
       assert_eq!(token.get_children().len(), 3);
 
       let first = token.get_children()[0].borrow();
       assert_eq!(first.get_name(), "Minimum");
       assert_eq!(*first.get_captured_range(), SourceRange::new(2, 3));
       assert_eq!(*first.get_matched_range(), SourceRange::new(2, 3));
-      assert_eq!(first.value(), "9");
-      assert_eq!(first.raw_value(), "9");
+      assert_eq!(first.get_captured_value(), "9");
+      assert_eq!(first.get_matched_value(), "9");
 
       let second = token.get_children()[1].borrow();
       assert_eq!(second.get_name(), "Seperator");
       assert_eq!(*second.get_captured_range(), SourceRange::new(3, 4));
       assert_eq!(*second.get_matched_range(), SourceRange::new(3, 4));
-      assert_eq!(second.value(), ",");
-      assert_eq!(second.raw_value(), ",");
+      assert_eq!(second.get_captured_value(), ",");
+      assert_eq!(second.get_matched_value(), ",");
 
       let third = token.get_children()[2].borrow();
       assert_eq!(third.get_name(), "Maximum");
       assert_eq!(*third.get_captured_range(), SourceRange::new(5, 7));
       assert_eq!(*third.get_matched_range(), SourceRange::new(5, 7));
-      assert_eq!(third.value(), "11");
-      assert_eq!(third.raw_value(), "11");
+      assert_eq!(third.get_captured_value(), "11");
+      assert_eq!(third.get_matched_value(), "11");
     } else {
       unreachable!("Test failed!");
     };
@@ -107,23 +107,23 @@ mod tests {
       assert_eq!(token.get_name(), "RepeatRange");
       assert_eq!(*token.get_captured_range(), SourceRange::new(1, 4));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 5));
-      assert_eq!(token.value(), r"19,");
-      assert_eq!(token.raw_value(), r"{19,}");
+      assert_eq!(token.get_captured_value(), r"19,");
+      assert_eq!(token.get_matched_value(), r"{19,}");
       assert_eq!(token.get_children().len(), 2);
 
       let first = token.get_children()[0].borrow();
       assert_eq!(first.get_name(), "Minimum");
       assert_eq!(*first.get_captured_range(), SourceRange::new(1, 3));
       assert_eq!(*first.get_matched_range(), SourceRange::new(1, 3));
-      assert_eq!(first.value(), "19");
-      assert_eq!(first.raw_value(), "19");
+      assert_eq!(first.get_captured_value(), "19");
+      assert_eq!(first.get_matched_value(), "19");
 
       let second = token.get_children()[1].borrow();
       assert_eq!(second.get_name(), "Seperator");
       assert_eq!(*second.get_captured_range(), SourceRange::new(3, 4));
       assert_eq!(*second.get_matched_range(), SourceRange::new(3, 4));
-      assert_eq!(second.value(), ",");
-      assert_eq!(second.raw_value(), ",");
+      assert_eq!(second.get_captured_value(), ",");
+      assert_eq!(second.get_matched_value(), ",");
     } else {
       unreachable!("Test failed!");
     };

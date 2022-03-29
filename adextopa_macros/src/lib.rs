@@ -30,6 +30,7 @@ pub fn token_derive(input: TokenStream) -> TokenStream {
 
       fn set_captured_range(&mut self, range: crate::source_range::SourceRange) {
         self.captured_range = range;
+        self.captured_value = range.to_string(&self.parser);
       }
 
       fn get_matched_range(&self) -> &crate::source_range::SourceRange {
@@ -42,6 +43,7 @@ pub fn token_derive(input: TokenStream) -> TokenStream {
 
       fn set_matched_range(&mut self, range: crate::source_range::SourceRange) {
         self.matched_range = range;
+        self.matched_value = range.to_string(&self.parser);
       }
 
       fn get_name(&self) -> &String {
@@ -75,28 +77,36 @@ pub fn token_derive(input: TokenStream) -> TokenStream {
         self.children = children;
       }
 
-      fn value(&self) -> String {
+      fn get_captured_value(&self) -> &String {
         // Value override via attribute
         match self.get_attribute("__value") {
           Some(value) => {
-            return value.clone();
-          },
+            return value;
+          }
           None => {}
         }
 
-        self.captured_range.to_string(&self.parser)
+        &self.captured_value
       }
 
-      fn raw_value(&self) -> String {
+      fn set_captured_value(&mut self, value: &str) {
+        self.captured_value = value.to_string();
+      }
+
+      fn get_matched_value(&self) -> &String {
         // Value override via attribute
-        match self.get_attribute("__raw_value") {
+        match self.get_attribute("__matched_value") {
           Some(value) => {
-            return value.clone();
-          },
+            return value;
+          }
           None => {}
         }
 
-        self.matched_range.to_string(&self.parser)
+        &self.matched_value
+      }
+
+      fn set_matched_value(&mut self, value: &str) {
+        self.matched_value = value.to_string();
       }
 
       fn get_attributes<'b>(&'b self) -> &'b std::collections::HashMap<String, String> {

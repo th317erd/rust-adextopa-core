@@ -105,16 +105,16 @@ mod tests {
       assert_eq!(token.get_name(), "Program");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 12));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 12));
-      assert_eq!(token.value(), "Testing 1234");
-      assert_eq!(token.raw_value(), "Testing 1234");
+      assert_eq!(token.get_captured_value(), "Testing 1234");
+      assert_eq!(token.get_matched_value(), "Testing 1234");
       assert_eq!(token.get_children().len(), 3);
 
       let second = token.get_children()[1].borrow();
       assert_eq!(second.get_name(), "Error");
       assert_eq!(*second.get_captured_range(), SourceRange::new(0, 7));
       assert_eq!(*second.get_matched_range(), SourceRange::new(0, 7));
-      assert_eq!(second.value(), "Testing");
-      assert_eq!(second.raw_value(), "Testing");
+      assert_eq!(second.get_captured_value(), "Testing");
+      assert_eq!(second.get_matched_value(), "Testing");
       assert_eq!(
         second.get_attribute("__message").unwrap(),
         "There was an error!"

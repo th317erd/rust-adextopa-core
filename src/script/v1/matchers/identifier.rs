@@ -28,7 +28,7 @@ mod tests {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Identifier");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 8));
-      assert_eq!(token.value(), "_Testing");
+      assert_eq!(token.get_captured_value(), "_Testing");
     } else {
       unreachable!("Test failed!");
     };
@@ -44,7 +44,7 @@ mod tests {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Identifier");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 9));
-      assert_eq!(token.value(), "$Test_ing");
+      assert_eq!(token.get_captured_value(), "$Test_ing");
     } else {
       unreachable!("Test failed!");
     };

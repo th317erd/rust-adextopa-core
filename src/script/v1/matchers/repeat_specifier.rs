@@ -27,7 +27,7 @@ pub fn get_repeat_specifier_range(token: TokenRef) -> Result<Range<usize>, Strin
     let min = token.find_child("Minimum").unwrap();
     let has_seperator = token.has_child("Seperator");
 
-    let minimum = match min.borrow().value().parse::<usize>() {
+    let minimum = match min.borrow().get_captured_value().parse::<usize>() {
       Ok(result) => result,
       Err(error) => return Err(error.to_string()),
     };
@@ -35,7 +35,7 @@ pub fn get_repeat_specifier_range(token: TokenRef) -> Result<Range<usize>, Strin
     if has_seperator {
       match token.find_child("Maximum") {
         Some(ref max) => {
-          let maximum = match max.borrow().value().parse::<usize>() {
+          let maximum = match max.borrow().get_captured_value().parse::<usize>() {
             Ok(result) => result,
             Err(error) => return Err(error.to_string()),
           };
@@ -84,8 +84,8 @@ mod tests {
       assert_eq!(token.get_name(), "RepeatOneOrMore");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 1));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 1));
-      assert_eq!(token.value(), r"+");
-      assert_eq!(token.raw_value(), r"+");
+      assert_eq!(token.get_captured_value(), r"+");
+      assert_eq!(token.get_matched_value(), r"+");
       assert_eq!(token.get_children().len(), 0);
     } else {
       unreachable!("Test failed!");
@@ -107,8 +107,8 @@ mod tests {
       assert_eq!(token.get_name(), "RepeatZeroOrMore");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 1));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 1));
-      assert_eq!(token.value(), r"*");
-      assert_eq!(token.raw_value(), r"*");
+      assert_eq!(token.get_captured_value(), r"*");
+      assert_eq!(token.get_matched_value(), r"*");
       assert_eq!(token.get_children().len(), 0);
     } else {
       unreachable!("Test failed!");
@@ -133,8 +133,8 @@ mod tests {
       assert_eq!(token.get_name(), "RepeatRange");
       assert_eq!(*token.get_captured_range(), SourceRange::new(1, 4));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 5));
-      assert_eq!(token.value(), r"10,");
-      assert_eq!(token.raw_value(), r"{10,}");
+      assert_eq!(token.get_captured_value(), r"10,");
+      assert_eq!(token.get_matched_value(), r"{10,}");
       assert_eq!(token.get_children().len(), 2);
     } else {
       unreachable!("Test failed!");
@@ -156,8 +156,8 @@ mod tests {
       assert_eq!(token.get_name(), "RepeatRange");
       assert_eq!(*token.get_captured_range(), SourceRange::new(1, 7));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 8));
-      assert_eq!(token.value(), r"10, 15");
-      assert_eq!(token.raw_value(), r"{10, 15}");
+      assert_eq!(token.get_captured_value(), r"10, 15");
+      assert_eq!(token.get_matched_value(), r"{10, 15}");
       assert_eq!(token.get_children().len(), 3);
     } else {
       unreachable!("Test failed!");

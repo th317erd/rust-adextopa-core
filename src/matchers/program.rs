@@ -419,7 +419,7 @@ fn handle_extract_token(
 fn handle_skip(
   program: &ProgramPattern,
   context: &ParserContextRef,
-  captured_range: &mut SourceRange,
+  _: &mut SourceRange,
   matched_range: &mut SourceRange,
   start_offset: usize,
   offset: isize,
@@ -1014,7 +1014,7 @@ mod tests {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Program");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 12));
-      assert_eq!(token.value(), parser.borrow().source);
+      assert_eq!(token.get_captured_value(), &parser.borrow().source);
     } else {
       unreachable!("Test failed!");
     };
@@ -1042,8 +1042,8 @@ mod tests {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Equals");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 7));
-      assert_eq!(token.value(), "Testing");
-      assert_eq!(token.raw_value(), "Testing");
+      assert_eq!(token.get_captured_value(), "Testing");
+      assert_eq!(token.get_matched_value(), "Testing");
     } else {
       unreachable!("Test failed!");
     };
@@ -1059,8 +1059,8 @@ mod tests {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Loop");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 12));
-      assert_eq!(token.value(), parser.borrow().source);
-      assert_eq!(token.raw_value(), parser.borrow().source);
+      assert_eq!(token.get_captured_value(), &parser.borrow().source);
+      assert_eq!(token.get_matched_value(), &parser.borrow().source);
 
       assert_eq!(token.get_children().len(), 12);
 
@@ -1072,14 +1072,21 @@ mod tests {
           "Matches"
         );
         assert_eq!(
-          token.get_children()[index * 2].borrow().value(),
+          token.get_children()[index * 2]
+            .borrow()
+            .get_captured_value(),
           parts[index]
         );
         assert_eq!(
           token.get_children()[index * 2 + 1].borrow().get_name(),
           "Equals"
         );
-        assert_eq!(token.get_children()[index * 2 + 1].borrow().value(), " ");
+        assert_eq!(
+          token.get_children()[index * 2 + 1]
+            .borrow()
+            .get_captured_value(),
+          " "
+        );
       }
     } else {
       unreachable!("Test failed!");
@@ -1096,8 +1103,8 @@ mod tests {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Loop");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 12));
-      assert_eq!(token.value(), parser.borrow().source);
-      assert_eq!(token.raw_value(), parser.borrow().source);
+      assert_eq!(token.get_captured_value(), &parser.borrow().source);
+      assert_eq!(token.get_matched_value(), &parser.borrow().source);
 
       assert_eq!(token.get_children().len(), 6);
 
@@ -1111,7 +1118,9 @@ mod tests {
           "Matches"
         );
         assert_eq!(
-          program_token.borrow().get_children()[0].borrow().value(),
+          program_token.borrow().get_children()[0]
+            .borrow()
+            .get_captured_value(),
           parts[index]
         );
         assert_eq!(
@@ -1119,7 +1128,9 @@ mod tests {
           "Equals"
         );
         assert_eq!(
-          program_token.borrow().get_children()[1].borrow().value(),
+          program_token.borrow().get_children()[1]
+            .borrow()
+            .get_captured_value(),
           " "
         );
       }
@@ -1140,8 +1151,8 @@ mod tests {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Loop");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 11));
-      assert_eq!(token.value(), "A B C break");
-      assert_eq!(token.raw_value(), "A B C break");
+      assert_eq!(token.get_captured_value(), "A B C break");
+      assert_eq!(token.get_matched_value(), "A B C break");
 
       assert_eq!(token.get_children().len(), 4);
 
@@ -1155,7 +1166,9 @@ mod tests {
           "Matches"
         );
         assert_eq!(
-          program_token.borrow().get_children()[0].borrow().value(),
+          program_token.borrow().get_children()[0]
+            .borrow()
+            .get_captured_value(),
           parts[index]
         );
         assert_eq!(
@@ -1163,7 +1176,9 @@ mod tests {
           "Equals"
         );
         assert_eq!(
-          program_token.borrow().get_children()[1].borrow().value(),
+          program_token.borrow().get_children()[1]
+            .borrow()
+            .get_captured_value(),
           " "
         );
       }
@@ -1176,13 +1191,15 @@ mod tests {
         "Equals"
       );
       assert_eq!(
-        program_token.borrow().get_children()[0].borrow().value(),
+        program_token.borrow().get_children()[0]
+          .borrow()
+          .get_captured_value(),
         "break"
       );
       assert_eq!(
         program_token.borrow().get_children()[0]
           .borrow()
-          .raw_value(),
+          .get_matched_value(),
         "break"
       );
     } else {

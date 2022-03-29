@@ -62,9 +62,9 @@ impl core::fmt::Debug for TokenRefInner {
       self.get_matched_range().start,
       self.get_matched_range().end,
       tabs,
-      self.value(),
+      self.get_captured_value(),
       tabs,
-      self.raw_value(),
+      self.get_matched_value(),
       tabs,
       get_parent_path_for_debug(Box::new(self)),
       tabs,
@@ -125,8 +125,10 @@ pub trait Token {
   fn get_children<'b>(&'b self) -> &'b Vec<crate::token::TokenRef>;
   fn get_children_mut<'b>(&'b mut self) -> &'b mut Vec<crate::token::TokenRef>;
   fn set_children(&mut self, children: Vec<crate::token::TokenRef>);
-  fn value(&self) -> String;
-  fn raw_value(&self) -> String;
+  fn get_captured_value(&self) -> &String;
+  fn set_captured_value(&mut self, value: &str);
+  fn get_matched_value(&self) -> &String;
+  fn set_matched_value(&mut self, value: &str);
   fn get_attributes<'b>(&'b self) -> &'b std::collections::HashMap<String, String>;
   fn get_attribute<'b>(&'b self, name: &str) -> Option<&'b String>;
   fn attribute_equals<'b>(&'b self, name: &str, value: &str) -> bool;
@@ -189,6 +191,8 @@ pub struct StandardToken {
   pub captured_range: SourceRange,
   pub matched_range: SourceRange,
   pub name: String,
+  pub captured_value: String,
+  pub matched_value: String,
   pub parent: Option<TokenRef>,
   pub children: Vec<TokenRef>,
   pub attributes: std::collections::HashMap<String, String>,
@@ -201,6 +205,8 @@ impl StandardToken {
       captured_range,
       matched_range: captured_range.clone(),
       name,
+      captured_value: captured_range.to_string(&parser),
+      matched_value: captured_range.to_string(&parser),
       parent: None,
       children: Vec::new(),
       attributes: std::collections::HashMap::new(),
@@ -218,6 +224,8 @@ impl StandardToken {
       captured_range,
       matched_range,
       name,
+      captured_value: captured_range.to_string(&parser),
+      matched_value: matched_range.to_string(&parser),
       parent: None,
       children: Vec::new(),
       attributes: std::collections::HashMap::new(),

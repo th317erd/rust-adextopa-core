@@ -47,7 +47,7 @@ pub trait Matcher<'a> {
   fn get_children(&self) -> Option<Vec<MatcherRef<'a>>>;
   fn to_string(&self) -> String;
 
-  fn set_scope(&mut self, scope: Option<&str>) {
+  fn set_scope(&mut self, _: Option<&str>) {
     // NO-OP
   }
 

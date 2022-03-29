@@ -291,9 +291,12 @@ mod tests {
       assert_eq!(token.get_name(), "Sequence");
       assert_eq!(*token.get_captured_range(), SourceRange::new(1, 34));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 35));
-      assert_eq!(token.value(), "This is a \"cool\\beans\" string!");
       assert_eq!(
-        token.raw_value(),
+        token.get_captured_value(),
+        "This is a \"cool\\beans\" string!"
+      );
+      assert_eq!(
+        token.get_matched_value(),
         "\"This is a \\\"cool\\\\beans\\\" string!\""
       );
     } else {
