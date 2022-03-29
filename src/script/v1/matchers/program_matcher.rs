@@ -44,7 +44,7 @@ mod tests {
       assert_eq!(token.get_name(), "ProgramMatcher");
       assert_eq!(*token.get_captured_range(), SourceRange::new(6, 23));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 26));
-      assert_eq!(token.get_captured_value(), "test'>\n\t(</test/i");
+      assert_eq!(token.get_value(), "test'>\n\t(</test/i");
       assert_eq!(token.get_matched_value(), "{\n\t<='test'>\n\t(</test/i>)}");
       assert_eq!(token.get_children().len(), 2);
 
@@ -52,14 +52,14 @@ mod tests {
       assert_eq!(first.get_name(), "PatternDefinition");
       assert_eq!(*first.get_captured_range(), SourceRange::new(6, 10));
       assert_eq!(*first.get_matched_range(), SourceRange::new(3, 12));
-      assert_eq!(first.get_captured_value(), "test");
+      assert_eq!(first.get_value(), "test");
       assert_eq!(first.get_matched_value(), "<='test'>");
 
       let second = token.get_children()[1].borrow();
       assert_eq!(second.get_name(), "PatternDefinitionCaptured");
       assert_eq!(*second.get_captured_range(), SourceRange::new(17, 23));
       assert_eq!(*second.get_matched_range(), SourceRange::new(14, 25));
-      assert_eq!(second.get_captured_value(), "test/i");
+      assert_eq!(second.get_value(), "test/i");
       assert_eq!(second.get_matched_value(), "(</test/i>)");
     } else {
       unreachable!("Test failed!");

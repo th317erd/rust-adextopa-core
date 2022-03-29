@@ -77,7 +77,7 @@ pub fn token_derive(input: TokenStream) -> TokenStream {
         self.children = children;
       }
 
-      fn get_captured_value(&self) -> &String {
+      fn get_value(&self) -> &String {
         // Value override via attribute
         match self.get_attribute("__value") {
           Some(value) => {
@@ -86,6 +86,21 @@ pub fn token_derive(input: TokenStream) -> TokenStream {
           None => {}
         }
 
+        match &self.value {
+          Some(ref value) => value,
+          None => self.get_captured_value(),
+        }
+      }
+
+      fn set_value(&mut self, value: &str) {
+        if value == "" {
+          self.value = None;
+        } else {
+          self.value = Some(value.to_string());
+        }
+      }
+
+      fn get_captured_value(&self) -> &String {
         &self.captured_value
       }
 
@@ -94,14 +109,6 @@ pub fn token_derive(input: TokenStream) -> TokenStream {
       }
 
       fn get_matched_value(&self) -> &String {
-        // Value override via attribute
-        match self.get_attribute("__matched_value") {
-          Some(value) => {
-            return value;
-          }
-          None => {}
-        }
-
         &self.matched_value
       }
 

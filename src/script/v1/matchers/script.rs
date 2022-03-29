@@ -48,7 +48,7 @@ mod tests {
       assert_eq!(token.get_name(), "Script");
       assert_eq!(*token.get_captured_range(), SourceRange::new(4, 21));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 24));
-      assert_eq!(token.get_captured_value(), "test'>\n\t(</test/i");
+      assert_eq!(token.get_value(), "test'>\n\t(</test/i");
       assert_eq!(token.get_matched_value(), source);
       assert_eq!(token.get_children().len(), 1);
 
@@ -56,7 +56,7 @@ mod tests {
       assert_eq!(first.get_name(), "PatternScope");
       assert_eq!(*first.get_captured_range(), SourceRange::new(4, 21));
       assert_eq!(*first.get_matched_range(), SourceRange::new(1, 24));
-      assert_eq!(first.get_captured_value(), "test'>\n\t(</test/i");
+      assert_eq!(first.get_value(), "test'>\n\t(</test/i");
       assert_eq!(first.get_matched_value(), &source[1..]);
     } else {
       unreachable!("Test failed!");
@@ -79,7 +79,7 @@ mod tests {
       assert_eq!(token.get_name(), "Script");
       assert_eq!(*token.get_captured_range(), SourceRange::new(18, 44));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 47));
-      assert_eq!(token.get_captured_value(), "1]--> <='test'>\n\t(</test/i");
+      assert_eq!(token.get_value(), "1]--> <='test'>\n\t(</test/i");
       assert_eq!(token.get_matched_value(), source);
       assert_eq!(token.get_children().len(), 2);
 
@@ -87,14 +87,14 @@ mod tests {
       assert_eq!(first.get_name(), "AdextopaScope");
       assert_eq!(*first.get_captured_range(), SourceRange::new(18, 19));
       assert_eq!(*first.get_matched_range(), SourceRange::new(3, 23));
-      assert_eq!(first.get_captured_value(), "1");
+      assert_eq!(first.get_value(), "1");
       assert_eq!(first.get_matched_value(), "<!--[adextopa:v1]-->");
 
       let second = token.get_children()[1].borrow();
       assert_eq!(second.get_name(), "PatternScope");
       assert_eq!(*second.get_captured_range(), SourceRange::new(27, 44));
       assert_eq!(*second.get_matched_range(), SourceRange::new(23, 47));
-      assert_eq!(second.get_captured_value(), "test'>\n\t(</test/i");
+      assert_eq!(second.get_value(), "test'>\n\t(</test/i");
       assert_eq!(second.get_matched_value(), " <='test'>\n\t(</test/i>)\n");
     } else {
       unreachable!("Test failed!");

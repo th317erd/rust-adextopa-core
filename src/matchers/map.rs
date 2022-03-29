@@ -136,7 +136,7 @@ mod tests {
       assert_eq!(token.get_name(), "WOW");
       assert_eq!(*token.get_captured_range(), SourceRange::new(1, 6));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 7));
-      assert_eq!(token.get_captured_value(), "estin");
+      assert_eq!(token.get_value(), "estin");
       assert_eq!(token.get_matched_value(), "Testing");
     } else {
       unreachable!("Test failed!");
@@ -156,7 +156,7 @@ mod tests {
       assert_eq!(token.get_name(), "Error");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 7));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 7));
-      assert_eq!(token.get_captured_value(), "Testing");
+      assert_eq!(token.get_value(), "Testing");
       assert_eq!(token.get_matched_value(), "Testing");
       assert_eq!(
         token.get_attribute("__message").unwrap(),

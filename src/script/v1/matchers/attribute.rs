@@ -41,7 +41,7 @@ mod tests {
       assert_eq!(token.get_name(), "Attribute");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 10));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 11));
-      assert_eq!(token.get_captured_value(), "test='derp");
+      assert_eq!(token.get_value(), "test='derp");
       assert_eq!(token.get_matched_value(), "test='derp'");
       assert_eq!(token.get_children().len(), 2);
 
@@ -49,14 +49,14 @@ mod tests {
       assert_eq!(first.get_name(), "Name");
       assert_eq!(*first.get_captured_range(), SourceRange::new(0, 4));
       assert_eq!(*first.get_matched_range(), SourceRange::new(0, 4));
-      assert_eq!(first.get_captured_value(), "test");
+      assert_eq!(first.get_value(), "test");
       assert_eq!(first.get_matched_value(), "test");
 
       let second = token.get_children()[1].borrow();
       assert_eq!(second.get_name(), "Value");
       assert_eq!(*second.get_captured_range(), SourceRange::new(6, 10));
       assert_eq!(*second.get_matched_range(), SourceRange::new(5, 11));
-      assert_eq!(second.get_captured_value(), "derp");
+      assert_eq!(second.get_value(), "derp");
       assert_eq!(second.get_matched_value(), "'derp'");
     } else {
       unreachable!("Test failed!");
@@ -76,7 +76,7 @@ mod tests {
       assert_eq!(token.get_name(), "Attribute");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 11));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 12));
-      assert_eq!(token.get_captured_value(), "_test='derp");
+      assert_eq!(token.get_value(), "_test='derp");
       assert_eq!(token.get_matched_value(), "_test='derp'");
       assert_eq!(token.get_children().len(), 3);
 
@@ -84,21 +84,21 @@ mod tests {
       assert_eq!(first.get_name(), "Name");
       assert_eq!(*first.get_captured_range(), SourceRange::new(0, 5));
       assert_eq!(*first.get_matched_range(), SourceRange::new(0, 5));
-      assert_eq!(first.get_captured_value(), "_test");
+      assert_eq!(first.get_value(), "_test");
       assert_eq!(first.get_matched_value(), "_test");
 
       let second = token.get_children()[1].borrow();
       assert_eq!(second.get_name(), "Value");
       assert_eq!(*second.get_captured_range(), SourceRange::new(7, 11));
       assert_eq!(*second.get_matched_range(), SourceRange::new(6, 12));
-      assert_eq!(second.get_captured_value(), "derp");
+      assert_eq!(second.get_value(), "derp");
       assert_eq!(second.get_matched_value(), "'derp'");
 
       let third = token.get_children()[2].borrow();
       assert_eq!(third.get_name(), "Error");
       assert_eq!(*third.get_captured_range(), SourceRange::new(0, 5));
       assert_eq!(*third.get_matched_range(), SourceRange::new(0, 5));
-      assert_eq!(third.get_captured_value(), "_test");
+      assert_eq!(third.get_value(), "_test");
       assert_eq!(third.get_matched_value(), "_test");
       assert_eq!(
         third.get_attribute("__message").unwrap(),

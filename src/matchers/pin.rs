@@ -67,6 +67,7 @@ pub struct PinToken {
   pub captured_range: SourceRange,
   pub matched_range: SourceRange,
   pub name: String,
+  pub value: Option<String>,
   pub captured_value: String,
   pub matched_value: String,
   pub parent: Option<TokenRef>,
@@ -81,6 +82,7 @@ impl PinToken {
       captured_range,
       matched_range: captured_range.clone(),
       name,
+      value: None,
       captured_value: captured_range.to_string(&parser),
       matched_value: captured_range.to_string(&parser),
       parent: None,
@@ -100,6 +102,7 @@ impl PinToken {
       captured_range,
       matched_range,
       name,
+      value: None,
       captured_value: captured_range.to_string(&parser),
       matched_value: matched_range.to_string(&parser),
       parent: None,
@@ -167,6 +170,29 @@ impl Token for PinToken {
 
   fn set_children(&mut self, children: Vec<crate::token::TokenRef>) {
     self.children = children;
+  }
+
+  fn get_value(&self) -> &String {
+    // Value override via attribute
+    match self.get_attribute("__value") {
+      Some(value) => {
+        return value;
+      }
+      None => {}
+    }
+
+    match &self.value {
+      Some(ref value) => value,
+      None => self.get_captured_value(),
+    }
+  }
+
+  fn set_value(&mut self, value: &str) {
+    if value == "" {
+      self.value = None;
+    } else {
+      self.value = Some(value.to_string());
+    }
   }
 
   fn get_captured_value(&self) -> &String {
@@ -373,7 +399,7 @@ mod tests {
       assert_eq!(token.get_name(), "Equals");
       assert_eq!(*token.get_captured_range(), SourceRange::new(8, 12));
       assert_eq!(*token.get_matched_range(), SourceRange::new(8, 12));
-      assert_eq!(token.get_captured_value(), "1234");
+      assert_eq!(token.get_value(), "1234");
 
       // Offset should not have been updated with a Pin
       assert_eq!(parser_context.borrow().offset.start, 0);
@@ -402,26 +428,26 @@ mod tests {
       assert_eq!(token.get_name(), "Program");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 12));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 12));
-      assert_eq!(token.get_captured_value(), "Testing 1234");
+      assert_eq!(token.get_value(), "Testing 1234");
       assert_eq!(token.get_children().len(), 3);
 
       let first = token.get_children()[0].borrow();
       assert_eq!(first.get_name(), "Equals");
       assert_eq!(*first.get_captured_range(), SourceRange::new(0, 7));
       assert_eq!(*first.get_matched_range(), SourceRange::new(0, 7));
-      assert_eq!(first.get_captured_value(), "Testing");
+      assert_eq!(first.get_value(), "Testing");
 
       let second = token.get_children()[1].borrow();
       assert_eq!(second.get_name(), "Equals");
       assert_eq!(*second.get_captured_range(), SourceRange::new(0, 7));
       assert_eq!(*second.get_matched_range(), SourceRange::new(0, 7));
-      assert_eq!(second.get_captured_value(), "Testing");
+      assert_eq!(second.get_value(), "Testing");
 
       let third = token.get_children()[2].borrow();
       assert_eq!(third.get_name(), "Matches");
       assert_eq!(*third.get_captured_range(), SourceRange::new(8, 12));
       assert_eq!(*third.get_matched_range(), SourceRange::new(8, 12));
-      assert_eq!(third.get_captured_value(), "1234");
+      assert_eq!(third.get_value(), "1234");
     } else {
       unreachable!("Test failed!");
     };
@@ -440,7 +466,7 @@ mod tests {
       assert_eq!(token.get_name(), "Equals");
       assert_eq!(*token.get_captured_range(), SourceRange::new(8, 12));
       assert_eq!(*token.get_matched_range(), SourceRange::new(8, 12));
-      assert_eq!(token.get_captured_value(), "1234");
+      assert_eq!(token.get_value(), "1234");
 
       // Offset should not have been updated with a Pin
       assert_eq!(parser_context.borrow().offset.start, 0);
@@ -463,20 +489,20 @@ mod tests {
       assert_eq!(token.get_name(), "Program");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 7));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 7));
-      assert_eq!(token.get_captured_value(), "Testing");
+      assert_eq!(token.get_value(), "Testing");
       assert_eq!(token.get_children().len(), 2);
 
       let first = token.get_children()[0].borrow();
       assert_eq!(first.get_name(), "Equals");
       assert_eq!(*first.get_captured_range(), SourceRange::new(0, 7));
       assert_eq!(*first.get_matched_range(), SourceRange::new(0, 7));
-      assert_eq!(first.get_captured_value(), "Testing");
+      assert_eq!(first.get_value(), "Testing");
 
       let second = token.get_children()[1].borrow();
       assert_eq!(second.get_name(), "Equals");
       assert_eq!(*second.get_captured_range(), SourceRange::new(0, 7));
       assert_eq!(*second.get_matched_range(), SourceRange::new(0, 7));
-      assert_eq!(second.get_captured_value(), "Testing");
+      assert_eq!(second.get_value(), "Testing");
     } else {
       unreachable!("Test failed!");
     };

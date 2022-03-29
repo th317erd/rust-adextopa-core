@@ -31,7 +31,7 @@ impl<'a> Fetchable<'a> for FetchPattern {
         let sub_name = name_path[1];
 
         let value = if sub_name == "captured_value" {
-          token.get_captured_value().clone()
+          token.get_value().clone()
         } else if sub_name == "matched_value" {
           token.get_matched_value().clone()
         } else if sub_name == "start" {
@@ -196,7 +196,7 @@ mod tests {
       assert_eq!(token.get_name(), "Equals");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 7));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 7));
-      assert_eq!(token.get_captured_value(), "Testing");
+      assert_eq!(token.get_value(), "Testing");
       assert_eq!(token.get_matched_value(), "Testing");
     } else {
       unreachable!("Test failed!");
@@ -220,21 +220,21 @@ mod tests {
       assert_eq!(token.get_name(), "Program");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 15));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 15));
-      assert_eq!(token.get_captured_value(), "Testing Testing");
+      assert_eq!(token.get_value(), "Testing Testing");
       assert_eq!(token.get_matched_value(), "Testing Testing");
 
       let first = token.get_children()[0].borrow();
       assert_eq!(first.get_name(), "Matches");
       assert_eq!(*first.get_captured_range(), SourceRange::new(0, 7));
       assert_eq!(*first.get_matched_range(), SourceRange::new(0, 7));
-      assert_eq!(first.get_captured_value(), "Testing");
+      assert_eq!(first.get_value(), "Testing");
       assert_eq!(first.get_matched_value(), "Testing");
 
       let second = token.get_children()[1].borrow();
       assert_eq!(second.get_name(), "Equals");
       assert_eq!(*second.get_captured_range(), SourceRange::new(8, 15));
       assert_eq!(*second.get_matched_range(), SourceRange::new(8, 15));
-      assert_eq!(second.get_captured_value(), "Testing");
+      assert_eq!(second.get_value(), "Testing");
       assert_eq!(second.get_matched_value(), "Testing");
     } else {
       unreachable!("Test failed!");

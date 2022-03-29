@@ -84,7 +84,7 @@ mod tests {
       assert_eq!(token.get_name(), "RepeatOneOrMore");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 1));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 1));
-      assert_eq!(token.get_captured_value(), r"+");
+      assert_eq!(token.get_value(), r"+");
       assert_eq!(token.get_matched_value(), r"+");
       assert_eq!(token.get_children().len(), 0);
     } else {
@@ -107,7 +107,7 @@ mod tests {
       assert_eq!(token.get_name(), "RepeatZeroOrMore");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 1));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 1));
-      assert_eq!(token.get_captured_value(), r"*");
+      assert_eq!(token.get_value(), r"*");
       assert_eq!(token.get_matched_value(), r"*");
       assert_eq!(token.get_children().len(), 0);
     } else {
@@ -133,7 +133,7 @@ mod tests {
       assert_eq!(token.get_name(), "RepeatRange");
       assert_eq!(*token.get_captured_range(), SourceRange::new(1, 4));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 5));
-      assert_eq!(token.get_captured_value(), r"10,");
+      assert_eq!(token.get_value(), r"10,");
       assert_eq!(token.get_matched_value(), r"{10,}");
       assert_eq!(token.get_children().len(), 2);
     } else {
@@ -156,7 +156,7 @@ mod tests {
       assert_eq!(token.get_name(), "RepeatRange");
       assert_eq!(*token.get_captured_range(), SourceRange::new(1, 7));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 8));
-      assert_eq!(token.get_captured_value(), r"10, 15");
+      assert_eq!(token.get_value(), r"10, 15");
       assert_eq!(token.get_matched_value(), r"{10, 15}");
       assert_eq!(token.get_children().len(), 3);
     } else {

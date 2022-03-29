@@ -159,7 +159,7 @@ mod tests {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Matches");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 7));
-      assert_eq!(token.get_captured_value(), "Testing");
+      assert_eq!(token.get_value(), "Testing");
     } else {
       unreachable!("Test failed!");
     };
@@ -177,7 +177,7 @@ mod tests {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Matches");
       assert_eq!(*token.get_captured_range(), SourceRange::new(8, 12));
-      assert_eq!(token.get_captured_value(), "1234");
+      assert_eq!(token.get_value(), "1234");
     } else {
       unreachable!("Test failed!");
     };

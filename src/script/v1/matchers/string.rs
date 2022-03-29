@@ -29,7 +29,7 @@ mod tests {
       assert_eq!(token.get_name(), "String");
       assert_eq!(*token.get_captured_range(), SourceRange::new(1, 19));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 20));
-      assert_eq!(token.get_captured_value(), "A 'test' string!");
+      assert_eq!(token.get_value(), "A 'test' string!");
       assert_eq!(token.get_matched_value(), "'A \\'test\\' string!'");
     } else {
       unreachable!("Test failed!");

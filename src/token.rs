@@ -62,7 +62,7 @@ impl core::fmt::Debug for TokenRefInner {
       self.get_matched_range().start,
       self.get_matched_range().end,
       tabs,
-      self.get_captured_value(),
+      self.get_value(),
       tabs,
       self.get_matched_value(),
       tabs,
@@ -125,6 +125,8 @@ pub trait Token {
   fn get_children<'b>(&'b self) -> &'b Vec<crate::token::TokenRef>;
   fn get_children_mut<'b>(&'b mut self) -> &'b mut Vec<crate::token::TokenRef>;
   fn set_children(&mut self, children: Vec<crate::token::TokenRef>);
+  fn get_value(&self) -> &String;
+  fn set_value(&mut self, value: &str);
   fn get_captured_value(&self) -> &String;
   fn set_captured_value(&mut self, value: &str);
   fn get_matched_value(&self) -> &String;
@@ -191,6 +193,7 @@ pub struct StandardToken {
   pub captured_range: SourceRange,
   pub matched_range: SourceRange,
   pub name: String,
+  pub value: Option<String>,
   pub captured_value: String,
   pub matched_value: String,
   pub parent: Option<TokenRef>,
@@ -205,6 +208,7 @@ impl StandardToken {
       captured_range,
       matched_range: captured_range.clone(),
       name,
+      value: None,
       captured_value: captured_range.to_string(&parser),
       matched_value: captured_range.to_string(&parser),
       parent: None,
@@ -224,6 +228,7 @@ impl StandardToken {
       captured_range,
       matched_range,
       name,
+      value: None,
       captured_value: captured_range.to_string(&parser),
       matched_value: matched_range.to_string(&parser),
       parent: None,

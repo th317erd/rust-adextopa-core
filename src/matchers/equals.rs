@@ -181,7 +181,7 @@ mod tests {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Equals");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 7));
-      assert_eq!(token.get_captured_value(), "Testing");
+      assert_eq!(token.get_value(), "Testing");
     } else {
       unreachable!("Test failed!");
     };

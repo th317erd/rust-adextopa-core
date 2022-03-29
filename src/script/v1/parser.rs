@@ -60,18 +60,18 @@ fn construct_matcher_from_inner_definition<'a>(
     let end_pattern = matcher_token.get_children()[1].borrow();
     let escape_pattern = matcher_token.get_children()[2].borrow();
 
-    if start_pattern.get_captured_value().len() == 0 {
+    if start_pattern.get_value().len() == 0 {
       panic!("Sequence `start` pattern of \"\" makes no sense");
     }
 
-    if end_pattern.get_captured_value().len() == 0 {
+    if end_pattern.get_value().len() == 0 {
       panic!("Sequence `end` pattern of \"\" makes no sense");
     }
 
     Ok(crate::Sequence!(
-      start_pattern.get_captured_value().clone(),
-      end_pattern.get_captured_value().clone(),
-      escape_pattern.get_captured_value().clone()
+      start_pattern.get_value().clone(),
+      end_pattern.get_value().clone(),
+      escape_pattern.get_value().clone()
     ))
   } else if matcher_token_name == "CustomMatcher" {
     let identifier = matcher_token.get_children()[0]
@@ -287,7 +287,7 @@ fn build_matcher_from_tokens<'a, 'b>(
       let _token = token.borrow();
       let token_children = _token.get_children();
       let identifier = token_children[0].borrow();
-      let matcher_name = identifier.get_captured_value().clone();
+      let matcher_name = identifier.get_value().clone();
       let value = &token_children[1];
       let _value = value.borrow();
       let value_name = _value.get_name();
@@ -295,7 +295,7 @@ fn build_matcher_from_tokens<'a, 'b>(
       if value_name == "Identifier" {
         // Identifier is assigned to identifier...
         // so this is a reference
-        register_matchers.borrow_mut().add_pattern(crate::Ref!(matcher_name; _token.get_captured_value().clone()));
+        register_matchers.borrow_mut().add_pattern(crate::Ref!(matcher_name; _token.get_value().clone()));
       } else if value_name == "PatternDefinition" {
         // This is a pattern definition, so turn it into
         // a matcher, and store it as a reference
@@ -436,7 +436,7 @@ mod tests {
         );
         assert_eq!(*token.get_captured_range(), SourceRange::new(0, 1));
         assert_eq!(*token.get_matched_range(), SourceRange::new(0, 1));
-        assert_eq!(token.get_captured_value(), "test");
+        assert_eq!(token.get_value(), "test");
         assert_eq!(token.get_matched_value(), "test");
         assert_eq!(token.get_children().len(), 1);
 
@@ -444,7 +444,7 @@ mod tests {
         assert_eq!(first.get_name(), "Identifier");
         assert_eq!(*first.get_captured_range(), SourceRange::new(0, 4));
         assert_eq!(*first.get_matched_range(), SourceRange::new(0, 4));
-        assert_eq!(first.get_captured_value(), "test");
+        assert_eq!(first.get_value(), "test");
         assert_eq!(first.get_matched_value(), "test");
 
         assert_eq!(first.get_attribute("hello"), Some(&"world".to_string()));
@@ -727,7 +727,7 @@ mod tests {
         assert_eq!(token.get_name(), "Matches");
         assert_eq!(*token.get_captured_range(), SourceRange::new(0, 4));
         assert_eq!(*token.get_matched_range(), SourceRange::new(0, 4));
-        assert_eq!(token.get_captured_value(), "test");
+        assert_eq!(token.get_value(), "test");
         assert_eq!(token.get_matched_value(), "test");
 
         let attributes = token.get_attributes();

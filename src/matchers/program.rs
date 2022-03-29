@@ -1014,7 +1014,7 @@ mod tests {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Program");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 12));
-      assert_eq!(token.get_captured_value(), &parser.borrow().source);
+      assert_eq!(token.get_value(), &parser.borrow().source);
     } else {
       unreachable!("Test failed!");
     };
@@ -1042,7 +1042,7 @@ mod tests {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Equals");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 7));
-      assert_eq!(token.get_captured_value(), "Testing");
+      assert_eq!(token.get_value(), "Testing");
       assert_eq!(token.get_matched_value(), "Testing");
     } else {
       unreachable!("Test failed!");
@@ -1059,7 +1059,7 @@ mod tests {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Loop");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 12));
-      assert_eq!(token.get_captured_value(), &parser.borrow().source);
+      assert_eq!(token.get_value(), &parser.borrow().source);
       assert_eq!(token.get_matched_value(), &parser.borrow().source);
 
       assert_eq!(token.get_children().len(), 12);
@@ -1103,7 +1103,7 @@ mod tests {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Loop");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 12));
-      assert_eq!(token.get_captured_value(), &parser.borrow().source);
+      assert_eq!(token.get_value(), &parser.borrow().source);
       assert_eq!(token.get_matched_value(), &parser.borrow().source);
 
       assert_eq!(token.get_children().len(), 6);
@@ -1151,7 +1151,7 @@ mod tests {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Loop");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 11));
-      assert_eq!(token.get_captured_value(), "A B C break");
+      assert_eq!(token.get_value(), "A B C break");
       assert_eq!(token.get_matched_value(), "A B C break");
 
       assert_eq!(token.get_children().len(), 4);

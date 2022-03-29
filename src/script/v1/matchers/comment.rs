@@ -28,7 +28,7 @@ mod tests {
       assert_eq!(token.get_name(), "Comment");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 9));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 9));
-      assert_eq!(token.get_captured_value(), "# Testing");
+      assert_eq!(token.get_value(), "# Testing");
       assert_eq!(token.get_matched_value(), "# Testing");
       assert_eq!(token.get_children().len(), 0);
     } else {
@@ -53,7 +53,7 @@ mod tests {
       assert_eq!(token.get_name(), "Loop");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 14));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 14));
-      assert_eq!(token.get_captured_value(), r"1234 # Testing");
+      assert_eq!(token.get_value(), r"1234 # Testing");
       assert_eq!(token.get_matched_value(), r"1234 # Testing");
       assert_eq!(token.get_children().len(), 3);
 
@@ -61,21 +61,21 @@ mod tests {
       assert_eq!(first.get_name(), "Number");
       assert_eq!(*first.get_captured_range(), SourceRange::new(0, 4));
       assert_eq!(*first.get_matched_range(), SourceRange::new(0, 4));
-      assert_eq!(first.get_captured_value(), r"1234");
+      assert_eq!(first.get_value(), r"1234");
       assert_eq!(first.get_matched_value(), r"1234");
 
       let second = token.get_children()[1].borrow();
       assert_eq!(second.get_name(), "Whitespace");
       assert_eq!(*second.get_captured_range(), SourceRange::new(4, 5));
       assert_eq!(*second.get_matched_range(), SourceRange::new(4, 5));
-      assert_eq!(second.get_captured_value(), r" ");
+      assert_eq!(second.get_value(), r" ");
       assert_eq!(second.get_matched_value(), r" ");
 
       let third = token.get_children()[2].borrow();
       assert_eq!(third.get_name(), "Comment");
       assert_eq!(*third.get_captured_range(), SourceRange::new(5, 14));
       assert_eq!(*third.get_matched_range(), SourceRange::new(5, 14));
-      assert_eq!(third.get_captured_value(), r"# Testing");
+      assert_eq!(third.get_value(), r"# Testing");
       assert_eq!(third.get_matched_value(), r"# Testing");
     } else {
       unreachable!("Test failed!");

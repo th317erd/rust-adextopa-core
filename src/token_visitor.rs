@@ -117,14 +117,14 @@ mod test {
         "Equals" => |token| {
           let mut context = context.borrow_mut();
           let token = token.borrow();
-          context.push(format!("Equals = {}", token.get_captured_value()));
+          context.push(format!("Equals = {}", token.get_value()));
           x = 12;
           Ok(())
         },
         "*" => |token| {
           let mut context = context.borrow_mut();
           let token = token.borrow();
-          context.push(format!("{}: {}", token.get_name(), token.get_captured_value()));
+          context.push(format!("{}: {}", token.get_name(), token.get_value()));
           Ok(())
         }
       );

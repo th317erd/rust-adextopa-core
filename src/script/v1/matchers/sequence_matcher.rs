@@ -34,7 +34,7 @@ mod tests {
       assert_eq!(token.get_name(), "SequenceMatcher");
       assert_eq!(*token.get_captured_range(), SourceRange::new(2, 10));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 11));
-      assert_eq!(token.get_captured_value(), r"{','}','");
+      assert_eq!(token.get_value(), r"{','}','");
       assert_eq!(token.get_matched_value(), r"%'{','}',''");
       assert_eq!(token.get_children().len(), 3);
 
@@ -42,21 +42,21 @@ mod tests {
       assert_eq!(start.get_name(), "StartPattern");
       assert_eq!(*start.get_captured_range(), SourceRange::new(2, 3));
       assert_eq!(*start.get_matched_range(), SourceRange::new(1, 4));
-      assert_eq!(start.get_captured_value(), r"{");
+      assert_eq!(start.get_value(), r"{");
       assert_eq!(start.get_matched_value(), r"'{'");
 
       let end = token.get_children()[1].borrow();
       assert_eq!(end.get_name(), "EndPattern");
       assert_eq!(*end.get_captured_range(), SourceRange::new(6, 7));
       assert_eq!(*end.get_matched_range(), SourceRange::new(5, 8));
-      assert_eq!(end.get_captured_value(), r"}");
+      assert_eq!(end.get_value(), r"}");
       assert_eq!(end.get_matched_value(), r"'}'");
 
       let escape = token.get_children()[2].borrow();
       assert_eq!(escape.get_name(), "EscapePattern");
       assert_eq!(*escape.get_captured_range(), SourceRange::new(10, 10));
       assert_eq!(*escape.get_matched_range(), SourceRange::new(9, 11));
-      assert_eq!(escape.get_captured_value(), r"");
+      assert_eq!(escape.get_value(), r"");
       assert_eq!(escape.get_matched_value(), r"''");
     } else {
       unreachable!("Test failed!");
@@ -76,7 +76,7 @@ mod tests {
       assert_eq!(token.get_name(), "SequenceMatcher");
       assert_eq!(*token.get_captured_range(), SourceRange::new(2, 16));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 17));
-      assert_eq!(token.get_captured_value(), r"{' , '}',  '\\");
+      assert_eq!(token.get_value(), r"{' , '}',  '\\");
       assert_eq!(token.get_matched_value(), r"%'{' , '}',  '\\'");
       assert_eq!(token.get_children().len(), 3);
 
@@ -84,21 +84,21 @@ mod tests {
       assert_eq!(start.get_name(), "StartPattern");
       assert_eq!(*start.get_captured_range(), SourceRange::new(2, 3));
       assert_eq!(*start.get_matched_range(), SourceRange::new(1, 4));
-      assert_eq!(start.get_captured_value(), r"{");
+      assert_eq!(start.get_value(), r"{");
       assert_eq!(start.get_matched_value(), r"'{'");
 
       let end = token.get_children()[1].borrow();
       assert_eq!(end.get_name(), "EndPattern");
       assert_eq!(*end.get_captured_range(), SourceRange::new(8, 9));
       assert_eq!(*end.get_matched_range(), SourceRange::new(7, 10));
-      assert_eq!(end.get_captured_value(), r"}");
+      assert_eq!(end.get_value(), r"}");
       assert_eq!(end.get_matched_value(), r"'}'");
 
       let escape = token.get_children()[2].borrow();
       assert_eq!(escape.get_name(), "EscapePattern");
       assert_eq!(*escape.get_captured_range(), SourceRange::new(14, 16));
       assert_eq!(*escape.get_matched_range(), SourceRange::new(13, 17));
-      assert_eq!(escape.get_captured_value(), r"\");
+      assert_eq!(escape.get_value(), r"\");
       assert_eq!(escape.get_matched_value(), r"'\\'");
     } else {
       unreachable!("Test failed!");
