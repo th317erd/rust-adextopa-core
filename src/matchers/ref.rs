@@ -88,6 +88,8 @@ where
 
     match target {
       FetchableType::String(ref target_name) => {
+        println!("Fetching reference {}", target_name);
+
         let possible_matcher = sub_context
           .borrow()
           .get_registered_matcher(self.get_scope(), target_name);

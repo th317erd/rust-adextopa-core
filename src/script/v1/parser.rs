@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, path::Path};
 
 use crate::{
   matcher::{MatcherRef, MatcherSuccess},
@@ -256,10 +256,11 @@ fn construct_matcher_from_pattern<'a>(
   }
 }
 
-fn build_matcher_from_tokens<'a, 'b>(
+fn build_matcher_from_tokens<'a>(
   root_token: TokenRef,
   parser_context: ParserContextRef<'a>,
   name: String,
+  from_file: Option<&str>,
 ) -> Result<MatcherRef<'a>, String> {
   if root_token.borrow().get_name() != "Script" {
     return Err("Expected provided token to be a `Script` token".to_string());
@@ -303,6 +304,64 @@ fn build_matcher_from_tokens<'a, 'b>(
 
       Ok(())
     },
+    "ImportStatement" => |token| {
+      if from_file.is_none() {
+        // TODO: Better error handling
+        let error = "Error found import statement, but it is forbidden to use imports when not parsing from a file";
+
+        eprintln!("{}", error);
+
+        return Err(error.to_string());
+      }
+
+      let from_file = from_file.as_ref().unwrap();
+      let token = token.borrow();
+      let import_identifiers = token.find_child("ImportIdentifiers").unwrap();
+      let import_identifiers = import_identifiers.borrow();
+      let import_identifiers = import_identifiers.get_children();
+      let path = token.find_child("Path").unwrap().borrow().get_value().clone();
+
+      let full_path = Path::new(from_file).parent().unwrap().join(path).canonicalize().unwrap();
+      let file_name = full_path.to_str().unwrap();
+
+      let import_result = compile_script_from_file_internal(file_name)?;
+      let import_parser_context = import_result.0.borrow();
+      let import_root_matcher = &import_result.1;
+      let _parser_context = parser_context.borrow();
+      let mut register_matchers = register_matchers.borrow_mut();
+
+      // Copy references over
+      for key in import_parser_context.matcher_reference_map.borrow().keys() {
+        if let Some(matcher) = import_parser_context.matcher_reference_map.borrow().get(key) {
+          register_matchers.add_pattern(crate::Ref!(key.to_string(); matcher.clone()));
+        }
+      }
+
+      for import_identifier in import_identifiers {
+        let import_identifier = import_identifier.borrow();
+        let identifier = import_identifier.find_child("ImportName").unwrap().borrow().get_value().to_string();
+        let as_name = import_identifier.find_child("ImportAsName");
+        let import_name = match as_name {
+          Some(child) => child.borrow().get_value().to_string(),
+          None => identifier.clone(),
+        };
+
+        if identifier == "_" {
+          println!("Registering root matcher from import: {}", import_name);
+          register_matchers.add_pattern(crate::Ref!(import_name; import_root_matcher.clone()));
+        } else {
+          let reference_matcher = import_parser_context.get_registered_matcher(None, &identifier);
+          if reference_matcher.is_none() {
+            return Err(format!("Failed to import `{}` from '{}': Not found", &identifier, file_name))
+          }
+
+          println!("Registering matcher from import: {}", import_name);
+          register_matchers.add_pattern(crate::Ref!(import_name; reference_matcher.unwrap().clone()));
+        }
+      }
+
+      Ok(())
+    },
     "PatternScope" => |token| {
       let token = token.borrow();
       let children = token.get_children();
@@ -334,7 +393,11 @@ fn build_matcher_from_tokens<'a, 'b>(
   }
 }
 
-pub fn compile_script<'a>(parser: ParserRef, name: String) -> Result<MatcherRef<'a>, String> {
+pub fn compile_script<'a>(
+  parser: ParserRef,
+  name: String,
+  from_file: Option<&str>,
+) -> Result<(ParserContextRef<'a>, MatcherRef<'a>), String> {
   let parser_context = ParserContext::new(&parser, &name);
 
   (*parser_context)
@@ -347,11 +410,28 @@ pub fn compile_script<'a>(parser: ParserRef, name: String) -> Result<MatcherRef<
   match result {
     Ok(result) => match result {
       MatcherSuccess::Token(token) => {
-        // println!("PARSE RESULT: {:?}", token);
-        build_matcher_from_tokens(token.clone(), parser_context.clone(), name)
+        match build_matcher_from_tokens(token.clone(), parser_context.clone(), name, from_file) {
+          Ok(ref matcher) => {
+            parser_context
+              .borrow()
+              .capture_matcher_references(None, matcher.clone());
+
+            Ok((parser_context.clone(), matcher.clone()))
+          }
+          Err(error) => Err(error),
+        }
       }
       MatcherSuccess::ExtractChildren(token) => {
-        build_matcher_from_tokens(token.clone(), parser_context.clone(), name)
+        match build_matcher_from_tokens(token.clone(), parser_context.clone(), name, from_file) {
+          Ok(ref matcher) => {
+            parser_context
+              .borrow()
+              .capture_matcher_references(None, matcher.clone());
+
+            Ok((parser_context.clone(), matcher.clone()))
+          }
+          Err(error) => Err(error),
+        }
       }
       MatcherSuccess::Skip(_) => {
         return Err("Internal Error(Skip): Invalid syntax".to_string());
@@ -380,17 +460,36 @@ pub fn compile_script<'a>(parser: ParserRef, name: String) -> Result<MatcherRef<
   }
 }
 
-pub fn compile_script_from_str<'a>(
-  source: &'a str,
+pub fn compile_script_from_str<'a, 'b>(
+  source: &'b str,
   name: String,
 ) -> Result<MatcherRef<'a>, String> {
   let parser = Parser::new(source);
-  compile_script(parser, name)
+  match compile_script(parser, name, None) {
+    Ok(result) => Ok(result.1),
+    Err(error) => Err(error),
+  }
 }
 
-pub fn compile_script_from_file<'a>(file_name: &'a str) -> Result<MatcherRef<'a>, String> {
-  let parser = Parser::new_from_file(file_name).unwrap();
-  compile_script(parser, file_name.to_string())
+fn compile_script_from_file_internal<'a, 'b>(
+  file_name: &'b str,
+) -> Result<(ParserContextRef<'a>, MatcherRef<'a>), String> {
+  let full_path = Path::new(file_name).canonicalize().unwrap();
+  let full_file_name = full_path.to_str().unwrap();
+
+  let parser = Parser::new_from_file(full_file_name).unwrap();
+  compile_script(parser, file_name.to_string(), Some(full_file_name))
+}
+
+pub fn compile_script_from_file<'a, 'b>(file_name: &'b str) -> Result<MatcherRef<'a>, String> {
+  let full_path = Path::new(file_name).canonicalize().unwrap();
+  let full_file_name = full_path.to_str().unwrap();
+
+  let parser = Parser::new_from_file(full_file_name).unwrap();
+  match compile_script(parser, file_name.to_string(), Some(full_file_name)) {
+    Ok(result) => Ok(result.1),
+    Err(error) => Err(error),
+  }
 }
 
 #[cfg(test)]
@@ -447,6 +546,49 @@ mod tests {
       unreachable!("Test failed!");
     };
   }
+
+  // #[test]
+  // fn it_compiles_a_script_with_an_import_and_returns_a_matcher() {
+  //   if let Ok(compiled_matcher) =
+  //     compile_script_from_file("./src/script/v1/tests/script/test_import.axo")
+  //   {
+  //     let parser = Parser::new("hello world");
+  //     let parser_context = ParserContext::new(&parser, "Test");
+
+  //     // println!("MATCHER: {:?}", compiled_matcher);
+  //     // let compiled_matcher = Debug!(compiled_matcher);
+
+  //     let result = ParserContext::tokenize(parser_context, compiled_matcher.clone());
+
+  //     if let Ok(MatcherSuccess::Token(token)) = result {
+  //       let token = token.borrow();
+
+  //       assert_eq!(
+  //         token.get_name(),
+  //         "./src/script/v1/tests/script/test_import.axo"
+  //       );
+  //       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 4));
+  //       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 4));
+  //       assert_eq!(token.get_value(), "test");
+  //       assert_eq!(token.get_matched_value(), "test");
+  //       assert_eq!(token.get_children().len(), 1);
+
+  //       let first = token.get_children()[0].borrow();
+  //       assert_eq!(first.get_name(), "Word");
+  //       assert_eq!(*first.get_captured_range(), SourceRange::new(0, 4));
+  //       assert_eq!(*first.get_matched_range(), SourceRange::new(0, 4));
+  //       assert_eq!(first.get_value(), "test");
+  //       assert_eq!(first.get_matched_value(), "test");
+
+  //       assert_eq!(first.get_attribute("hello"), Some(&"world".to_string()));
+  //     } else {
+  //       println!("ERROR: {:?}", result);
+  //       unreachable!("Test failed!");
+  //     };
+  //   } else {
+  //     unreachable!("Test failed!");
+  //   };
+  // }
 
   fn register_matchers(parser_context: &ParserContextRef) {
     (*parser_context)

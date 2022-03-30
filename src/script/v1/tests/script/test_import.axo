@@ -2,7 +2,7 @@
   # Use an import, and match against
   # words...
 
-  import { _as Word, Word as Chunk } from './test_word.axo'
+  import { _ as Word, Word as Chunk } from './test_word.axo'
 -->
 
-(<Word><Chunk>)
+(<Word>)</\s+/>(<Chunk>)

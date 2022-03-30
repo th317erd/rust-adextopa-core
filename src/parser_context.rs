@@ -17,8 +17,8 @@ pub type ParserContextRef<'a> = Rc<RefCell<ParserContext<'a>>>;
 
 #[derive(Clone)]
 pub struct ParserContext<'a> {
-  debug_mode: usize,
-  matcher_reference_map: Rc<RefCell<HashMap<String, MatcherRef<'a>>>>,
+  pub(crate) debug_mode: usize,
+  pub(crate) matcher_reference_map: Rc<RefCell<HashMap<String, MatcherRef<'a>>>>,
   pub variable_context: Rc<RefCell<HashMap<String, VariableType>>>,
   pub offset: SourceRange,
   pub parser: ParserRef,
@@ -179,7 +179,7 @@ impl<'a> ParserContext<'a> {
     parser.source[self.offset.start..end_offset].to_string()
   }
 
-  fn capture_matcher_references(&self, scope: Option<&str>, matcher: MatcherRef<'a>) {
+  pub fn capture_matcher_references(&self, scope: Option<&str>, matcher: MatcherRef<'a>) {
     if matcher.borrow().get_scope().is_none() {
       matcher.borrow_mut().set_scope(scope);
     }
@@ -193,10 +193,10 @@ impl<'a> ParserContext<'a> {
         println!("Registering matcher `{}`", name);
       }
 
-      self
-        .matcher_reference_map
-        .borrow_mut()
-        .insert(self.get_full_scope_name(scope, name), matcher.clone());
+      self.matcher_reference_map.borrow_mut().insert(
+        self.get_full_scope_name(m.get_scope(), name),
+        matcher.clone(),
+      );
     }
 
     match m.get_children() {
@@ -213,6 +213,10 @@ impl<'a> ParserContext<'a> {
     for matcher in matchers {
       self.capture_matcher_references(scope, matcher.clone());
     }
+  }
+
+  pub fn register_matcher(&self, scope: Option<&str>, matcher: MatcherRef<'a>) {
+    self.capture_matcher_references(scope, matcher.clone());
   }
 
   pub fn get_registered_matcher(&self, scope: Option<&str>, name: &str) -> Option<MatcherRef<'a>> {
