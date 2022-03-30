@@ -30,10 +30,7 @@ fn construct_matcher_from_inner_definition<'a>(
   let matcher_token_name = matcher_token.get_name();
 
   if matcher_token_name == "EqualsMatcher" {
-    let value: String = matcher_token.get_children()[0]
-      .borrow()
-      .get_captured_value()
-      .clone();
+    let value: String = matcher_token.get_children()[0].borrow().get_value().clone();
 
     if value == "" {
       return Err("Value can not be empty for an `Equals` pattern definition".to_string());
@@ -41,10 +38,7 @@ fn construct_matcher_from_inner_definition<'a>(
 
     Ok(crate::Equals!(value))
   } else if matcher_token_name == "RegexMatcher" {
-    let mut value: String = matcher_token.get_children()[0]
-      .borrow()
-      .get_captured_value()
-      .clone();
+    let mut value: String = matcher_token.get_value().clone();
 
     if value == "" {
       return Err("Value can not be empty for a `Matches` pattern definition".to_string());
@@ -74,10 +68,7 @@ fn construct_matcher_from_inner_definition<'a>(
       escape_pattern.get_value().clone()
     ))
   } else if matcher_token_name == "CustomMatcher" {
-    let identifier = matcher_token.get_children()[0]
-      .borrow()
-      .get_captured_value()
-      .clone();
+    let identifier = matcher_token.get_children()[0].borrow().get_value().clone();
 
     if identifier == "" {
       return Err(
@@ -356,6 +347,7 @@ pub fn compile_script<'a>(parser: ParserRef, name: String) -> Result<MatcherRef<
   match result {
     Ok(result) => match result {
       MatcherSuccess::Token(token) => {
+        // println!("PARSE RESULT: {:?}", token);
         build_matcher_from_tokens(token.clone(), parser_context.clone(), name)
       }
       MatcherSuccess::ExtractChildren(token) => {
@@ -422,8 +414,8 @@ mod tests {
       let parser = Parser::new("test");
       let parser_context = ParserContext::new(&parser, "Test");
 
-      println!("MATCHER: {:?}", compiled_matcher);
-      let compiled_matcher = Debug!(compiled_matcher);
+      // println!("MATCHER: {:?}", compiled_matcher);
+      // let compiled_matcher = Debug!(compiled_matcher);
 
       let result = ParserContext::tokenize(parser_context, compiled_matcher.clone());
 
@@ -434,14 +426,14 @@ mod tests {
           token.get_name(),
           "./src/script/v1/tests/script/test_word.axo"
         );
-        assert_eq!(*token.get_captured_range(), SourceRange::new(0, 1));
-        assert_eq!(*token.get_matched_range(), SourceRange::new(0, 1));
+        assert_eq!(*token.get_captured_range(), SourceRange::new(0, 4));
+        assert_eq!(*token.get_matched_range(), SourceRange::new(0, 4));
         assert_eq!(token.get_value(), "test");
         assert_eq!(token.get_matched_value(), "test");
         assert_eq!(token.get_children().len(), 1);
 
         let first = token.get_children()[0].borrow();
-        assert_eq!(first.get_name(), "Identifier");
+        assert_eq!(first.get_name(), "Word");
         assert_eq!(*first.get_captured_range(), SourceRange::new(0, 4));
         assert_eq!(*first.get_matched_range(), SourceRange::new(0, 4));
         assert_eq!(first.get_value(), "test");

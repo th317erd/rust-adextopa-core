@@ -22,7 +22,7 @@ mod tests {
     parser::Parser,
     parser_context::{ParserContext, ParserContextRef},
     source_range::SourceRange,
-    Debug, ScriptProgramMatcher, ScriptSwitchMatcher,
+    ScriptProgramMatcher, ScriptSwitchMatcher,
   };
 
   fn register_matchers(parser_context: &ParserContextRef) {
