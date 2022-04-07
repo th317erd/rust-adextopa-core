@@ -94,10 +94,7 @@ macro_rules! Visit {
 
 #[cfg(test)]
 mod test {
-  use crate::{
-    matcher::MatcherSuccess, parser::Parser, parser_context::ParserContext, Equals, Loop, Matches,
-    Program,
-  };
+  use crate::{parser::Parser, parser_context::ParserContext, Equals, Loop, Matches, Program};
 
   #[test]
   fn it_works() {

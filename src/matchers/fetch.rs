@@ -159,8 +159,8 @@ macro_rules! Fetch {
 #[cfg(test)]
 mod tests {
   use crate::{
-    matcher::MatcherSuccess, parser::Parser, parser_context::ParserContext,
-    source_range::SourceRange, Discard, Equals, Matches, Program, Store, Switch,
+    parser::Parser, parser_context::ParserContext, source_range::SourceRange, Discard, Equals,
+    Matches, Program, Store, Switch,
   };
 
   #[test]

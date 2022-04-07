@@ -128,8 +128,7 @@ macro_rules! Ref {
 #[cfg(test)]
 mod tests {
   use crate::{
-    matcher::MatcherSuccess, parser::Parser, parser_context::ParserContext,
-    source_range::SourceRange, Matches, Program,
+    parser::Parser, parser_context::ParserContext, source_range::SourceRange, Matches, Program,
   };
 
   #[test]

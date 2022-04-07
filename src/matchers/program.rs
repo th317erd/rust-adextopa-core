@@ -1001,11 +1001,8 @@ macro_rules! Loop {
 #[cfg(test)]
 mod tests {
   use crate::{
-    matcher::{MatcherFailure, MatcherSuccess},
-    parser::Parser,
-    parser_context::ParserContext,
-    source_range::SourceRange,
-    Break, Equals, Matches, Optional,
+    matcher::MatcherFailure, parser::Parser, parser_context::ParserContext,
+    source_range::SourceRange, Break, Equals, Matches, Optional,
   };
 
   #[test]

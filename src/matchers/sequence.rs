@@ -274,9 +274,7 @@ macro_rules! Sequence {
 #[cfg(test)]
 mod tests {
   use crate::{
-    matcher::{MatcherFailure, MatcherSuccess},
-    parser::Parser,
-    parser_context::ParserContext,
+    matcher::MatcherFailure, parser::Parser, parser_context::ParserContext,
     source_range::SourceRange,
   };
 

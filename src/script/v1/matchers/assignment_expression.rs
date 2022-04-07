@@ -17,7 +17,7 @@ macro_rules! ScriptAssignmentExpression {
 #[cfg(test)]
 mod tests {
   use crate::{
-    matcher::{MatcherFailure, MatcherSuccess},
+    matcher::{MatcherFailure},
     parser::Parser,
     parser_context::{ParserContext, ParserContextRef},
     source_range::SourceRange,

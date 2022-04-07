@@ -72,7 +72,7 @@ macro_rules! SetScope {
 #[cfg(test)]
 mod tests {
   use crate::{
-    matcher::MatcherSuccess, parser::Parser, parser_context::ParserContext, scope::VariableType,
+    parser::Parser, parser_context::ParserContext, scope::VariableType,
     scope_context::ScopeContext, source_range::SourceRange, Equals, Store,
   };
 

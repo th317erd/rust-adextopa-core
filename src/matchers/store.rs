@@ -127,8 +127,8 @@ macro_rules! Store {
 #[cfg(test)]
 mod tests {
   use crate::{
-    matcher::MatcherSuccess, parser::Parser, parser_context::ParserContext, scope::VariableType,
-    source_range::SourceRange, Equals, Switch,
+    parser::Parser, parser_context::ParserContext, scope::VariableType, source_range::SourceRange,
+    Equals, Switch,
   };
 
   #[test]

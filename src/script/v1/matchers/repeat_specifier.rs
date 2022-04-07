@@ -62,7 +62,7 @@ pub fn get_repeat_specifier_range(token: TokenRef) -> Result<Range<usize>, Strin
 #[cfg(test)]
 mod tests {
   use crate::{
-    matcher::{MatcherFailure, MatcherSuccess},
+    matcher::{MatcherFailure},
     parser::Parser,
     parser_context::ParserContext,
     script::current::matchers::repeat_specifier::get_repeat_specifier_range,

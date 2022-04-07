@@ -1,7 +1,7 @@
 use std::{collections::HashMap, path::Path};
 
 use crate::{
-  matcher::{MatcherRef, MatcherSuccess},
+  matcher::MatcherRef,
   matchers::{
     program::{MatchAction, ProgramPattern},
     register::RegisterPattern,
@@ -456,12 +456,11 @@ pub fn compile_script_from_file(file_name: &str) -> Result<MatcherRef, String> {
 #[cfg(test)]
 mod tests {
   use crate::{
-    matcher::MatcherSuccess,
     parser::Parser,
     parser_context::{ParserContext, ParserContextRef},
     script::current::parser::construct_matcher_from_pattern,
     source_range::SourceRange,
-    Debug, ScriptPattern, ScriptPatternDefinition, ScriptProgramMatcher, ScriptSwitchMatcher,
+    ScriptPattern, ScriptPatternDefinition, ScriptProgramMatcher, ScriptSwitchMatcher,
   };
 
   use super::{compile_script_from_file, construct_matcher_from_pattern_definition};

@@ -10,7 +10,7 @@ macro_rules! ScriptCustomMatcher {
 #[cfg(test)]
 mod tests {
   use crate::{
-    matcher::{MatcherFailure, MatcherSuccess},
+    matcher::{MatcherFailure},
     parser::Parser,
     parser_context::ParserContext,
     source_range::SourceRange,

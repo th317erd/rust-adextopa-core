@@ -108,8 +108,8 @@ macro_rules! Flatten {
 #[cfg(test)]
 mod tests {
   use crate::{
-    matcher::MatcherSuccess, parser::Parser, parser_context::ParserContext,
-    source_range::SourceRange, Flatten, Loop, Matches, Switch,
+    parser::Parser, parser_context::ParserContext, source_range::SourceRange, Flatten, Loop,
+    Matches, Switch,
   };
 
   #[test]

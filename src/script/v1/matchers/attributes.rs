@@ -13,11 +13,8 @@ macro_rules! ScriptAttributes {
 #[cfg(test)]
 mod tests {
   use crate::{
-    matcher::{MatcherFailure, MatcherSuccess},
-    parser::Parser,
-    parser_context::ParserContext,
+    matcher::MatcherFailure, parser::Parser, parser_context::ParserContext,
     source_range::SourceRange,
-    Debug,
   };
 
   #[test]
@@ -102,7 +99,7 @@ mod tests {
   fn it_panics_when_the_value_is_not_a_string() {
     let parser = Parser::new("_test=derp");
     let parser_context = ParserContext::new(&parser, "Test");
-    let matcher = Debug!(3; ScriptAttributes!());
+    let matcher = ScriptAttributes!();
 
     let result = ParserContext::tokenize(parser_context, matcher);
 

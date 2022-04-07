@@ -406,11 +406,8 @@ macro_rules! Pin {
 #[cfg(test)]
 mod tests {
   use crate::{
-    matcher::{MatcherFailure, MatcherSuccess},
-    parser::Parser,
-    parser_context::ParserContext,
-    source_range::SourceRange,
-    Discard, Equals, Fetch, Matches, Program, Store,
+    matcher::MatcherFailure, parser::Parser, parser_context::ParserContext,
+    source_range::SourceRange, Discard, Equals, Fetch, Matches, Program, Store,
   };
 
   #[test]
