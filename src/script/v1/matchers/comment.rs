@@ -23,7 +23,7 @@ mod tests {
 
     let result = ParserContext::tokenize(parser_context, matcher);
 
-    if let Ok(MatcherSuccess::Token(token)) = result {
+    if let Ok(token) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Comment");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 9));
@@ -48,7 +48,7 @@ mod tests {
 
     let result = ParserContext::tokenize(parser_context, matcher);
 
-    if let Ok(MatcherSuccess::Token(token)) = result {
+    if let Ok(token) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Loop");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 14));

@@ -15,7 +15,7 @@ pub fn new_error_token(context: ParserContextRef, message: &str) -> TokenRef {
   {
     let mut token = token.borrow_mut();
     token.set_attribute("__message", message);
-    token.set_attribute("__is_error", "true");
+    token.enable_flags(crate::token::IS_ERROR);
   }
 
   token
@@ -32,7 +32,7 @@ pub fn new_error_token_with_range(
   {
     let mut token = token.borrow_mut();
     token.set_attribute("__message", message);
-    token.set_attribute("__is_error", "true");
+    token.enable_flags(crate::token::IS_ERROR);
   }
 
   token
@@ -107,7 +107,7 @@ mod tests {
       Matches!(r"\d+")
     );
 
-    if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
+    if let Ok(token) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Program");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 12));

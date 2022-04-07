@@ -38,7 +38,7 @@ mod tests {
 
     let result = ParserContext::tokenize(parser_context, matcher);
 
-    if let Ok(MatcherSuccess::Token(token)) = result {
+    if let Ok(token) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "PatternScope");
       assert_eq!(*token.get_captured_range(), SourceRange::new(4, 21));

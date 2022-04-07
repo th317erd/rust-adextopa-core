@@ -1,11 +1,15 @@
+use regex::Regex;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use regex::Regex;
-
+use super::source_range::SourceRange;
 use crate::parser::ParserRef;
 
-use super::source_range::SourceRange;
+pub type TokenType = u8;
+
+pub const IS_FAILURE: TokenType = 0x01;
+pub const IS_ERROR: TokenType = 0x02;
+pub const IS_WARNING: TokenType = 0x04;
 
 // Need + 'a or 'static is implied
 pub type TokenRefInner = dyn Token;
@@ -135,6 +139,11 @@ pub trait Token {
   fn get_attribute<'b>(&'b self, name: &str) -> Option<&'b String>;
   fn attribute_equals<'b>(&'b self, name: &str, value: &str) -> bool;
   fn set_attribute(&mut self, name: &str, value: &str) -> Option<String>;
+  fn get_flags(&mut self) -> TokenType;
+  fn set_flags(&mut self, flags: TokenType);
+  fn enable_flags(&mut self, flags: TokenType);
+  fn disable_flags(&mut self, flags: TokenType);
+  fn flags_enabled(&self, flags: TokenType) -> bool;
 
   fn has_attribute<'b>(&'b self, name: &str) -> bool {
     match self.get_attribute(name) {
@@ -199,6 +208,7 @@ pub struct StandardToken {
   pub parent: Option<TokenRef>,
   pub children: Vec<TokenRef>,
   pub attributes: std::collections::HashMap<String, String>,
+  pub flags: TokenType,
 }
 
 impl StandardToken {
@@ -214,6 +224,7 @@ impl StandardToken {
       parent: None,
       children: Vec::new(),
       attributes: std::collections::HashMap::new(),
+      flags: 0,
     })))
   }
 
@@ -234,6 +245,7 @@ impl StandardToken {
       parent: None,
       children: Vec::new(),
       attributes: std::collections::HashMap::new(),
+      flags: 0,
     })))
   }
 }

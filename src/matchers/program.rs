@@ -4,7 +4,7 @@ use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
 use crate::scope_context::ScopeContextRef;
 use crate::source_range::SourceRange;
-use crate::token::{StandardToken, TokenRef};
+use crate::token::{StandardToken, TokenRef, IS_ERROR};
 use std::cell::RefCell;
 use std::ops::{Bound, Range, RangeBounds};
 use std::rc::Rc;
@@ -218,7 +218,7 @@ fn add_token_to_children(
   update_offsets: bool,
 ) {
   {
-    if !token.borrow().attribute_equals("__is_error", "true") {
+    if !token.borrow().flags_enabled(IS_ERROR) {
       let token = token.borrow();
 
       if assert_moving_forward && update_offsets {
@@ -582,29 +582,29 @@ impl Matcher for ProgramPattern {
               );
             }
 
-            if is_loop {
-              return finalize_program_token(
-                program_token,
-                children,
-                captured_range,
-                matched_range,
-                &self.iterate_range,
-                loop_count,
-                false,
-              );
-            } else {
-              match failure {
-                MatcherFailure::Fail => match self.on_first_match {
-                  MatchAction::Stop => {
-                    continue;
-                  }
-                  _ => {
-                    return Err(MatcherFailure::Fail);
-                  }
-                },
-                MatcherFailure::Error(error) => {
-                  return Err(MatcherFailure::Error(error));
+            match failure {
+              MatcherFailure::Fail => match self.on_first_match {
+                MatchAction::Stop => {
+                  continue;
                 }
+                _ => {
+                  if is_loop {
+                    return finalize_program_token(
+                      program_token,
+                      children,
+                      captured_range,
+                      matched_range,
+                      &self.iterate_range,
+                      loop_count,
+                      false,
+                    );
+                  }
+
+                  return Err(MatcherFailure::Fail);
+                }
+              },
+              MatcherFailure::Error(error) => {
+                return Err(MatcherFailure::Error(error));
               }
             }
           }
@@ -1014,7 +1014,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Program!(Equals!("Testing"), Equals!(" "), Matches!(r"\d+"));
 
-    if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
+    if let Ok(token) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Program");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 12));
@@ -1042,7 +1042,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Switch!(Equals!(" "), Matches!(r"\d+"), Equals!("Testing"));
 
-    if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
+    if let Ok(token) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Equals");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 7));
@@ -1059,7 +1059,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Loop!(Matches!(r"\w"), Equals!(" "));
 
-    if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
+    if let Ok(token) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Loop");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 12));
@@ -1103,7 +1103,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Loop!(Program!(Matches!(r"\w"), Equals!(" ")));
 
-    if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
+    if let Ok(token) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Loop");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 12));
@@ -1151,7 +1151,7 @@ mod tests {
     let brk = Optional!(Program!(Equals!("break"), Break!()));
     let matcher = Loop!(0..10; "Loop"; brk, capture);
 
-    if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
+    if let Ok(token) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Loop");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 11));

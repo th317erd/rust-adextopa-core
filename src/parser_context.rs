@@ -4,6 +4,7 @@ use crate::{
   parser::ParserRef,
   scope::VariableType,
   scope_context::{ScopeContext, ScopeContextRef},
+  token::{TokenRef, IS_ERROR},
 };
 use regex::Regex;
 use std::{cell::RefCell, rc::Rc};
@@ -178,13 +179,90 @@ impl ParserContext {
     }
   }
 
+  fn collect_errors(root_token: TokenRef, token: TokenRef, is_root: bool) {
+    if is_root {
+      // We need to make a copy of this vector so that we can drop
+      // the _token reference... we only want to do this for the root
+      // node, as it doesn't matter for other nodes.
+      let _token = token.borrow();
+      let children = _token.get_children().clone();
+
+      drop(_token);
+
+      for child in children {
+        Self::collect_errors(root_token.clone(), child.clone(), false);
+      }
+    } else {
+      for child in token.borrow().get_children() {
+        Self::collect_errors(root_token.clone(), child.clone(), false);
+      }
+    }
+
+    if token.borrow().get_children().len() > 0 {
+      if is_root == false {
+        let mut current_node = token.borrow_mut();
+        let children = current_node.get_children_mut();
+
+        // Filter out errors
+        children.retain(|token| {
+          let is_error = token.borrow().flags_enabled(IS_ERROR);
+
+          if is_error {
+            root_token
+              .borrow_mut()
+              .get_children_mut()
+              .push(token.clone());
+
+            false
+          } else {
+            true
+          }
+        });
+      }
+    }
+  }
+
   pub fn tokenize(
     context: ParserContextRef,
     matcher: MatcherRef,
-  ) -> Result<MatcherSuccess, MatcherFailure> {
+  ) -> Result<TokenRef, MatcherFailure> {
     context.borrow().capture_matcher_references(matcher.clone());
 
     let scope = context.borrow().scope.clone();
-    matcher.borrow().exec(context.clone(), scope)
+
+    match matcher.borrow().exec(context.clone(), scope) {
+      Ok(success) => match success {
+        MatcherSuccess::Token(ref token) => {
+          Self::collect_errors(token.clone(), token.clone(), true);
+          return Ok(token.clone());
+        }
+        MatcherSuccess::ExtractChildren(token) => {
+          Self::collect_errors(token.clone(), token.clone(), true);
+          return Ok(token.clone());
+        }
+        MatcherSuccess::Break((_, token)) => match &*token {
+          MatcherSuccess::Token(ref token) => {
+            Self::collect_errors(token.clone(), token.clone(), true);
+            return Ok(token.clone());
+          }
+          _ => Err(MatcherFailure::Fail),
+        },
+        MatcherSuccess::Continue((_, token)) => match &*token {
+          MatcherSuccess::Token(ref token) => {
+            Self::collect_errors(token.clone(), token.clone(), true);
+            return Ok(token.clone());
+          }
+          _ => {
+            println!("Failing here 1!");
+            Err(MatcherFailure::Fail)
+          }
+        },
+        _ => {
+          println!("Failing here 2! {:?}", success);
+          Err(MatcherFailure::Fail)
+        }
+      },
+      Err(error) => Err(error),
+    }
   }
 }

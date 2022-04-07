@@ -1,6 +1,7 @@
 pub mod adextopa_scope;
 pub mod assignment_expression;
 pub mod attribute;
+pub mod attributes;
 pub mod comment;
 pub mod custom_matcher;
 pub mod equals_matcher;

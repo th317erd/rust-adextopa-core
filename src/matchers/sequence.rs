@@ -286,7 +286,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Sequence!("\"", "\"", "\\");
 
-    if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
+    if let Ok(token) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Sequence");
       assert_eq!(*token.get_captured_range(), SourceRange::new(1, 34));

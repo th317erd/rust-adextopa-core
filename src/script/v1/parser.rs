@@ -401,47 +401,18 @@ pub fn compile_script(
 
   let result = ParserContext::tokenize(parser_context.clone(), pattern);
   match result {
-    Ok(result) => match result {
-      MatcherSuccess::Token(token) => {
-        match build_matcher_from_tokens(token.clone(), parser_context.clone(), name, from_file) {
-          Ok(ref matcher) => {
-            parser_context
-              .borrow()
-              .capture_matcher_references(matcher.clone());
+    Ok(token) => {
+      match build_matcher_from_tokens(token.clone(), parser_context.clone(), name, from_file) {
+        Ok(ref matcher) => {
+          parser_context
+            .borrow()
+            .capture_matcher_references(matcher.clone());
 
-            Ok((parser_context.clone(), matcher.clone()))
-          }
-          Err(error) => Err(error),
+          Ok((parser_context.clone(), matcher.clone()))
         }
+        Err(error) => Err(error),
       }
-      MatcherSuccess::ExtractChildren(token) => {
-        match build_matcher_from_tokens(token.clone(), parser_context.clone(), name, from_file) {
-          Ok(ref matcher) => {
-            parser_context
-              .borrow()
-              .capture_matcher_references(matcher.clone());
-
-            Ok((parser_context.clone(), matcher.clone()))
-          }
-          Err(error) => Err(error),
-        }
-      }
-      MatcherSuccess::Skip(_) => {
-        return Err("Internal Error(Skip): Invalid syntax".to_string());
-      }
-      MatcherSuccess::Break(_) => {
-        return Err("Internal Error(Break): Invalid syntax".to_string());
-      }
-      MatcherSuccess::Continue(_) => {
-        return Err("Internal Error(Continue): Invalid syntax".to_string());
-      }
-      MatcherSuccess::None => {
-        return Err("Internal Error(None): Invalid syntax".to_string());
-      }
-      MatcherSuccess::Stop => {
-        return Err("Internal Error(Stop): Invalid syntax".to_string());
-      }
-    },
+    }
     Err(error) => match error {
       crate::matcher::MatcherFailure::Fail => {
         return Err("Invalid syntax".to_string());
@@ -508,7 +479,7 @@ mod tests {
 
       let result = ParserContext::tokenize(parser_context, compiled_matcher.clone());
 
-      if let Ok(MatcherSuccess::Token(token)) = result {
+      if let Ok(token) = result {
         let token = token.borrow();
 
         assert_eq!(
@@ -550,17 +521,17 @@ mod tests {
 
   //     let result = ParserContext::tokenize(parser_context, compiled_matcher.clone());
 
-  //     if let Ok(MatcherSuccess::Token(token)) = result {
+  //     if let Ok(token) = result {
   //       let token = token.borrow();
 
   //       assert_eq!(
   //         token.get_name(),
   //         "./src/script/v1/tests/script/test_import.axo"
   //       );
-  //       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 4));
-  //       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 4));
-  //       assert_eq!(token.get_value(), "test");
-  //       assert_eq!(token.get_matched_value(), "test");
+  //       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 5));
+  //       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 5));
+  //       assert_eq!(token.get_value(), "hello");
+  //       assert_eq!(token.get_matched_value(), "hello");
   //       assert_eq!(token.get_children().len(), 1);
 
   //       let first = token.get_children()[0].borrow();
@@ -596,7 +567,7 @@ mod tests {
 
     let result = ParserContext::tokenize(parser_context.clone(), matcher);
 
-    if let Ok(MatcherSuccess::Token(token)) = result {
+    if let Ok(token) = result {
       let recreated_matcher = construct_matcher_from_pattern(parser_context.clone(), token.clone());
 
       assert_eq!(recreated_matcher.is_ok(), true);
@@ -627,7 +598,7 @@ mod tests {
 
     let result = ParserContext::tokenize(parser_context.clone(), matcher);
 
-    if let Ok(MatcherSuccess::Token(token)) = result {
+    if let Ok(token) = result {
       let recreated_matcher = construct_matcher_from_pattern(parser_context.clone(), token.clone());
 
       assert_eq!(recreated_matcher.is_ok(), true);
@@ -653,7 +624,7 @@ mod tests {
 
     let result = ParserContext::tokenize(parser_context.clone(), matcher);
 
-    if let Ok(MatcherSuccess::Token(token)) = result {
+    if let Ok(token) = result {
       let recreated_matcher = construct_matcher_from_pattern(parser_context.clone(), token.clone());
 
       assert_eq!(recreated_matcher.is_ok(), true);
@@ -679,7 +650,7 @@ mod tests {
 
     let result = ParserContext::tokenize(parser_context.clone(), matcher);
 
-    if let Ok(MatcherSuccess::Token(token)) = result {
+    if let Ok(token) = result {
       let recreated_matcher =
         construct_matcher_from_pattern_definition(parser_context.clone(), token.clone(), "", false);
 
@@ -711,7 +682,7 @@ mod tests {
 
     let result = ParserContext::tokenize(parser_context.clone(), matcher);
 
-    if let Ok(MatcherSuccess::Token(token)) = result {
+    if let Ok(token) = result {
       let recreated_matcher =
         construct_matcher_from_pattern_definition(parser_context.clone(), token.clone(), "", false);
 
@@ -743,7 +714,7 @@ mod tests {
 
     let result = ParserContext::tokenize(parser_context.clone(), matcher);
 
-    if let Ok(MatcherSuccess::Token(token)) = result {
+    if let Ok(token) = result {
       let recreated_matcher =
         construct_matcher_from_pattern_definition(parser_context.clone(), token.clone(), "", false);
 
@@ -775,7 +746,7 @@ mod tests {
 
     let result = ParserContext::tokenize(parser_context.clone(), matcher);
 
-    if let Ok(MatcherSuccess::Token(token)) = result {
+    if let Ok(token) = result {
       let recreated_matcher = construct_matcher_from_pattern(parser_context.clone(), token.clone());
 
       assert_eq!(recreated_matcher.is_ok(), true);
@@ -801,7 +772,7 @@ mod tests {
 
     let result = ParserContext::tokenize(parser_context.clone(), matcher);
 
-    if let Ok(MatcherSuccess::Token(token)) = result {
+    if let Ok(token) = result {
       let recreated_matcher = construct_matcher_from_pattern(parser_context.clone(), token.clone());
 
       assert_eq!(recreated_matcher.is_ok(), true);
@@ -827,7 +798,7 @@ mod tests {
 
     let result = ParserContext::tokenize(parser_context.clone(), matcher);
 
-    if let Ok(MatcherSuccess::Token(token)) = result {
+    if let Ok(token) = result {
       let recreated_matcher = construct_matcher_from_pattern(parser_context.clone(), token.clone());
 
       assert_eq!(recreated_matcher.is_ok(), true);
@@ -846,7 +817,7 @@ mod tests {
 
       let result2 = ParserContext::tokenize(parser_context2.clone(), recreated_matcher);
 
-      if let Ok(MatcherSuccess::Token(token)) = result2 {
+      if let Ok(token) = result2 {
         let token = token.borrow();
         assert_eq!(token.get_name(), "Matches");
         assert_eq!(*token.get_captured_range(), SourceRange::new(0, 4));

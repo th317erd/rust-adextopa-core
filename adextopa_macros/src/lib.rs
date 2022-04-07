@@ -134,6 +134,26 @@ pub fn token_derive(input: TokenStream) -> TokenStream {
       fn set_attribute(&mut self, name: &str, value: &str) -> Option<String> {
         self.attributes.insert(name.to_string(), value.to_string())
       }
+
+      fn get_flags(&mut self) -> TokenType {
+        self.flags
+      }
+
+      fn set_flags(&mut self, flags: TokenType) {
+        self.flags = flags;
+      }
+
+      fn enable_flags(&mut self, flags: TokenType) {
+        self.flags = self.flags | flags;
+      }
+
+      fn disable_flags(&mut self, flags: TokenType) {
+        self.flags = self.flags & !flags;
+      }
+
+      fn flags_enabled(&self, flags: TokenType) -> bool {
+        (self.flags & flags) != 0
+      }
     }
   };
 

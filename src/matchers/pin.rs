@@ -8,7 +8,7 @@ use crate::parser::ParserRef;
 use crate::parser_context::ParserContextRef;
 use crate::scope_context::ScopeContextRef;
 use crate::source_range::SourceRange;
-use crate::token::{Token, TokenRef};
+use crate::token::{Token, TokenRef, TokenType};
 
 lazy_static::lazy_static! {
   static ref EMPTY_OFFSET: regex::Regex = regex::Regex::new(r"^(\+|-|\+0|-0)$").expect("Could not compile needed Regex for `PinPattern`");
@@ -74,6 +74,7 @@ pub struct PinToken {
   pub parent: Option<TokenRef>,
   pub children: Vec<TokenRef>,
   pub attributes: std::collections::HashMap<String, String>,
+  pub flags: TokenType,
 }
 
 impl PinToken {
@@ -89,6 +90,7 @@ impl PinToken {
       parent: None,
       children: Vec::new(),
       attributes: std::collections::HashMap::new(),
+      flags: 0,
     })))
   }
 
@@ -109,6 +111,7 @@ impl PinToken {
       parent: None,
       children: Vec::new(),
       attributes: std::collections::HashMap::new(),
+      flags: 0,
     })))
   }
 }
@@ -245,6 +248,26 @@ impl Token for PinToken {
 
   fn set_attribute(&mut self, name: &str, value: &str) -> Option<String> {
     self.attributes.insert(name.to_string(), value.to_string())
+  }
+
+  fn get_flags(&mut self) -> TokenType {
+    self.flags
+  }
+
+  fn set_flags(&mut self, flags: TokenType) {
+    self.flags = flags;
+  }
+
+  fn enable_flags(&mut self, flags: TokenType) {
+    self.flags = self.flags | flags;
+  }
+
+  fn disable_flags(&mut self, flags: TokenType) {
+    self.flags = self.flags & !flags;
+  }
+
+  fn flags_enabled(&self, flags: TokenType) -> bool {
+    (self.flags & flags) != 0
   }
 
   fn should_discard(&self) -> bool {
@@ -396,9 +419,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Pin!("8"; Equals!("1234"));
 
-    if let Ok(MatcherSuccess::Token(token)) =
-      ParserContext::tokenize(parser_context.clone(), matcher)
-    {
+    if let Ok(token) = ParserContext::tokenize(parser_context.clone(), matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Equals");
       assert_eq!(*token.get_captured_range(), SourceRange::new(8, 12));
@@ -425,9 +446,7 @@ mod tests {
       Matches!(r"\d+"),
     );
 
-    if let Ok(MatcherSuccess::Token(token)) =
-      ParserContext::tokenize(parser_context.clone(), matcher)
-    {
+    if let Ok(token) = ParserContext::tokenize(parser_context.clone(), matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Program");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 12));
@@ -463,9 +482,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Pin!("+8"; Equals!("1234"));
 
-    if let Ok(MatcherSuccess::Token(token)) =
-      ParserContext::tokenize(parser_context.clone(), matcher)
-    {
+    if let Ok(token) = ParserContext::tokenize(parser_context.clone(), matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Equals");
       assert_eq!(*token.get_captured_range(), SourceRange::new(8, 12));
@@ -486,9 +503,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Program!(Equals!("Testing"), Pin!("-7"; Equals!("Testing")));
 
-    if let Ok(MatcherSuccess::Token(token)) =
-      ParserContext::tokenize(parser_context.clone(), matcher)
-    {
+    if let Ok(token) = ParserContext::tokenize(parser_context.clone(), matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Program");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 7));

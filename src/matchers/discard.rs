@@ -19,11 +19,7 @@ impl DiscardPattern {
 }
 
 fn collect_errors(error_token: TokenRef, walk_token: TokenRef) {
-  let is_error = if let Some(value) = walk_token.borrow().get_attribute("__is_error") {
-    value == "true"
-  } else {
-    false
-  };
+  let is_error = walk_token.borrow().flags_enabled(crate::token::IS_ERROR);
 
   if is_error {
     let mut error_token = error_token.borrow_mut();
@@ -211,7 +207,10 @@ mod tests {
 
     assert_eq!(
       Ok(MatcherSuccess::Skip(7)),
-      ParserContext::tokenize(parser_context, matcher)
+      matcher.borrow().exec(
+        parser_context.clone(),
+        parser_context.borrow().scope.clone(),
+      )
     );
   }
 
@@ -221,7 +220,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Discard!(Program!(Equals!("Testing"), Error!("This is an error")));
 
-    if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
+    if let Ok(token) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Error");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 7));

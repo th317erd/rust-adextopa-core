@@ -7,6 +7,8 @@ macro_rules! ScriptAdextopaScope {
         $crate::Matches!("Version"; r"\d+"),
         $crate::Fatal!("You must specify an ADEXTOPA version in your `adextopa:` scope: i.e. `<!--[adextopa:v{version}`"),
       ),
+      $crate::ScriptWS0!(?),
+
       $crate::Discard!($crate::Equals!("]")),
       $crate::Optional!(
         $crate::Loop!("Scope";
@@ -57,7 +59,7 @@ mod tests {
 
     let result = ParserContext::tokenize(parser_context, matcher);
 
-    if let Ok(MatcherSuccess::Token(token)) = result {
+    if let Ok(token) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "AdextopaScope");
       assert_eq!(*token.get_captured_range(), SourceRange::new(15, 86));
@@ -133,7 +135,7 @@ mod tests {
 
     let result = ParserContext::tokenize(parser_context, matcher);
 
-    if let Ok(MatcherSuccess::Token(token)) = result {
+    if let Ok(token) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "AdextopaScope");
       assert_eq!(*token.get_captured_range(), SourceRange::new(15, 16));

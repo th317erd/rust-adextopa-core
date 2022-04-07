@@ -108,7 +108,7 @@ mod test {
       Loop!(Matches!(r"\s"), Matches!(r"\w+"))
     );
 
-    if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
+    if let Ok(token) = ParserContext::tokenize(parser_context, matcher) {
       // Visit everyone
       let context = std::cell::RefCell::new(Vec::<String>::new());
       let mut x: i32 = 0;

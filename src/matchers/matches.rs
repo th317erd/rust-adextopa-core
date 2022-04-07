@@ -160,7 +160,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Matches!(r"\w+");
 
-    if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
+    if let Ok(token) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Matches");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 7));
@@ -178,7 +178,7 @@ mod tests {
 
     parser_context.borrow_mut().offset.start = 8;
 
-    if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
+    if let Ok(token) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Matches");
       assert_eq!(*token.get_captured_range(), SourceRange::new(8, 12));

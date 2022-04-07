@@ -133,7 +133,7 @@ mod tests {
       None
     });
 
-    if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
+    if let Ok(token) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "WOW");
       assert_eq!(*token.get_captured_range(), SourceRange::new(1, 6));
@@ -153,7 +153,7 @@ mod tests {
       Some("There was a big fat error!".to_string())
     });
 
-    if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
+    if let Ok(token) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Error");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 7));

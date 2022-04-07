@@ -138,10 +138,7 @@ macro_rules! Debug {
 
 #[cfg(test)]
 mod tests {
-  use crate::{
-    matcher::MatcherSuccess, parser::Parser, parser_context::ParserContext,
-    source_range::SourceRange, Equals,
-  };
+  use crate::{parser::Parser, parser_context::ParserContext, source_range::SourceRange, Equals};
 
   #[test]
   fn it_matches_against_a_string() {
@@ -149,7 +146,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Debug!(Equals!("Testing"));
 
-    if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
+    if let Ok(token) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Equals");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 7));

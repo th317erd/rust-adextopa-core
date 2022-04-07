@@ -24,7 +24,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = ScriptIdentifier!();
 
-    if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
+    if let Ok(token) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Identifier");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 8));
@@ -40,7 +40,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = ScriptIdentifier!();
 
-    if let Ok(MatcherSuccess::Token(token)) = ParserContext::tokenize(parser_context, matcher) {
+    if let Ok(token) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Identifier");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 9));

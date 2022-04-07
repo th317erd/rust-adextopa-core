@@ -1,4 +1,4 @@
-<!--[adextopa:v1]
+<!--[adextopa:v1 name='ScriptName']
   # Comment
   # <{<Program1><Program2>}>: Multiple patterns in one
   # <[<switch1>|<switch2>]>: Select first matching

@@ -83,9 +83,7 @@ mod tests {
     let new_scope = ScopeContext::new();
     let matcher = SetScope!(new_scope.clone(), Store!("StoredValue"; Equals!("Testing")));
 
-    if let Ok(MatcherSuccess::Token(token)) =
-      ParserContext::tokenize(parser_context.clone(), matcher)
-    {
+    if let Ok(token) = ParserContext::tokenize(parser_context.clone(), matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Equals");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 7));

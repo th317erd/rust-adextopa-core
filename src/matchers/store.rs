@@ -137,9 +137,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Store!("test"; Equals!("Testing"));
 
-    if let Ok(MatcherSuccess::Token(token)) =
-      ParserContext::tokenize(parser_context.clone(), matcher)
-    {
+    if let Ok(token) = ParserContext::tokenize(parser_context.clone(), matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Equals");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 7));
@@ -169,9 +167,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Switch!(Store!("test"; "This is a test!"), Equals!("Testing"));
 
-    if let Ok(MatcherSuccess::Token(token)) =
-      ParserContext::tokenize(parser_context.clone(), matcher)
-    {
+    if let Ok(token) = ParserContext::tokenize(parser_context.clone(), matcher) {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Equals");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 7));

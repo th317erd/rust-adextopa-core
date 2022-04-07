@@ -64,7 +64,10 @@ mod tests {
     let parser = Parser::new("Testing 1234");
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Null!();
-    let result = ParserContext::tokenize(parser_context, matcher);
+    let result = matcher.borrow().exec(
+      parser_context.clone(),
+      parser_context.borrow().scope.clone(),
+    );
 
     assert_eq!(result, Ok(MatcherSuccess::Skip(0)));
   }

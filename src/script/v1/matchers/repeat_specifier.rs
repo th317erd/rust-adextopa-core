@@ -77,7 +77,7 @@ mod tests {
 
     let result = ParserContext::tokenize(parser_context, matcher);
 
-    if let Ok(MatcherSuccess::Token(token)) = result {
+    if let Ok(token) = result {
       assert_eq!(get_repeat_specifier_range(token.clone()), Ok(1..usize::MAX));
 
       let token = token.borrow();
@@ -100,7 +100,7 @@ mod tests {
 
     let result = ParserContext::tokenize(parser_context, matcher);
 
-    if let Ok(MatcherSuccess::Token(token)) = result {
+    if let Ok(token) = result {
       assert_eq!(get_repeat_specifier_range(token.clone()), Ok(0..usize::MAX));
 
       let token = token.borrow();
@@ -123,7 +123,7 @@ mod tests {
 
     let result = ParserContext::tokenize(parser_context, matcher);
 
-    if let Ok(MatcherSuccess::Token(token)) = result {
+    if let Ok(token) = result {
       assert_eq!(
         get_repeat_specifier_range(token.clone()),
         Ok(10..usize::MAX)
@@ -149,7 +149,7 @@ mod tests {
 
     let result = ParserContext::tokenize(parser_context, matcher);
 
-    if let Ok(MatcherSuccess::Token(token)) = result {
+    if let Ok(token) = result {
       assert_eq!(get_repeat_specifier_range(token.clone()), Ok(10..15));
 
       let token = token.borrow();
@@ -172,7 +172,7 @@ mod tests {
 
     let result = ParserContext::tokenize(parser_context, matcher);
 
-    if let Ok(MatcherSuccess::Token(token)) = result {
+    if let Ok(token) = result {
       assert_eq!(
         get_repeat_specifier_range(token.clone()),
         Err(

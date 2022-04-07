@@ -43,7 +43,7 @@ mod tests {
 
     let result = ParserContext::tokenize(parser_context, matcher);
 
-    if let Ok(MatcherSuccess::Token(token)) = result {
+    if let Ok(token) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "PatternDefinition");
       assert_eq!(*token.get_captured_range(), SourceRange::new(1, 9));
@@ -81,7 +81,7 @@ mod tests {
 
     let result = ParserContext::tokenize(parser_context, matcher);
 
-    if let Ok(MatcherSuccess::Token(token)) = result {
+    if let Ok(token) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "PatternDefinitionCaptured");
       assert_eq!(*token.get_captured_range(), SourceRange::new(2, 10));
@@ -112,7 +112,7 @@ mod tests {
 
     let result = ParserContext::tokenize(parser_context, matcher);
 
-    if let Ok(MatcherSuccess::Token(token)) = result {
+    if let Ok(token) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "PatternDefinitionCaptured");
       assert_eq!(*token.get_captured_range(), SourceRange::new(5, 21));
