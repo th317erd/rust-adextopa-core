@@ -1,24 +1,23 @@
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
-use crate::parser_context::{ParserContextRef, VariableType};
+use crate::parser_context::ParserContextRef;
+use crate::scope::VariableType;
+use crate::scope_context::ScopeContextRef;
 
-pub enum FetchableType<'a> {
+pub enum FetchableType {
   String(String),
-  Matcher(MatcherRef<'a>),
+  Matcher(MatcherRef),
 }
 
-pub trait Fetchable<'a> {
-  fn fetch_value(&self, context: ParserContextRef) -> FetchableType<'a>;
+pub trait Fetchable {
+  fn fetch_value(&self, context: ParserContextRef, scope: ScopeContextRef) -> FetchableType;
 }
 
-impl<'a> Fetchable<'a> for FetchPattern {
-  fn fetch_value(&self, context: ParserContextRef) -> FetchableType<'a> {
+impl Fetchable for FetchPattern {
+  fn fetch_value(&self, _: ParserContextRef, scope: ScopeContextRef) -> FetchableType {
     let name = self.get_name();
     let name_path: Vec<&str> = name.split(".").collect();
 
-    match context
-      .borrow()
-      .get_variable(self.get_scope(), name_path[0])
-    {
+    match scope.borrow().get(name_path[0]) {
       Some(VariableType::Token(ref token)) => {
         if name_path.len() != 2 {
           panic!(
@@ -67,6 +66,7 @@ impl<'a> Fetchable<'a> for FetchPattern {
 
         FetchableType::String(value.clone())
       }
+      Some(VariableType::Matcher(matcher)) => FetchableType::Matcher(matcher.clone()),
       None => {
         panic!("Invalid variable reference `{}`: Not found", name);
       }
@@ -74,26 +74,26 @@ impl<'a> Fetchable<'a> for FetchPattern {
   }
 }
 
-impl<'a> Fetchable<'a> for &'a str {
-  fn fetch_value(&self, _: ParserContextRef) -> FetchableType<'a> {
+impl Fetchable for &str {
+  fn fetch_value(&self, _: ParserContextRef, _: ScopeContextRef) -> FetchableType {
     FetchableType::String(self.to_string())
   }
 }
 
-impl<'a> Fetchable<'a> for String {
-  fn fetch_value(&self, _: ParserContextRef) -> FetchableType<'a> {
+impl Fetchable for String {
+  fn fetch_value(&self, _: ParserContextRef, _: ScopeContextRef) -> FetchableType {
     FetchableType::String(self.clone())
   }
 }
 
-impl<'a> Fetchable<'a> for &String {
-  fn fetch_value(&self, _: ParserContextRef) -> FetchableType<'a> {
+impl Fetchable for &String {
+  fn fetch_value(&self, _: ParserContextRef, _: ScopeContextRef) -> FetchableType {
     FetchableType::String((*self).clone())
   }
 }
 
-impl<'a> Fetchable<'a> for MatcherRef<'a> {
-  fn fetch_value(&self, _: ParserContextRef) -> FetchableType<'a> {
+impl Fetchable for MatcherRef {
+  fn fetch_value(&self, _: ParserContextRef, _: ScopeContextRef) -> FetchableType {
     FetchableType::Matcher(self.clone())
   }
 }
@@ -101,34 +101,22 @@ impl<'a> Fetchable<'a> for MatcherRef<'a> {
 #[derive(Debug)]
 pub struct FetchPattern {
   name: String,
-  scope: Option<String>,
 }
 
 impl FetchPattern {
   pub fn new(name: &str) -> Self {
     FetchPattern {
       name: name.to_string(),
-      scope: None,
-    }
-  }
-
-  fn set_scope(&mut self, scope: Option<&str>) {
-    match scope {
-      Some(scope) => self.scope = Some(scope.to_string()),
-      None => self.scope = None,
-    }
-  }
-
-  pub fn get_scope(&self) -> Option<&str> {
-    match &self.scope {
-      Some(name) => Some(name.as_str()),
-      None => None,
     }
   }
 }
 
-impl<'a> Matcher<'a> for FetchPattern {
-  fn exec(&self, _: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
+impl Matcher for FetchPattern {
+  fn exec(
+    &self,
+    _: ParserContextRef,
+    _: ScopeContextRef,
+  ) -> Result<MatcherSuccess, MatcherFailure> {
     Ok(MatcherSuccess::Skip(0))
   }
 
@@ -148,24 +136,16 @@ impl<'a> Matcher<'a> for FetchPattern {
     self.name = name.to_string();
   }
 
-  fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {
+  fn get_children(&self) -> Option<Vec<MatcherRef>> {
     None
   }
 
-  fn add_pattern(&mut self, _: MatcherRef<'a>) {
+  fn add_pattern(&mut self, _: MatcherRef) {
     panic!("Can not add a pattern to a `Fetch` matcher");
   }
 
   fn to_string(&self) -> String {
     format!("{:?}", self)
-  }
-
-  fn set_scope(&mut self, scope: Option<&str>) {
-    self.set_scope(scope)
-  }
-
-  fn get_scope(&self) -> Option<&str> {
-    self.get_scope()
   }
 }
 

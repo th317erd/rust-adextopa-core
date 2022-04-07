@@ -3,18 +3,23 @@ use std::rc::Rc;
 
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
+use crate::scope_context::ScopeContextRef;
 
 #[derive(Debug)]
 pub struct NullPattern {}
 
-impl<'a> NullPattern {
-  pub fn new() -> MatcherRef<'a> {
+impl NullPattern {
+  pub fn new() -> MatcherRef {
     Rc::new(RefCell::new(Box::new(NullPattern {})))
   }
 }
 
-impl<'a> Matcher<'a> for NullPattern {
-  fn exec(&self, _: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
+impl Matcher for NullPattern {
+  fn exec(
+    &self,
+    _: ParserContextRef,
+    _: ScopeContextRef,
+  ) -> Result<MatcherSuccess, MatcherFailure> {
     Ok(MatcherSuccess::Skip(0))
   }
 
@@ -30,11 +35,11 @@ impl<'a> Matcher<'a> for NullPattern {
     panic!("Can not set `name` on a `Null` matcher");
   }
 
-  fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {
+  fn get_children(&self) -> Option<Vec<MatcherRef>> {
     None
   }
 
-  fn add_pattern(&mut self, _: MatcherRef<'a>) {
+  fn add_pattern(&mut self, _: MatcherRef) {
     panic!("Can not add a pattern to a `Null` matcher");
   }
 

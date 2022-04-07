@@ -1,28 +1,27 @@
 extern crate adextopa_macros;
 use std::cell::RefCell;
-use std::marker::PhantomData;
 use std::rc::Rc;
 
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
+use crate::scope_context::ScopeContextRef;
 use crate::token::StandardToken;
 
 use super::fetch::{Fetchable, FetchableType};
 
-pub struct EqualsPattern<'a, T>
+pub struct EqualsPattern<T>
 where
-  T: Fetchable<'a>,
+  T: Fetchable,
   T: std::fmt::Debug,
 {
   pattern: T,
   name: String,
   custom_name: bool,
-  _phantom: PhantomData<&'a T>,
 }
 
-impl<'a, T> std::fmt::Debug for EqualsPattern<'a, T>
+impl<T> std::fmt::Debug for EqualsPattern<T>
 where
-  T: Fetchable<'a>,
+  T: Fetchable,
   T: std::fmt::Debug,
 {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -34,40 +33,41 @@ where
   }
 }
 
-impl<'a, T> EqualsPattern<'a, T>
+impl<T> EqualsPattern<T>
 where
-  T: Fetchable<'a>,
-  T: 'a,
+  T: Fetchable,
+  T: 'static,
   T: std::fmt::Debug,
 {
-  pub fn new(pattern: T) -> MatcherRef<'a> {
+  pub fn new(pattern: T) -> MatcherRef {
     Rc::new(RefCell::new(Box::new(Self {
       pattern,
       name: "Equals".to_string(),
       custom_name: false,
-      _phantom: PhantomData,
     })))
   }
 
-  pub fn new_with_name(name: &'a str, pattern: T) -> MatcherRef<'a> {
+  pub fn new_with_name(name: &str, pattern: T) -> MatcherRef {
     Rc::new(RefCell::new(Box::new(Self {
       pattern,
       name: name.to_string(),
       custom_name: true,
-      _phantom: PhantomData,
     })))
   }
 }
 
-impl<'a, T> Matcher<'a> for EqualsPattern<'a, T>
+impl<T> Matcher for EqualsPattern<T>
 where
-  T: Fetchable<'a>,
-  T: 'a,
+  T: Fetchable,
   T: std::fmt::Debug,
 {
-  fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
+  fn exec(
+    &self,
+    context: ParserContextRef,
+    scope: ScopeContextRef,
+  ) -> Result<MatcherSuccess, MatcherFailure> {
     let sub_context = context.borrow().clone_with_name(self.get_name());
-    let pattern_value = self.pattern.fetch_value(sub_context.clone());
+    let pattern_value = self.pattern.fetch_value(sub_context.clone(), scope.clone());
     let debug_mode = sub_context.borrow().debug_mode_level();
 
     match pattern_value {
@@ -138,11 +138,11 @@ where
     self.custom_name = true;
   }
 
-  fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {
+  fn get_children(&self) -> Option<Vec<MatcherRef>> {
     None
   }
 
-  fn add_pattern(&mut self, _: MatcherRef<'a>) {
+  fn add_pattern(&mut self, _: MatcherRef) {
     panic!("Can not add a pattern to a `Equals` matcher");
   }
 

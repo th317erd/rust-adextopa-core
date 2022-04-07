@@ -2,6 +2,7 @@ extern crate adextopa_macros;
 
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
+use crate::scope_context::ScopeContextRef;
 use crate::source_range::SourceRange;
 use crate::token::{StandardToken, TokenRef};
 use std::cell::RefCell;
@@ -31,15 +32,15 @@ pub enum MatchAction {
   Stop,
 }
 
-pub struct ProgramPattern<'a> {
-  patterns: Vec<MatcherRef<'a>>,
+pub struct ProgramPattern {
+  patterns: Vec<MatcherRef>,
   name: String,
   pub(self) iterate_range: Option<Range<usize>>,
   pub(self) on_first_match: MatchAction,
   custom_name: bool,
 }
 
-impl<'a> std::fmt::Debug for ProgramPattern<'a> {
+impl std::fmt::Debug for ProgramPattern {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     let name: &str;
 
@@ -61,8 +62,8 @@ impl<'a> std::fmt::Debug for ProgramPattern<'a> {
   }
 }
 
-impl<'a> ProgramPattern<'a> {
-  pub fn new_blank_program(stop_on_first: MatchAction) -> MatcherRef<'a> {
+impl ProgramPattern {
+  pub fn new_blank_program(stop_on_first: MatchAction) -> MatcherRef {
     let name = match stop_on_first {
       MatchAction::Stop => "Switch",
       MatchAction::Continue => "Program",
@@ -77,7 +78,7 @@ impl<'a> ProgramPattern<'a> {
     })))
   }
 
-  pub fn new_blank_loop<T>(r: T) -> MatcherRef<'a>
+  pub fn new_blank_loop<T>(r: T) -> MatcherRef
   where
     T: RangeBounds<usize>,
   {
@@ -90,7 +91,7 @@ impl<'a> ProgramPattern<'a> {
     })))
   }
 
-  pub fn new_program(patterns: Vec<MatcherRef<'a>>, stop_on_first: MatchAction) -> MatcherRef<'a> {
+  pub fn new_program(patterns: Vec<MatcherRef>, stop_on_first: MatchAction) -> MatcherRef {
     let name = match stop_on_first {
       MatchAction::Stop => "Switch",
       MatchAction::Continue => "Program",
@@ -105,7 +106,7 @@ impl<'a> ProgramPattern<'a> {
     })))
   }
 
-  pub fn new_loop<T>(patterns: Vec<MatcherRef<'a>>, r: T) -> MatcherRef<'a>
+  pub fn new_loop<T>(patterns: Vec<MatcherRef>, r: T) -> MatcherRef
   where
     T: RangeBounds<usize>,
   {
@@ -119,10 +120,10 @@ impl<'a> ProgramPattern<'a> {
   }
 
   pub fn new_program_with_name(
-    patterns: Vec<MatcherRef<'a>>,
+    patterns: Vec<MatcherRef>,
     name: String,
     stop_on_first: MatchAction,
-  ) -> MatcherRef<'a> {
+  ) -> MatcherRef {
     Rc::new(RefCell::new(Box::new(Self {
       patterns,
       name,
@@ -133,10 +134,10 @@ impl<'a> ProgramPattern<'a> {
   }
 
   pub fn new_loop_with_name_and_range<T>(
-    patterns: Vec<MatcherRef<'a>>,
+    patterns: Vec<MatcherRef>,
     name: String,
     r: T,
-  ) -> MatcherRef<'a>
+  ) -> MatcherRef
   where
     T: RangeBounds<usize>,
   {
@@ -160,7 +161,7 @@ fn contain_source_range(tsr: &mut SourceRange, ssr: &SourceRange) {
   }
 }
 
-fn finalize_program_token<'a>(
+fn finalize_program_token(
   program_token: TokenRef,
   children: Vec<TokenRef>,
   captured_range: SourceRange,
@@ -206,7 +207,7 @@ fn finalize_program_token<'a>(
   Ok(MatcherSuccess::Token(program_token))
 }
 
-fn add_token_to_children<'a>(
+fn add_token_to_children(
   program_token: &TokenRef,
   context: &ParserContextRef,
   children: &mut Vec<TokenRef>,
@@ -447,8 +448,12 @@ fn handle_skip(
   contain_source_range(matched_range, &range);
 }
 
-impl<'a> Matcher<'a> for ProgramPattern<'a> {
-  fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
+impl Matcher for ProgramPattern {
+  fn exec(
+    &self,
+    context: ParserContextRef,
+    scope: ScopeContextRef,
+  ) -> Result<MatcherSuccess, MatcherFailure> {
     let context = context.borrow();
     let sub_context = context.clone_with_name(self.get_name());
     let start_offset = sub_context.borrow().offset.start;
@@ -475,11 +480,10 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
       iteration_result = None;
 
       for pattern in &self.patterns {
-        let result = pattern
-          .borrow()
-          .exec(std::rc::Rc::new(std::cell::RefCell::new(
-            sub_context.borrow().clone(),
-          )));
+        let result = pattern.borrow().exec(
+          std::rc::Rc::new(std::cell::RefCell::new(sub_context.borrow().clone())),
+          scope.clone(),
+        );
 
         match result {
           Ok(success) => match success {
@@ -814,7 +818,7 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
     self.custom_name = true;
   }
 
-  fn set_child(&mut self, index: usize, matcher: MatcherRef<'a>) {
+  fn set_child(&mut self, index: usize, matcher: MatcherRef) {
     if index >= self.patterns.len() {
       panic!("Attempt to set child at an index that is out of bounds");
     }
@@ -822,11 +826,11 @@ impl<'a> Matcher<'a> for ProgramPattern<'a> {
     self.patterns[index] = matcher;
   }
 
-  fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {
+  fn get_children(&self) -> Option<Vec<MatcherRef>> {
     Some(self.patterns.clone())
   }
 
-  fn add_pattern(&mut self, pattern: MatcherRef<'a>) {
+  fn add_pattern(&mut self, pattern: MatcherRef) {
     self.patterns.push(pattern);
   }
 

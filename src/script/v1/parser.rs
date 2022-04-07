@@ -9,7 +9,7 @@ use crate::{
   parser::{Parser, ParserRef},
   parser_context::{ParserContext, ParserContextRef},
   token::TokenRef,
-  Loop, Not, Optional, ScriptProgramMatcher, ScriptSwitchMatcher, Visit,
+  Loop, Not, Optional, ScriptProgramMatcher, ScriptSwitchMatcher, SetScope, Visit,
 };
 
 use super::matchers::repeat_specifier::get_repeat_specifier_range;
@@ -22,10 +22,10 @@ lazy_static::lazy_static! {
   static ref REPEAT_SPECIFIER: regex::Regex = regex::Regex::new(r"^(RepeatZeroOrMore|RepeatOneOrMore|RepeatRange)$").expect("Could not compile needed Regex for `script::Parser`");
 }
 
-fn construct_matcher_from_inner_definition<'a>(
-  parser_context: ParserContextRef<'a>,
+fn construct_matcher_from_inner_definition(
+  parser_context: ParserContextRef,
   matcher_token: TokenRef,
-) -> Result<MatcherRef<'a>, String> {
+) -> Result<MatcherRef, String> {
   let matcher_token = matcher_token.borrow();
   let matcher_token_name = matcher_token.get_name();
 
@@ -120,12 +120,12 @@ fn construct_matcher_from_inner_definition<'a>(
   }
 }
 
-fn construct_matcher_from_pattern_definition<'a>(
-  parser_context: ParserContextRef<'a>,
+fn construct_matcher_from_pattern_definition(
+  parser_context: ParserContextRef,
   token: TokenRef,
   name: &str,
   captured: bool,
-) -> Result<(MatcherRef<'a>, MatcherRef<'a>), String> {
+) -> Result<(MatcherRef, MatcherRef), String> {
   let token = token.borrow();
   let token_name = token.get_name();
 
@@ -219,10 +219,10 @@ fn construct_matcher_from_pattern_definition<'a>(
   Ok((matcher, inner_matcher))
 }
 
-fn construct_matcher_from_pattern<'a>(
-  parser_context: ParserContextRef<'a>,
+fn construct_matcher_from_pattern(
+  parser_context: ParserContextRef,
   token: TokenRef,
-) -> Result<(MatcherRef<'a>, MatcherRef<'a>), String> {
+) -> Result<(MatcherRef, MatcherRef), String> {
   let _token = token.borrow();
   let token_name = _token.get_name();
 
@@ -256,12 +256,12 @@ fn construct_matcher_from_pattern<'a>(
   }
 }
 
-fn build_matcher_from_tokens<'a>(
+fn build_matcher_from_tokens(
   root_token: TokenRef,
-  parser_context: ParserContextRef<'a>,
+  parser_context: ParserContextRef,
   name: String,
   from_file: Option<&str>,
-) -> Result<MatcherRef<'a>, String> {
+) -> Result<MatcherRef, String> {
   if root_token.borrow().get_name() != "Script" {
     return Err("Expected provided token to be a `Script` token".to_string());
   }
@@ -330,13 +330,6 @@ fn build_matcher_from_tokens<'a>(
       let _parser_context = parser_context.borrow();
       let mut register_matchers = register_matchers.borrow_mut();
 
-      // Copy references over
-      for key in import_parser_context.matcher_reference_map.borrow().keys() {
-        if let Some(matcher) = import_parser_context.matcher_reference_map.borrow().get(key) {
-          register_matchers.add_pattern(crate::Ref!(key.to_string(); matcher.clone()));
-        }
-      }
-
       for import_identifier in import_identifiers {
         let import_identifier = import_identifier.borrow();
         let identifier = import_identifier.find_child("ImportName").unwrap().borrow().get_value().to_string();
@@ -348,15 +341,15 @@ fn build_matcher_from_tokens<'a>(
 
         if identifier == "_" {
           println!("Registering root matcher from import: {}", import_name);
-          register_matchers.add_pattern(crate::Ref!(import_name; import_root_matcher.clone()));
+          register_matchers.add_pattern(crate::Ref!(import_name; SetScope!(import_parser_context.scope.clone(), import_root_matcher.clone())));
         } else {
-          let reference_matcher = import_parser_context.get_registered_matcher(None, &identifier);
+          let reference_matcher = import_parser_context.get_registered_matcher(&identifier);
           if reference_matcher.is_none() {
             return Err(format!("Failed to import `{}` from '{}': Not found", &identifier, file_name))
           }
 
           println!("Registering matcher from import: {}", import_name);
-          register_matchers.add_pattern(crate::Ref!(import_name; reference_matcher.unwrap().clone()));
+          register_matchers.add_pattern(crate::Ref!(import_name; SetScope!(import_parser_context.scope.clone(), reference_matcher.unwrap().clone())));
         }
       }
 
@@ -393,16 +386,16 @@ fn build_matcher_from_tokens<'a>(
   }
 }
 
-pub fn compile_script<'a>(
+pub fn compile_script(
   parser: ParserRef,
   name: String,
   from_file: Option<&str>,
-) -> Result<(ParserContextRef<'a>, MatcherRef<'a>), String> {
+) -> Result<(ParserContextRef, MatcherRef), String> {
   let parser_context = ParserContext::new(&parser, &name);
 
   (*parser_context)
     .borrow()
-    .register_matchers(None, vec![ScriptSwitchMatcher!(), ScriptProgramMatcher!()]);
+    .register_matchers(vec![ScriptSwitchMatcher!(), ScriptProgramMatcher!()]);
 
   let pattern = crate::Script!();
 
@@ -414,7 +407,7 @@ pub fn compile_script<'a>(
           Ok(ref matcher) => {
             parser_context
               .borrow()
-              .capture_matcher_references(None, matcher.clone());
+              .capture_matcher_references(matcher.clone());
 
             Ok((parser_context.clone(), matcher.clone()))
           }
@@ -426,7 +419,7 @@ pub fn compile_script<'a>(
           Ok(ref matcher) => {
             parser_context
               .borrow()
-              .capture_matcher_references(None, matcher.clone());
+              .capture_matcher_references(matcher.clone());
 
             Ok((parser_context.clone(), matcher.clone()))
           }
@@ -460,10 +453,7 @@ pub fn compile_script<'a>(
   }
 }
 
-pub fn compile_script_from_str<'a, 'b>(
-  source: &'b str,
-  name: String,
-) -> Result<MatcherRef<'a>, String> {
+pub fn compile_script_from_str(source: &str, name: String) -> Result<MatcherRef, String> {
   let parser = Parser::new(source);
   match compile_script(parser, name, None) {
     Ok(result) => Ok(result.1),
@@ -471,9 +461,9 @@ pub fn compile_script_from_str<'a, 'b>(
   }
 }
 
-fn compile_script_from_file_internal<'a, 'b>(
-  file_name: &'b str,
-) -> Result<(ParserContextRef<'a>, MatcherRef<'a>), String> {
+fn compile_script_from_file_internal(
+  file_name: &str,
+) -> Result<(ParserContextRef, MatcherRef), String> {
   let full_path = Path::new(file_name).canonicalize().unwrap();
   let full_file_name = full_path.to_str().unwrap();
 
@@ -481,7 +471,7 @@ fn compile_script_from_file_internal<'a, 'b>(
   compile_script(parser, file_name.to_string(), Some(full_file_name))
 }
 
-pub fn compile_script_from_file<'a, 'b>(file_name: &'b str) -> Result<MatcherRef<'a>, String> {
+pub fn compile_script_from_file(file_name: &str) -> Result<MatcherRef, String> {
   let full_path = Path::new(file_name).canonicalize().unwrap();
   let full_file_name = full_path.to_str().unwrap();
 
@@ -593,7 +583,7 @@ mod tests {
   fn register_matchers(parser_context: &ParserContextRef) {
     (*parser_context)
       .borrow()
-      .register_matchers(None, vec![ScriptSwitchMatcher!(), ScriptProgramMatcher!()]);
+      .register_matchers(vec![ScriptSwitchMatcher!(), ScriptProgramMatcher!()]);
   }
 
   #[test]

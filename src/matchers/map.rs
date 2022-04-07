@@ -1,22 +1,21 @@
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
+use crate::scope_context::ScopeContextRef;
 use crate::token::TokenRef;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-pub struct MapPattern<'a, F>
+pub struct MapPattern<F>
 where
   F: Fn(TokenRef) -> Option<String>,
-  F: 'a,
 {
-  matcher: MatcherRef<'a>,
+  matcher: MatcherRef,
   map_func: F,
 }
 
-impl<'a, F> std::fmt::Debug for MapPattern<'a, F>
+impl<F> std::fmt::Debug for MapPattern<F>
 where
   F: Fn(TokenRef) -> Option<String>,
-  F: 'a,
 {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     f.debug_struct("MapPattern")
@@ -25,26 +24,29 @@ where
   }
 }
 
-impl<'a, F> MapPattern<'a, F>
+impl<F> MapPattern<F>
 where
   F: Fn(TokenRef) -> Option<String>,
-  F: 'a,
+  F: 'static,
 {
-  pub fn new(matcher: MatcherRef<'a>, map_func: F) -> MatcherRef<'a> {
+  pub fn new(matcher: MatcherRef, map_func: F) -> MatcherRef {
     Rc::new(RefCell::new(Box::new(Self { matcher, map_func })))
   }
 }
 
-impl<'a, F> Matcher<'a> for MapPattern<'a, F>
+impl<F> Matcher for MapPattern<F>
 where
   F: Fn(TokenRef) -> Option<String>,
-  F: 'a,
 {
-  fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
-    let result = self
-      .matcher
-      .borrow()
-      .exec(context.borrow().clone_with_name(self.get_name()));
+  fn exec(
+    &self,
+    context: ParserContextRef,
+    scope: ScopeContextRef,
+  ) -> Result<MatcherSuccess, MatcherFailure> {
+    let result = self.matcher.borrow().exec(
+      context.borrow().clone_with_name(self.get_name()),
+      scope.clone(),
+    );
 
     match result {
       Ok(success) => match success {
@@ -75,7 +77,7 @@ where
     panic!("Can not set `name` on a `Map` matcher");
   }
 
-  fn set_child(&mut self, index: usize, matcher: MatcherRef<'a>) {
+  fn set_child(&mut self, index: usize, matcher: MatcherRef) {
     if index > 0 {
       panic!("Attempt to set child at an index that is out of bounds");
     }
@@ -83,11 +85,11 @@ where
     self.matcher = matcher;
   }
 
-  fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {
+  fn get_children(&self) -> Option<Vec<MatcherRef>> {
     Some(vec![self.matcher.clone()])
   }
 
-  fn add_pattern(&mut self, _: MatcherRef<'a>) {
+  fn add_pattern(&mut self, _: MatcherRef) {
     panic!("Can not add a pattern to a `Map` matcher");
   }
 

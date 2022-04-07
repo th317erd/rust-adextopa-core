@@ -20,4 +20,5 @@ pub mod program;
 pub mod r#ref;
 pub mod register;
 pub mod sequence;
+pub mod set_scope;
 pub mod store;

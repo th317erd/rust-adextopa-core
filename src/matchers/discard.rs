@@ -3,21 +3,22 @@ use std::rc::Rc;
 
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
+use crate::scope_context::ScopeContextRef;
 use crate::source_range::SourceRange;
 use crate::token::{StandardToken, TokenRef};
 
 #[derive(Debug)]
-pub struct DiscardPattern<'a> {
-  matcher: MatcherRef<'a>,
+pub struct DiscardPattern {
+  matcher: MatcherRef,
 }
 
-impl<'a> DiscardPattern<'a> {
-  pub fn new(matcher: MatcherRef<'a>) -> MatcherRef<'a> {
+impl DiscardPattern {
+  pub fn new(matcher: MatcherRef) -> MatcherRef {
     Rc::new(RefCell::new(Box::new(Self { matcher })))
   }
 }
 
-fn collect_errors<'a, 'b>(error_token: TokenRef, walk_token: TokenRef) {
+fn collect_errors(error_token: TokenRef, walk_token: TokenRef) {
   let is_error = if let Some(value) = walk_token.borrow().get_attribute("__is_error") {
     value == "true"
   } else {
@@ -77,13 +78,21 @@ fn skip_token(context: ParserContextRef, start_offset: usize, token: TokenRef) -
   MatcherSuccess::Skip(offset)
 }
 
-impl<'a> Matcher<'a> for DiscardPattern<'a> {
-  fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
+impl Matcher for DiscardPattern {
+  fn exec(
+    &self,
+    context: ParserContextRef,
+    scope: ScopeContextRef,
+  ) -> Result<MatcherSuccess, MatcherFailure> {
     let context = context.borrow();
     let start_offset = context.offset.start;
     let sub_context = context.clone_with_name(self.get_name());
 
-    match self.matcher.borrow().exec(sub_context.clone()) {
+    match self
+      .matcher
+      .borrow()
+      .exec(sub_context.clone(), scope.clone())
+    {
       Ok(success) => match success {
         MatcherSuccess::Token(token) => {
           return Ok(skip_token(sub_context, start_offset, token.clone()));
@@ -156,7 +165,7 @@ impl<'a> Matcher<'a> for DiscardPattern<'a> {
     panic!("Can not set `name` on a `Discard` matcher");
   }
 
-  fn set_child(&mut self, index: usize, matcher: MatcherRef<'a>) {
+  fn set_child(&mut self, index: usize, matcher: MatcherRef) {
     if index > 0 {
       panic!("Attempt to set child at an index that is out of bounds");
     }
@@ -164,11 +173,11 @@ impl<'a> Matcher<'a> for DiscardPattern<'a> {
     self.matcher = matcher;
   }
 
-  fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {
+  fn get_children(&self) -> Option<Vec<MatcherRef>> {
     Some(vec![self.matcher.clone()])
   }
 
-  fn add_pattern(&mut self, _: MatcherRef<'a>) {
+  fn add_pattern(&mut self, _: MatcherRef) {
     panic!("Can not add a pattern to a `Discard` matcher");
   }
 

@@ -3,25 +3,29 @@ use std::rc::Rc;
 
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
+use crate::scope_context::ScopeContextRef;
 
 #[derive(Debug)]
-pub struct NotPattern<'a> {
-  matcher: MatcherRef<'a>,
+pub struct NotPattern {
+  matcher: MatcherRef,
 }
 
-impl<'a> NotPattern<'a> {
-  pub fn new(matcher: MatcherRef<'a>) -> MatcherRef<'a> {
+impl NotPattern {
+  pub fn new(matcher: MatcherRef) -> MatcherRef {
     Rc::new(RefCell::new(Box::new(Self { matcher })))
   }
 }
 
-impl<'a> Matcher<'a> for NotPattern<'a> {
-  fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
-    match self
-      .matcher
-      .borrow()
-      .exec(context.borrow().clone_with_name(self.get_name()))
-    {
+impl Matcher for NotPattern {
+  fn exec(
+    &self,
+    context: ParserContextRef,
+    scope: ScopeContextRef,
+  ) -> Result<MatcherSuccess, MatcherFailure> {
+    match self.matcher.borrow().exec(
+      context.borrow().clone_with_name(self.get_name()),
+      scope.clone(),
+    ) {
       Ok(success) => match success {
         // Fail on success
         MatcherSuccess::Token(_) => return Err(MatcherFailure::Fail),
@@ -53,7 +57,7 @@ impl<'a> Matcher<'a> for NotPattern<'a> {
     panic!("Can not set `name` on a `Not` matcher");
   }
 
-  fn set_child(&mut self, index: usize, matcher: MatcherRef<'a>) {
+  fn set_child(&mut self, index: usize, matcher: MatcherRef) {
     if index > 0 {
       panic!("Attempt to set child at an index that is out of bounds");
     }
@@ -61,11 +65,11 @@ impl<'a> Matcher<'a> for NotPattern<'a> {
     self.matcher = matcher;
   }
 
-  fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {
+  fn get_children(&self) -> Option<Vec<MatcherRef>> {
     Some(vec![self.matcher.clone()])
   }
 
-  fn add_pattern(&mut self, _: MatcherRef<'a>) {
+  fn add_pattern(&mut self, _: MatcherRef) {
     panic!("Can not add a pattern to a Not pattern");
   }
 

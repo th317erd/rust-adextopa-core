@@ -1,22 +1,38 @@
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::{matcher::MatcherRef, token::TokenRef};
 
-pub enum VariableType<'a> {
+#[derive(Debug, Clone)]
+pub enum VariableType {
   Token(TokenRef),
   String(String),
-  Matcher(MatcherRef<'a>),
+  Matcher(MatcherRef),
 }
 
-pub struct Scope<'a> {
-  references: HashMap<String, VariableType<'a>>,
+pub type ScopeRef = Rc<RefCell<Scope>>;
+
+#[derive(Debug, Clone)]
+pub struct Scope {
+  references: HashMap<String, VariableType>,
 }
 
-impl<'a> Scope<'a> {
-  pub fn new() -> Self {
-    Self {
+impl Scope {
+  pub fn new() -> ScopeRef {
+    Rc::new(RefCell::new(Self {
       references: HashMap::new(),
-    }
+    }))
+  }
+
+  pub fn contains_key(&self, name: &str) -> bool {
+    self.references.contains_key(name)
+  }
+
+  pub fn get(&self, name: &str) -> Option<&VariableType> {
+    self.references.get(name)
+  }
+
+  pub fn set(&mut self, name: &str, value: VariableType) -> Option<VariableType> {
+    self.references.insert(name.to_string(), value)
   }
 }
 

@@ -37,7 +37,10 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = ScriptProgramMatcher!();
 
-    let result = matcher.borrow().exec(parser_context.clone());
+    let result = matcher.borrow().exec(
+      parser_context.clone(),
+      parser_context.borrow().scope.clone(),
+    );
 
     if let Ok(MatcherSuccess::Token(token)) = result {
       let token = token.borrow();
@@ -72,7 +75,10 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = ScriptProgramMatcher!();
 
-    if let Err(MatcherFailure::Fail) = matcher.borrow().exec(parser_context.clone()) {
+    if let Err(MatcherFailure::Fail) = matcher.borrow().exec(
+      parser_context.clone(),
+      parser_context.borrow().scope.clone(),
+    ) {
     } else {
       unreachable!("Test failed!");
     };

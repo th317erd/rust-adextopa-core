@@ -1,16 +1,17 @@
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
+use crate::scope_context::ScopeContextRef;
 use std::cell::RefCell;
 use std::rc::Rc;
 
 #[derive(std::fmt::Debug)]
-pub struct DebugPattern<'a> {
-  matcher: Option<MatcherRef<'a>>,
+pub struct DebugPattern {
+  matcher: Option<MatcherRef>,
   debug_mode: usize,
 }
 
-impl<'a> DebugPattern<'a> {
-  pub fn new(matcher: Option<MatcherRef<'a>>) -> MatcherRef<'a> {
+impl DebugPattern {
+  pub fn new(matcher: Option<MatcherRef>) -> MatcherRef {
     Rc::new(RefCell::new(Box::new(Self {
       matcher: match matcher {
         Some(matcher) => Some(matcher),
@@ -20,7 +21,7 @@ impl<'a> DebugPattern<'a> {
     })))
   }
 
-  pub fn new_with_debug_mode(matcher: Option<MatcherRef<'a>>, debug_mode: usize) -> MatcherRef<'a> {
+  pub fn new_with_debug_mode(matcher: Option<MatcherRef>, debug_mode: usize) -> MatcherRef {
     Rc::new(RefCell::new(Box::new(Self {
       matcher,
       debug_mode,
@@ -28,8 +29,12 @@ impl<'a> DebugPattern<'a> {
   }
 }
 
-impl<'a> Matcher<'a> for DebugPattern<'a> {
-  fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
+impl Matcher for DebugPattern {
+  fn exec(
+    &self,
+    context: ParserContextRef,
+    scope: ScopeContextRef,
+  ) -> Result<MatcherSuccess, MatcherFailure> {
     let context = context.borrow();
     let sub_context = context.clone_with_name(self.get_name());
 
@@ -43,7 +48,7 @@ impl<'a> Matcher<'a> for DebugPattern<'a> {
         let debug_mode_level = sub_context.borrow().debug_mode_level();
 
         let matcher = RefCell::borrow(matcher);
-        let result = matcher.exec(sub_context);
+        let result = matcher.exec(sub_context, scope.clone());
 
         if debug_mode_level > 2 {
           print!("{{Debug}} ");
@@ -88,7 +93,7 @@ impl<'a> Matcher<'a> for DebugPattern<'a> {
     panic!("Can not set `name` on a `Debug` matcher");
   }
 
-  fn set_child(&mut self, index: usize, matcher: MatcherRef<'a>) {
+  fn set_child(&mut self, index: usize, matcher: MatcherRef) {
     if index > 0 {
       panic!("Attempt to set child at an index that is out of bounds");
     }
@@ -96,14 +101,14 @@ impl<'a> Matcher<'a> for DebugPattern<'a> {
     self.matcher = Some(matcher);
   }
 
-  fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {
+  fn get_children(&self) -> Option<Vec<MatcherRef>> {
     match &self.matcher {
       Some(matcher) => Some(vec![matcher.clone()]),
       None => None,
     }
   }
 
-  fn add_pattern(&mut self, _: MatcherRef<'a>) {
+  fn add_pattern(&mut self, _: MatcherRef) {
     panic!("Can not add a pattern to a `Debug` matcher");
   }
 

@@ -1,18 +1,17 @@
 use std::cell::RefCell;
-use std::marker::PhantomData;
 use std::rc::Rc;
 
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
+use crate::scope_context::ScopeContextRef;
 use crate::source_range::SourceRange;
 use crate::token::StandardToken;
 
 use super::fetch::{Fetchable, FetchableType};
 
-pub struct SequencePattern<'a, T>
+pub struct SequencePattern<T>
 where
-  T: Fetchable<'a>,
-  T: 'a,
+  T: Fetchable,
   T: std::fmt::Debug,
 {
   start: T,
@@ -20,13 +19,12 @@ where
   escape: T,
   name: String,
   custom_name: bool,
-  _phantom: PhantomData<&'a T>,
 }
 
-impl<'a, T> std::fmt::Debug for SequencePattern<'a, T>
+impl<T> std::fmt::Debug for SequencePattern<T>
 where
-  T: Fetchable<'a>,
-  T: 'a,
+  T: Fetchable,
+
   T: std::fmt::Debug,
 {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -40,42 +38,44 @@ where
   }
 }
 
-impl<'a, T> SequencePattern<'a, T>
+impl<T> SequencePattern<T>
 where
-  T: Fetchable<'a>,
-  T: 'a,
+  T: Fetchable,
+  T: 'static,
   T: std::fmt::Debug,
 {
-  pub fn new(start: T, end: T, escape: T) -> MatcherRef<'a> {
+  pub fn new(start: T, end: T, escape: T) -> MatcherRef {
     Rc::new(RefCell::new(Box::new(Self {
       name: "Sequence".to_string(),
       start,
       end,
       escape,
       custom_name: false,
-      _phantom: PhantomData,
     })))
   }
 
-  pub fn new_with_name(name: &'a str, start: T, end: T, escape: T) -> MatcherRef<'a> {
+  pub fn new_with_name(name: &str, start: T, end: T, escape: T) -> MatcherRef {
     Rc::new(RefCell::new(Box::new(Self {
       name: name.to_string(),
       start,
       end,
       escape,
       custom_name: true,
-      _phantom: PhantomData,
     })))
   }
 }
 
-impl<'a, T> Matcher<'a> for SequencePattern<'a, T>
+impl<T> Matcher for SequencePattern<T>
 where
-  T: Fetchable<'a>,
-  T: 'a,
+  T: Fetchable,
+
   T: std::fmt::Debug,
 {
-  fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
+  fn exec(
+    &self,
+    context: ParserContextRef,
+    scope: ScopeContextRef,
+  ) -> Result<MatcherSuccess, MatcherFailure> {
     let sub_context = context.borrow().clone_with_name(self.get_name());
     let _sc = sub_context.borrow();
 
@@ -87,7 +87,7 @@ where
 
     let debug_mode = _sc.debug_mode_level();
 
-    let start_fetchable = self.start.fetch_value(sub_context.clone());
+    let start_fetchable = self.start.fetch_value(sub_context.clone(), scope.clone());
     let start_pattern = match start_fetchable {
       FetchableType::String(ref value) => value,
       FetchableType::Matcher(_) => return Err(MatcherFailure::Error(
@@ -100,7 +100,7 @@ where
       panic!("Sequence `start` pattern of \"\" makes no sense");
     }
 
-    let end_fetchable = self.end.fetch_value(sub_context.clone());
+    let end_fetchable = self.end.fetch_value(sub_context.clone(), scope.clone());
     let end_pattern = match end_fetchable {
       FetchableType::String(ref value) => value,
       FetchableType::Matcher(_) => return Err(MatcherFailure::Error(
@@ -112,7 +112,7 @@ where
       panic!("Sequence `end` pattern of \"\" makes no sense");
     }
 
-    let escape_fetchable = self.escape.fetch_value(sub_context.clone());
+    let escape_fetchable = self.escape.fetch_value(sub_context.clone(), scope.clone());
     let escape_pattern = match escape_fetchable {
       FetchableType::String(ref value) => value,
       FetchableType::Matcher(_) => return Err(MatcherFailure::Error(
@@ -247,11 +247,11 @@ where
     self.custom_name = true;
   }
 
-  fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {
+  fn get_children(&self) -> Option<Vec<MatcherRef>> {
     None
   }
 
-  fn add_pattern(&mut self, _: MatcherRef<'a>) {
+  fn add_pattern(&mut self, _: MatcherRef) {
     panic!("Can not add a pattern to a `Sequence` matcher");
   }
 

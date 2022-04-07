@@ -1,29 +1,26 @@
 use std::cell::RefCell;
-use std::marker::PhantomData;
 use std::rc::Rc;
 
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
+use crate::scope::VariableType;
+use crate::scope_context::ScopeContextRef;
 
 use super::fetch::{Fetchable, FetchableType};
 
-pub struct RefPattern<'a, T>
+pub struct RefPattern<T>
 where
-  T: Fetchable<'a>,
-  T: 'a,
+  T: Fetchable,
   T: std::fmt::Debug,
 {
   name: String,
-  scope: Option<String>,
   target: T,
   custom_name: bool,
-  _phantom: PhantomData<&'a T>,
 }
 
-impl<'a, T> std::fmt::Debug for RefPattern<'a, T>
+impl<T> std::fmt::Debug for RefPattern<T>
 where
-  T: Fetchable<'a>,
-  T: 'a,
+  T: Fetchable,
   T: std::fmt::Debug,
 {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -35,67 +32,51 @@ where
   }
 }
 
-impl<'a, T> RefPattern<'a, T>
+impl<T> RefPattern<T>
 where
-  T: Fetchable<'a>,
-  T: 'a,
+  T: Fetchable,
+  T: 'static,
   T: std::fmt::Debug,
 {
-  pub fn new(target: T) -> MatcherRef<'a> {
+  pub fn new(target: T) -> MatcherRef {
     Rc::new(RefCell::new(Box::new(RefPattern {
       name: "Ref".to_string(),
-      scope: None,
       target,
       custom_name: false,
-      _phantom: PhantomData,
     })))
   }
 
-  pub fn new_with_name(target: T, name: String) -> MatcherRef<'a> {
+  pub fn new_with_name(target: T, name: String) -> MatcherRef {
     Rc::new(RefCell::new(Box::new(RefPattern {
       name,
-      scope: None,
       target,
       custom_name: true,
-      _phantom: PhantomData,
     })))
-  }
-
-  fn set_scope(&mut self, scope: Option<&str>) {
-    match scope {
-      Some(scope) => self.scope = Some(scope.to_string()),
-      None => self.scope = None,
-    }
-  }
-
-  pub fn get_scope(&self) -> Option<&str> {
-    match &self.scope {
-      Some(name) => Some(name.as_str()),
-      None => None,
-    }
   }
 }
 
-impl<'a, T> Matcher<'a> for RefPattern<'a, T>
+impl<T> Matcher for RefPattern<T>
 where
-  T: Fetchable<'a>,
-  T: 'a,
+  T: Fetchable,
+  T: 'static,
   T: std::fmt::Debug,
 {
-  fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
+  fn exec(
+    &self,
+    context: ParserContextRef,
+    scope: ScopeContextRef,
+  ) -> Result<MatcherSuccess, MatcherFailure> {
     let sub_context = context.borrow().clone_with_name(self.get_name());
-    let target = self.target.fetch_value(sub_context.clone());
+    let target = self.target.fetch_value(sub_context.clone(), scope.clone());
 
     match target {
       FetchableType::String(ref target_name) => {
         println!("Fetching reference {}", target_name);
 
-        let possible_matcher = sub_context
-          .borrow()
-          .get_registered_matcher(self.get_scope(), target_name);
+        let possible_matcher = scope.borrow().get(target_name);
 
-        if let Some(matcher) = possible_matcher {
-          matcher.borrow().exec(sub_context)
+        if let Some(VariableType::Matcher(ref matcher)) = possible_matcher {
+          matcher.borrow().exec(sub_context, scope.clone())
         } else {
           return Err(MatcherFailure::Error(format!(
             "`Ref` matcher unable to locate target reference `{}`",
@@ -103,7 +84,7 @@ where
           )));
         }
       }
-      FetchableType::Matcher(matcher) => matcher.borrow().exec(sub_context),
+      FetchableType::Matcher(matcher) => matcher.borrow().exec(sub_context, scope.clone()),
     }
   }
 
@@ -120,24 +101,16 @@ where
     self.custom_name = true;
   }
 
-  fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {
+  fn get_children(&self) -> Option<Vec<MatcherRef>> {
     None
   }
 
-  fn add_pattern(&mut self, _: MatcherRef<'a>) {
+  fn add_pattern(&mut self, _: MatcherRef) {
     panic!("Can not add a pattern to a `Ref` matcher");
   }
 
   fn to_string(&self) -> String {
     format!("{:?}", self)
-  }
-
-  fn set_scope(&mut self, scope: Option<&str>) {
-    self.set_scope(scope)
-  }
-
-  fn get_scope(&self) -> Option<&str> {
-    self.get_scope()
   }
 }
 

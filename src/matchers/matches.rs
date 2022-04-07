@@ -4,6 +4,7 @@ use std::rc::Rc;
 
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
+use crate::scope_context::ScopeContextRef;
 use crate::token::StandardToken;
 use regex::Regex;
 
@@ -14,8 +15,8 @@ pub struct MatchesPattern {
   custom_name: bool,
 }
 
-impl<'a> MatchesPattern {
-  pub fn new(regex: Regex) -> MatcherRef<'a> {
+impl MatchesPattern {
+  pub fn new(regex: Regex) -> MatcherRef {
     Rc::new(RefCell::new(Box::new(Self {
       regex,
       name: "Matches".to_string(),
@@ -23,7 +24,7 @@ impl<'a> MatchesPattern {
     })))
   }
 
-  pub fn new_with_name(name: &'a str, regex: Regex) -> MatcherRef<'a> {
+  pub fn new_with_name(name: &str, regex: Regex) -> MatcherRef {
     Rc::new(RefCell::new(Box::new(Self {
       regex,
       name: name.to_string(),
@@ -32,8 +33,12 @@ impl<'a> MatchesPattern {
   }
 }
 
-impl<'a> Matcher<'a> for MatchesPattern {
-  fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
+impl Matcher for MatchesPattern {
+  fn exec(
+    &self,
+    context: ParserContextRef,
+    _: ScopeContextRef,
+  ) -> Result<MatcherSuccess, MatcherFailure> {
     let sub_context = context.borrow().clone_with_name(self.get_name());
     let debug_mode = sub_context.borrow().debug_mode_level();
 
@@ -113,11 +118,11 @@ impl<'a> Matcher<'a> for MatchesPattern {
     self.custom_name = true;
   }
 
-  fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {
+  fn get_children(&self) -> Option<Vec<MatcherRef>> {
     None
   }
 
-  fn add_pattern(&mut self, _: MatcherRef<'a>) {
+  fn add_pattern(&mut self, _: MatcherRef) {
     panic!("Can not add a pattern to a `Matches` matcher");
   }
 

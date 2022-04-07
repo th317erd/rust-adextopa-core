@@ -2,60 +2,45 @@ use super::source_range::SourceRange;
 use crate::{
   matcher::{MatcherFailure, MatcherRef, MatcherSuccess},
   parser::ParserRef,
-  token::TokenRef,
+  scope::VariableType,
+  scope_context::{ScopeContext, ScopeContextRef},
 };
 use regex::Regex;
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{cell::RefCell, rc::Rc};
 
-#[derive(PartialEq, Debug)]
-pub enum VariableType {
-  Token(TokenRef),
-  String(String),
-}
-
-pub type ParserContextRef<'a> = Rc<RefCell<ParserContext<'a>>>;
+pub type ParserContextRef = Rc<RefCell<ParserContext>>;
 
 #[derive(Clone)]
-pub struct ParserContext<'a> {
+pub struct ParserContext {
   pub(crate) debug_mode: usize,
-  pub(crate) matcher_reference_map: Rc<RefCell<HashMap<String, MatcherRef<'a>>>>,
-  pub variable_context: Rc<RefCell<HashMap<String, VariableType>>>,
+  pub(crate) scope: ScopeContextRef,
   pub offset: SourceRange,
   pub parser: ParserRef,
   pub name: String,
-  pub scope_name: String,
 }
 
-impl<'a> ParserContext<'a> {
-  pub fn new<'b>(parser: &ParserRef, name: &str) -> ParserContextRef<'b> {
+impl ParserContext {
+  pub fn new(parser: &ParserRef, name: &str) -> ParserContextRef {
     std::rc::Rc::new(std::cell::RefCell::new(ParserContext {
-      matcher_reference_map: Rc::new(RefCell::new(HashMap::new())),
-      variable_context: Rc::new(RefCell::new(HashMap::new())),
+      scope: ScopeContext::new(),
       offset: SourceRange::new(0, parser.borrow().source.len()),
       parser: parser.clone(),
       debug_mode: 0,
       name: name.to_string(),
-      scope_name: name.to_string(),
     }))
   }
 
-  pub fn new_with_offset<'b>(
-    parser: &ParserRef,
-    offset: SourceRange,
-    name: &str,
-  ) -> ParserContextRef<'b> {
+  pub fn new_with_offset(parser: &ParserRef, offset: SourceRange, name: &str) -> ParserContextRef {
     std::rc::Rc::new(std::cell::RefCell::new(ParserContext {
-      matcher_reference_map: Rc::new(RefCell::new(HashMap::new())),
-      variable_context: Rc::new(RefCell::new(HashMap::new())),
+      scope: ScopeContext::new(),
       offset,
       parser: parser.clone(),
       debug_mode: 0,
       name: name.to_string(),
-      scope_name: name.to_string(),
     }))
   }
 
-  pub fn clone_with_name(&self, name: &str) -> ParserContextRef<'a> {
+  pub fn clone_with_name(&self, name: &str) -> ParserContextRef {
     let mut c = self.clone();
     c.name = name.to_string();
     std::rc::Rc::new(std::cell::RefCell::new(c))
@@ -85,41 +70,12 @@ impl<'a> ParserContext<'a> {
     self.offset = range;
   }
 
-  fn get_full_scope_name(&self, scope: Option<&str>, name: &str) -> String {
-    match scope {
-      Some(scope) => {
-        // println!("Getting scope with custom name: [{}:{}]", scope, name);
-        format!("{}:{}", scope, name)
-      }
-      None => {
-        // println!("Getting scope with no name: [{}:{}]", self.scope_name, name);
-        format!("{}:{}", self.scope_name, name)
-      }
-    }
+  pub fn get_scope_variable(&self, name: &str) -> Option<VariableType> {
+    self.scope.borrow().get(name)
   }
 
-  pub fn get_variable(&self, scope: Option<&str>, name: &str) -> Option<VariableType> {
-    match self
-      .variable_context
-      .borrow()
-      .get(&self.get_full_scope_name(scope, name))
-    {
-      Some(VariableType::Token(value)) => Some(VariableType::Token(value.clone())),
-      Some(VariableType::String(value)) => Some(VariableType::String(value.clone())),
-      None => None,
-    }
-  }
-
-  pub fn set_variable(
-    &mut self,
-    scope: Option<&str>,
-    name: String,
-    value: VariableType,
-  ) -> Option<VariableType> {
-    self
-      .variable_context
-      .borrow_mut()
-      .insert(self.get_full_scope_name(scope, &name), value)
+  pub fn set_scope_variable(&mut self, name: &str, value: VariableType) -> Option<VariableType> {
+    self.scope.borrow_mut().set(name, value)
   }
 
   pub fn matches_str(&self, pattern: &str) -> Option<SourceRange> {
@@ -179,11 +135,7 @@ impl<'a> ParserContext<'a> {
     parser.source[self.offset.start..end_offset].to_string()
   }
 
-  pub fn capture_matcher_references(&self, scope: Option<&str>, matcher: MatcherRef<'a>) {
-    if matcher.borrow().get_scope().is_none() {
-      matcher.borrow_mut().set_scope(scope);
-    }
-
+  pub fn capture_matcher_references(&self, matcher: MatcherRef) {
     let m = matcher.borrow();
 
     if m.has_custom_name() {
@@ -193,51 +145,46 @@ impl<'a> ParserContext<'a> {
         println!("Registering matcher `{}`", name);
       }
 
-      self.matcher_reference_map.borrow_mut().insert(
-        self.get_full_scope_name(m.get_scope(), name),
-        matcher.clone(),
-      );
+      self
+        .scope
+        .borrow_mut()
+        .set(name, VariableType::Matcher(matcher.clone()));
     }
 
     match m.get_children() {
       Some(children) => {
         for child in children {
-          self.capture_matcher_references(scope, child.clone());
+          self.capture_matcher_references(child.clone());
         }
       }
       None => {}
     }
   }
 
-  pub fn register_matchers(&self, scope: Option<&str>, matchers: Vec<MatcherRef<'a>>) {
+  pub fn register_matchers(&self, matchers: Vec<MatcherRef>) {
     for matcher in matchers {
-      self.capture_matcher_references(scope, matcher.clone());
+      self.capture_matcher_references(matcher.clone());
     }
   }
 
-  pub fn register_matcher(&self, scope: Option<&str>, matcher: MatcherRef<'a>) {
-    self.capture_matcher_references(scope, matcher.clone());
+  pub fn register_matcher(&self, matcher: MatcherRef) {
+    self.capture_matcher_references(matcher.clone());
   }
 
-  pub fn get_registered_matcher(&self, scope: Option<&str>, name: &str) -> Option<MatcherRef<'a>> {
-    match self
-      .matcher_reference_map
-      .borrow()
-      .get(&self.get_full_scope_name(scope, name))
-    {
-      Some(matcher) => Some(matcher.clone()),
-      None => None,
+  pub fn get_registered_matcher(&self, name: &str) -> Option<MatcherRef> {
+    match self.scope.borrow().get(name) {
+      Some(VariableType::Matcher(matcher)) => Some(matcher.clone()),
+      _ => None,
     }
   }
 
   pub fn tokenize(
-    context: ParserContextRef<'a>,
-    matcher: MatcherRef<'a>,
+    context: ParserContextRef,
+    matcher: MatcherRef,
   ) -> Result<MatcherSuccess, MatcherFailure> {
-    let scope_name = &context.borrow().scope_name;
-    context
-      .borrow()
-      .capture_matcher_references(Some(scope_name), matcher.clone());
-    matcher.borrow().exec(context.clone())
+    context.borrow().capture_matcher_references(matcher.clone());
+
+    let scope = context.borrow().scope.clone();
+    matcher.borrow().exec(context.clone(), scope)
   }
 }

@@ -3,22 +3,27 @@ use std::rc::Rc;
 
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
+use crate::scope_context::ScopeContextRef;
 
 #[derive(Debug)]
-pub struct RegisterPattern<'a> {
-  patterns: Vec<MatcherRef<'a>>,
+pub struct RegisterPattern {
+  patterns: Vec<MatcherRef>,
 }
 
-impl<'a> RegisterPattern<'a> {
-  pub fn new_blank() -> MatcherRef<'a> {
+impl RegisterPattern {
+  pub fn new_blank() -> MatcherRef {
     Rc::new(RefCell::new(Box::new(Self {
       patterns: Vec::new(),
     })))
   }
 }
 
-impl<'a> Matcher<'a> for RegisterPattern<'a> {
-  fn exec(&self, _: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
+impl Matcher for RegisterPattern {
+  fn exec(
+    &self,
+    _: ParserContextRef,
+    _: ScopeContextRef,
+  ) -> Result<MatcherSuccess, MatcherFailure> {
     // Always skip... as this is a "no-op" pattern
     Ok(MatcherSuccess::Skip(0))
   }
@@ -35,11 +40,11 @@ impl<'a> Matcher<'a> for RegisterPattern<'a> {
     panic!("Can not set `name` on a `Register` matcher");
   }
 
-  fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {
+  fn get_children(&self) -> Option<Vec<MatcherRef>> {
     Some(self.patterns.clone())
   }
 
-  fn add_pattern(&mut self, pattern: MatcherRef<'a>) {
+  fn add_pattern(&mut self, pattern: MatcherRef) {
     self.patterns.push(pattern);
   }
 

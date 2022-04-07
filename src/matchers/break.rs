@@ -3,20 +3,27 @@ use std::rc::Rc;
 
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
+use crate::scope_context::ScopeContextRef;
 
 #[derive(Debug)]
-pub struct BreakPattern<'a> {
-  loop_name: &'a str,
+pub struct BreakPattern {
+  loop_name: String,
 }
 
-impl<'a> BreakPattern<'a> {
-  pub fn new(loop_name: &'a str) -> MatcherRef<'a> {
-    Rc::new(RefCell::new(Box::new(BreakPattern { loop_name })))
+impl BreakPattern {
+  pub fn new(loop_name: &str) -> MatcherRef {
+    Rc::new(RefCell::new(Box::new(BreakPattern {
+      loop_name: loop_name.to_string(),
+    })))
   }
 }
 
-impl<'a> Matcher<'a> for BreakPattern<'a> {
-  fn exec(&self, _: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
+impl Matcher for BreakPattern {
+  fn exec(
+    &self,
+    _: ParserContextRef,
+    _: ScopeContextRef,
+  ) -> Result<MatcherSuccess, MatcherFailure> {
     Ok(MatcherSuccess::Break((
       self.loop_name.to_string(),
       Box::new(MatcherSuccess::None),
@@ -31,11 +38,11 @@ impl<'a> Matcher<'a> for BreakPattern<'a> {
     panic!("Can not set `name` on a `Break` matcher");
   }
 
-  fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {
+  fn get_children(&self) -> Option<Vec<MatcherRef>> {
     None
   }
 
-  fn add_pattern(&mut self, _: MatcherRef<'a>) {
+  fn add_pattern(&mut self, _: MatcherRef) {
     panic!("Can not add a pattern to a `Break` matcher");
   }
 

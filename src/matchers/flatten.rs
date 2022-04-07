@@ -1,17 +1,18 @@
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
+use crate::scope_context::ScopeContextRef;
 use std::cell::RefCell;
 use std::rc::Rc;
 
 #[derive(Debug)]
-pub struct FlattenPattern<'a> {
-  matcher: MatcherRef<'a>,
+pub struct FlattenPattern {
+  matcher: MatcherRef,
   name: String,
   custom_name: bool,
 }
 
-impl<'a> FlattenPattern<'a> {
-  pub fn new(matcher: MatcherRef<'a>) -> MatcherRef<'a> {
+impl FlattenPattern {
+  pub fn new(matcher: MatcherRef) -> MatcherRef {
     Rc::new(RefCell::new(Box::new(FlattenPattern {
       matcher,
       name: "Flatten".to_string(),
@@ -19,7 +20,7 @@ impl<'a> FlattenPattern<'a> {
     })))
   }
 
-  pub fn new_with_name(matcher: MatcherRef<'a>, name: &'a str) -> MatcherRef<'a> {
+  pub fn new_with_name(matcher: MatcherRef, name: &str) -> MatcherRef {
     Rc::new(RefCell::new(Box::new(FlattenPattern {
       matcher,
       name: name.to_string(),
@@ -28,12 +29,16 @@ impl<'a> FlattenPattern<'a> {
   }
 }
 
-impl<'a> Matcher<'a> for FlattenPattern<'a> {
-  fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
-    let result = self
-      .matcher
-      .borrow()
-      .exec(context.borrow().clone_with_name(self.get_name()));
+impl Matcher for FlattenPattern {
+  fn exec(
+    &self,
+    context: ParserContextRef,
+    scope: ScopeContextRef,
+  ) -> Result<MatcherSuccess, MatcherFailure> {
+    let result = self.matcher.borrow().exec(
+      context.borrow().clone_with_name(self.get_name()),
+      scope.clone(),
+    );
 
     match result {
       Ok(MatcherSuccess::Token(token)) => Ok(MatcherSuccess::ExtractChildren(token.clone())),
@@ -68,7 +73,7 @@ impl<'a> Matcher<'a> for FlattenPattern<'a> {
     self.custom_name = true;
   }
 
-  fn set_child(&mut self, index: usize, matcher: MatcherRef<'a>) {
+  fn set_child(&mut self, index: usize, matcher: MatcherRef) {
     if index > 0 {
       panic!("Attempt to set child at an index that is out of bounds");
     }
@@ -76,11 +81,11 @@ impl<'a> Matcher<'a> for FlattenPattern<'a> {
     self.matcher = matcher;
   }
 
-  fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {
+  fn get_children(&self) -> Option<Vec<MatcherRef>> {
     Some(vec![self.matcher.clone()])
   }
 
-  fn add_pattern(&mut self, _: MatcherRef<'a>) {
+  fn add_pattern(&mut self, _: MatcherRef) {
     panic!("Can not add a pattern to a `Flatten` matcher");
   }
 

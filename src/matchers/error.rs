@@ -3,6 +3,7 @@ use std::rc::Rc;
 
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
+use crate::scope_context::ScopeContextRef;
 use crate::source_range::SourceRange;
 use crate::token::{StandardToken, TokenRef};
 
@@ -38,19 +39,25 @@ pub fn new_error_token_with_range(
 }
 
 #[derive(Debug)]
-pub struct ErrorPattern<'a> {
-  message: &'a str,
+pub struct ErrorPattern {
+  message: String,
 }
 
-impl<'a> ErrorPattern<'a> {
-  pub fn new(message: &'a str) -> MatcherRef<'a> {
-    Rc::new(RefCell::new(Box::new(Self { message })))
+impl ErrorPattern {
+  pub fn new(message: &str) -> MatcherRef {
+    Rc::new(RefCell::new(Box::new(Self {
+      message: message.to_string(),
+    })))
   }
 }
 
-impl<'a> Matcher<'a> for ErrorPattern<'a> {
-  fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
-    let error_token = new_error_token(context, self.message);
+impl Matcher for ErrorPattern {
+  fn exec(
+    &self,
+    context: ParserContextRef,
+    _: ScopeContextRef,
+  ) -> Result<MatcherSuccess, MatcherFailure> {
+    let error_token = new_error_token(context, &self.message);
     Ok(MatcherSuccess::Token(error_token))
   }
 
@@ -62,11 +69,11 @@ impl<'a> Matcher<'a> for ErrorPattern<'a> {
     panic!("Can not set `name` on a `Error` matcher");
   }
 
-  fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {
+  fn get_children(&self) -> Option<Vec<MatcherRef>> {
     None
   }
 
-  fn add_pattern(&mut self, _: MatcherRef<'a>) {
+  fn add_pattern(&mut self, _: MatcherRef) {
     panic!("Can not add a pattern to a `Error` matcher");
   }
 

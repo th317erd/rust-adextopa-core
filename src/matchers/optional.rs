@@ -1,26 +1,30 @@
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
+use crate::scope_context::ScopeContextRef;
 use std::cell::RefCell;
 use std::rc::Rc;
 
 #[derive(Debug)]
-pub struct OptionalPattern<'a> {
-  matcher: MatcherRef<'a>,
+pub struct OptionalPattern {
+  matcher: MatcherRef,
 }
 
-impl<'a> OptionalPattern<'a> {
-  pub fn new(matcher: MatcherRef<'a>) -> MatcherRef<'a> {
+impl OptionalPattern {
+  pub fn new(matcher: MatcherRef) -> MatcherRef {
     Rc::new(RefCell::new(Box::new(Self { matcher })))
   }
 }
 
-impl<'a> Matcher<'a> for OptionalPattern<'a> {
-  fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
-    match self
-      .matcher
-      .borrow()
-      .exec(context.borrow().clone_with_name(self.get_name()))
-    {
+impl Matcher for OptionalPattern {
+  fn exec(
+    &self,
+    context: ParserContextRef,
+    scope: ScopeContextRef,
+  ) -> Result<MatcherSuccess, MatcherFailure> {
+    match self.matcher.borrow().exec(
+      context.borrow().clone_with_name(self.get_name()),
+      scope.clone(),
+    ) {
       Ok(success) => Ok(success),
       Err(failure) => match failure {
         MatcherFailure::Fail => Ok(MatcherSuccess::Skip(0)),
@@ -37,7 +41,7 @@ impl<'a> Matcher<'a> for OptionalPattern<'a> {
     panic!("Can not set `name` on a `Optional` matcher");
   }
 
-  fn set_child(&mut self, index: usize, matcher: MatcherRef<'a>) {
+  fn set_child(&mut self, index: usize, matcher: MatcherRef) {
     if index > 0 {
       panic!("Attempt to set child at an index that is out of bounds");
     }
@@ -45,11 +49,11 @@ impl<'a> Matcher<'a> for OptionalPattern<'a> {
     self.matcher = matcher;
   }
 
-  fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {
+  fn get_children(&self) -> Option<Vec<MatcherRef>> {
     Some(vec![self.matcher.clone()])
   }
 
-  fn add_pattern(&mut self, _: MatcherRef<'a>) {
+  fn add_pattern(&mut self, _: MatcherRef) {
     panic!("Can not add a pattern to a `Optional` matcher");
   }
 

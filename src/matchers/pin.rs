@@ -6,6 +6,7 @@ use super::fetch::{Fetchable, FetchableType};
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser::ParserRef;
 use crate::parser_context::ParserContextRef;
+use crate::scope_context::ScopeContextRef;
 use crate::source_range::SourceRange;
 use crate::token::{Token, TokenRef};
 
@@ -252,36 +253,39 @@ impl Token for PinToken {
 }
 
 #[derive(Debug)]
-pub struct PinPattern<'a, T>
+pub struct PinPattern<T>
 where
-  T: Fetchable<'a>,
-  T: 'a,
+  T: Fetchable,
   T: std::fmt::Debug,
 {
-  pattern: Option<MatcherRef<'a>>,
+  pattern: Option<MatcherRef>,
   offset: T,
 }
 
-impl<'a, T> PinPattern<'a, T>
+impl<T> PinPattern<T>
 where
-  T: Fetchable<'a>,
-  T: 'a,
+  T: Fetchable,
+  T: 'static,
   T: std::fmt::Debug,
 {
-  pub fn new(offset: T, pattern: Option<MatcherRef<'a>>) -> MatcherRef<'a> {
+  pub fn new(offset: T, pattern: Option<MatcherRef>) -> MatcherRef {
     Rc::new(RefCell::new(Box::new(Self { pattern, offset })))
   }
 }
 
-impl<'a, T> Matcher<'a> for PinPattern<'a, T>
+impl<T> Matcher for PinPattern<T>
 where
-  T: Fetchable<'a>,
-  T: 'a,
+  T: Fetchable,
+
   T: std::fmt::Debug,
 {
-  fn exec(&self, context: ParserContextRef) -> Result<MatcherSuccess, MatcherFailure> {
+  fn exec(
+    &self,
+    context: ParserContextRef,
+    scope: ScopeContextRef,
+  ) -> Result<MatcherSuccess, MatcherFailure> {
     let sub_context = context.borrow().clone_with_name(self.get_name());
-    let offset_value_fetchable = self.offset.fetch_value(sub_context.clone());
+    let offset_value_fetchable = self.offset.fetch_value(sub_context.clone(), scope.clone());
     let offset_value = match offset_value_fetchable {
       FetchableType::String(value) => value,
       FetchableType::Matcher(_) => return Err(MatcherFailure::Error(
@@ -311,7 +315,7 @@ where
     let end_offset = sub_context.borrow().offset.end;
 
     match &self.pattern {
-      Some(matcher) => matcher.borrow().exec(sub_context.clone()),
+      Some(matcher) => matcher.borrow().exec(sub_context.clone(), scope.clone()),
       None => Ok(MatcherSuccess::Token(PinToken::new_with_matched_range(
         &sub_context.borrow().parser,
         self.get_name().to_string(),
@@ -337,14 +341,14 @@ where
     panic!("Can not set `name` on a `Pin` matcher");
   }
 
-  fn get_children(&self) -> Option<Vec<MatcherRef<'a>>> {
+  fn get_children(&self) -> Option<Vec<MatcherRef>> {
     match self.pattern {
       Some(ref matcher) => Some(vec![matcher.clone()]),
       None => None,
     }
   }
 
-  fn add_pattern(&mut self, _: MatcherRef<'a>) {
+  fn add_pattern(&mut self, _: MatcherRef) {
     panic!("Can not add a pattern to a `Equals` matcher");
   }
 
