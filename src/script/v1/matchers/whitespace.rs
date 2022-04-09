@@ -60,6 +60,7 @@ mod tests {
     assert_eq!(
       Ok(MatcherSuccess::Skip(0)),
       matcher.borrow().exec(
+        matcher.clone(),
         parser_context.clone(),
         parser_context.borrow().scope.clone(),
       )
@@ -115,6 +116,7 @@ mod tests {
     assert_eq!(
       Ok(MatcherSuccess::Skip(6)),
       matcher.borrow().exec(
+        matcher.clone(),
         parser_context.clone(),
         parser_context.borrow().scope.clone(),
       )
@@ -130,6 +132,7 @@ mod tests {
     assert_eq!(
       Ok(MatcherSuccess::Skip(0)),
       matcher.borrow().exec(
+        matcher.clone(),
         parser_context.clone(),
         parser_context.borrow().scope.clone(),
       )

@@ -43,10 +43,8 @@ impl StorePattern {
       custom_name: true,
     })))
   }
-}
 
-impl Matcher for StorePattern {
-  fn exec(
+  fn _exec(
     &self,
     context: ParserContextRef,
     scope: ScopeContextRef,
@@ -54,7 +52,9 @@ impl Matcher for StorePattern {
     match &self.pattern {
       StorePatternType::Matcher(matcher) => {
         let sub_context = context.borrow().clone_with_name(self.get_name());
-        let result = matcher.borrow().exec(sub_context.clone(), scope.clone());
+        let result = matcher
+          .borrow()
+          .exec(matcher.clone(), sub_context.clone(), scope.clone());
 
         match result {
           Ok(MatcherSuccess::Token(ref token)) => {
@@ -75,6 +75,21 @@ impl Matcher for StorePattern {
         Ok(MatcherSuccess::Skip(0))
       }
     }
+  }
+}
+
+impl Matcher for StorePattern {
+  fn exec(
+    &self,
+    this_matcher: MatcherRef,
+    context: ParserContextRef,
+    scope: ScopeContextRef,
+  ) -> Result<MatcherSuccess, MatcherFailure> {
+    self.before_exec(this_matcher.clone(), context.clone(), scope.clone());
+    let result = self._exec(context.clone(), scope.clone());
+    self.after_exec(this_matcher.clone(), context.clone(), scope.clone());
+
+    result
   }
 
   fn is_consuming(&self) -> bool {

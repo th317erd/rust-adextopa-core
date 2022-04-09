@@ -12,15 +12,28 @@ impl NullPattern {
   pub fn new() -> MatcherRef {
     Rc::new(RefCell::new(Box::new(NullPattern {})))
   }
-}
 
-impl Matcher for NullPattern {
-  fn exec(
+  fn _exec(
     &self,
     _: ParserContextRef,
     _: ScopeContextRef,
   ) -> Result<MatcherSuccess, MatcherFailure> {
     Ok(MatcherSuccess::Skip(0))
+  }
+}
+
+impl Matcher for NullPattern {
+  fn exec(
+    &self,
+    this_matcher: MatcherRef,
+    context: ParserContextRef,
+    scope: ScopeContextRef,
+  ) -> Result<MatcherSuccess, MatcherFailure> {
+    self.before_exec(this_matcher.clone(), context.clone(), scope.clone());
+    let result = self._exec(context.clone(), scope.clone());
+    self.after_exec(this_matcher.clone(), context.clone(), scope.clone());
+
+    result
   }
 
   fn is_consuming(&self) -> bool {
@@ -32,7 +45,7 @@ impl Matcher for NullPattern {
   }
 
   fn set_name(&mut self, _: &str) {
-    panic!("Can not set `name` on a `Null` matcher");
+    // panic!("Can not set `name` on a `Null` matcher");
   }
 
   fn get_children(&self) -> Option<Vec<MatcherRef>> {
@@ -65,6 +78,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Null!();
     let result = matcher.borrow().exec(
+      matcher.clone(),
       parser_context.clone(),
       parser_context.borrow().scope.clone(),
     );

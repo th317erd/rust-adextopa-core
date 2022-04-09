@@ -3,6 +3,7 @@ use std::rc::Rc;
 
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
+use crate::scope::VariableType;
 use crate::scope_context::ScopeContextRef;
 
 #[derive(Debug)]
@@ -16,16 +17,37 @@ impl RegisterPattern {
       patterns: Vec::new(),
     })))
   }
+
+  fn _exec(
+    &self,
+    _: ParserContextRef,
+    scope: ScopeContextRef,
+  ) -> Result<MatcherSuccess, MatcherFailure> {
+    let mut scope_mut = scope.borrow_mut();
+    for pattern in &self.patterns {
+      scope_mut.set(
+        pattern.borrow().get_name(),
+        VariableType::Matcher(pattern.clone()),
+      );
+    }
+
+    // Always skip... as this is a "no-op" pattern
+    Ok(MatcherSuccess::Skip(0))
+  }
 }
 
 impl Matcher for RegisterPattern {
   fn exec(
     &self,
-    _: ParserContextRef,
-    _: ScopeContextRef,
+    this_matcher: MatcherRef,
+    context: ParserContextRef,
+    scope: ScopeContextRef,
   ) -> Result<MatcherSuccess, MatcherFailure> {
-    // Always skip... as this is a "no-op" pattern
-    Ok(MatcherSuccess::Skip(0))
+    self.before_exec(this_matcher.clone(), context.clone(), scope.clone());
+    let result = self._exec(context.clone(), scope.clone());
+    self.after_exec(this_matcher.clone(), context.clone(), scope.clone());
+
+    result
   }
 
   fn is_consuming(&self) -> bool {
@@ -37,7 +59,7 @@ impl Matcher for RegisterPattern {
   }
 
   fn set_name(&mut self, _: &str) {
-    panic!("Can not set `name` on a `Register` matcher");
+    // panic!("Can not set `name` on a `Register` matcher");
   }
 
   fn get_children(&self) -> Option<Vec<MatcherRef>> {

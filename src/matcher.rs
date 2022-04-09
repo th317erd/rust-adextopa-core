@@ -1,5 +1,6 @@
 use super::token::TokenRef;
 use crate::parser_context::ParserContextRef;
+use crate::scope::VariableType;
 use crate::scope_context::ScopeContextRef;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -30,8 +31,19 @@ impl std::fmt::Debug for dyn Matcher {
 }
 
 pub trait Matcher {
+  fn before_exec(&self, this_matcher: MatcherRef, _: ParserContextRef, scope: ScopeContextRef) {
+    if self.has_custom_name() {
+      scope
+        .borrow_mut()
+        .set(self.get_name(), VariableType::Matcher(this_matcher.clone()));
+    }
+  }
+
+  fn after_exec(&self, _: MatcherRef, _: ParserContextRef, _: ScopeContextRef) {}
+
   fn exec(
     &self,
+    this_matcher: MatcherRef,
     context: ParserContextRef,
     scope: ScopeContextRef,
   ) -> Result<MatcherSuccess, MatcherFailure>;

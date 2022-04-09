@@ -16,66 +16,8 @@ impl DiscardPattern {
   pub fn new(matcher: MatcherRef) -> MatcherRef {
     Rc::new(RefCell::new(Box::new(Self { matcher })))
   }
-}
 
-fn collect_errors(error_token: TokenRef, walk_token: TokenRef) {
-  let is_error = walk_token.borrow().flags_enabled(crate::token::IS_ERROR);
-
-  if is_error {
-    let mut error_token = error_token.borrow_mut();
-    error_token.get_children_mut().push(walk_token.clone());
-
-    let walk_token = walk_token.borrow();
-    let walk_token_range = walk_token.get_matched_range();
-    let error_token_range = error_token.get_matched_range();
-    let mut new_start = error_token_range.start;
-    let mut new_end = error_token_range.end;
-
-    if new_start > walk_token_range.start {
-      new_start = walk_token_range.start;
-    }
-
-    if new_end < walk_token_range.end {
-      new_end = walk_token_range.end;
-    }
-
-    if new_start != error_token_range.start || new_end != error_token_range.end {
-      let new_source_range = SourceRange::new(new_start, new_end);
-      error_token.set_matched_range(new_source_range);
-    }
-  }
-
-  {
-    let walk_token = walk_token.borrow();
-    let children = walk_token.get_children();
-    for child in children {
-      collect_errors(error_token.clone(), child.clone());
-    }
-  }
-}
-
-fn skip_token(context: ParserContextRef, start_offset: usize, token: TokenRef) -> MatcherSuccess {
-  let end_offset = token.borrow().get_matched_range().end;
-
-  // Check to see if any errors are in the result
-  // If there are, continue to proxy them upstream
-  let error_token = StandardToken::new(
-    &context.borrow().parser,
-    "Error".to_string(),
-    SourceRange::new(start_offset, end_offset),
-  );
-  collect_errors(error_token.clone(), token.clone());
-
-  if error_token.borrow().get_children().len() > 0 {
-    return MatcherSuccess::Token(error_token);
-  }
-
-  let offset: isize = end_offset as isize - start_offset as isize;
-  MatcherSuccess::Skip(offset)
-}
-
-impl Matcher for DiscardPattern {
-  fn exec(
+  fn _exec(
     &self,
     context: ParserContextRef,
     scope: ScopeContextRef,
@@ -87,7 +29,7 @@ impl Matcher for DiscardPattern {
     match self
       .matcher
       .borrow()
-      .exec(sub_context.clone(), scope.clone())
+      .exec(self.matcher.clone(), sub_context.clone(), scope.clone())
     {
       Ok(success) => match success {
         MatcherSuccess::Token(token) => {
@@ -152,13 +94,85 @@ impl Matcher for DiscardPattern {
       }
     }
   }
+}
+
+fn collect_errors(error_token: TokenRef, walk_token: TokenRef) {
+  let is_error = walk_token.borrow().flags_enabled(crate::token::IS_ERROR);
+
+  if is_error {
+    let mut error_token = error_token.borrow_mut();
+    error_token.get_children_mut().push(walk_token.clone());
+
+    let walk_token = walk_token.borrow();
+    let walk_token_range = walk_token.get_matched_range();
+    let error_token_range = error_token.get_matched_range();
+    let mut new_start = error_token_range.start;
+    let mut new_end = error_token_range.end;
+
+    if new_start > walk_token_range.start {
+      new_start = walk_token_range.start;
+    }
+
+    if new_end < walk_token_range.end {
+      new_end = walk_token_range.end;
+    }
+
+    if new_start != error_token_range.start || new_end != error_token_range.end {
+      let new_source_range = SourceRange::new(new_start, new_end);
+      error_token.set_matched_range(new_source_range);
+    }
+  }
+
+  {
+    let walk_token = walk_token.borrow();
+    let children = walk_token.get_children();
+    for child in children {
+      collect_errors(error_token.clone(), child.clone());
+    }
+  }
+}
+
+fn skip_token(context: ParserContextRef, start_offset: usize, token: TokenRef) -> MatcherSuccess {
+  let end_offset = token.borrow().get_matched_range().end;
+
+  // Check to see if any errors are in the result
+  // If there are, continue to proxy them upstream
+  let error_token = StandardToken::new(
+    &context.borrow().parser,
+    "Error".to_string(),
+    SourceRange::new(start_offset, end_offset),
+  );
+  collect_errors(error_token.clone(), token.clone());
+
+  if error_token.borrow().get_children().len() > 0 {
+    return MatcherSuccess::Token(error_token);
+  }
+
+  let offset: isize = end_offset as isize - start_offset as isize;
+  MatcherSuccess::Skip(offset)
+}
+
+impl Matcher for DiscardPattern {
+  fn exec(
+    &self,
+    this_matcher: MatcherRef,
+    context: ParserContextRef,
+    scope: ScopeContextRef,
+  ) -> Result<MatcherSuccess, MatcherFailure> {
+    self.before_exec(this_matcher.clone(), context.clone(), scope.clone());
+    let result = self._exec(context.clone(), scope.clone());
+    self.after_exec(this_matcher.clone(), context.clone(), scope.clone());
+
+    result
+  }
 
   fn get_name(&self) -> &str {
     "Discard"
   }
 
-  fn set_name(&mut self, _: &str) {
-    panic!("Can not set `name` on a `Discard` matcher");
+  fn set_name(&mut self, name: &str) {
+    // panic!("Can not set `name` on a `Discard` matcher");
+    self.matcher.borrow_mut().set_name(name);
   }
 
   fn set_child(&mut self, index: usize, matcher: MatcherRef) {
@@ -208,6 +222,7 @@ mod tests {
     assert_eq!(
       Ok(MatcherSuccess::Skip(7)),
       matcher.borrow().exec(
+        matcher.clone(),
         parser_context.clone(),
         parser_context.borrow().scope.clone(),
       )

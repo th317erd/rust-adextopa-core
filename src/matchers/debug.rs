@@ -27,10 +27,8 @@ impl DebugPattern {
       debug_mode,
     })))
   }
-}
 
-impl Matcher for DebugPattern {
-  fn exec(
+  fn _exec(
     &self,
     context: ParserContextRef,
     scope: ScopeContextRef,
@@ -47,8 +45,11 @@ impl Matcher for DebugPattern {
         let end_offset = sub_context.borrow().offset.end;
         let debug_mode_level = sub_context.borrow().debug_mode_level();
 
-        let matcher = RefCell::borrow(matcher);
-        let result = matcher.exec(sub_context, scope.clone());
+        let result = matcher
+          .borrow()
+          .exec(matcher.clone(), sub_context, scope.clone());
+
+        let matcher = matcher.borrow();
 
         if debug_mode_level > 2 {
           print!("{{Debug}} ");
@@ -84,13 +85,32 @@ impl Matcher for DebugPattern {
       }
     }
   }
+}
+
+impl Matcher for DebugPattern {
+  fn exec(
+    &self,
+    this_matcher: MatcherRef,
+    context: ParserContextRef,
+    scope: ScopeContextRef,
+  ) -> Result<MatcherSuccess, MatcherFailure> {
+    self.before_exec(this_matcher.clone(), context.clone(), scope.clone());
+    let result = self._exec(context.clone(), scope.clone());
+    self.after_exec(this_matcher.clone(), context.clone(), scope.clone());
+
+    result
+  }
 
   fn get_name(&self) -> &str {
     "Debug"
   }
 
-  fn set_name(&mut self, _: &str) {
-    panic!("Can not set `name` on a `Debug` matcher");
+  fn set_name(&mut self, name: &str) {
+    // panic!("Can not set `name` on a `Debug` matcher");
+    match self.matcher {
+      Some(ref matcher) => matcher.borrow_mut().set_name(name),
+      None => {}
+    };
   }
 
   fn set_child(&mut self, index: usize, matcher: MatcherRef) {

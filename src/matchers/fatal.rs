@@ -16,15 +16,28 @@ impl FatalPattern {
       message: message.to_string(),
     })))
   }
-}
 
-impl Matcher for FatalPattern {
-  fn exec(
+  fn _exec(
     &self,
     _: ParserContextRef,
     _: ScopeContextRef,
   ) -> Result<MatcherSuccess, MatcherFailure> {
     Err(MatcherFailure::Error(self.message.to_string()))
+  }
+}
+
+impl Matcher for FatalPattern {
+  fn exec(
+    &self,
+    this_matcher: MatcherRef,
+    context: ParserContextRef,
+    scope: ScopeContextRef,
+  ) -> Result<MatcherSuccess, MatcherFailure> {
+    self.before_exec(this_matcher.clone(), context.clone(), scope.clone());
+    let result = self._exec(context.clone(), scope.clone());
+    self.after_exec(this_matcher.clone(), context.clone(), scope.clone());
+
+    result
   }
 
   fn get_name(&self) -> &str {
@@ -32,7 +45,7 @@ impl Matcher for FatalPattern {
   }
 
   fn set_name(&mut self, _: &str) {
-    panic!("Can not set `name` on a `Fatal` matcher");
+    // panic!("Can not set `name` on a `Fatal` matcher");
   }
 
   fn get_children(&self) -> Option<Vec<MatcherRef>> {

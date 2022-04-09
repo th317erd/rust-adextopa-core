@@ -7,7 +7,7 @@ use crate::{
   token::{TokenRef, IS_ERROR},
 };
 use regex::Regex;
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 pub type ParserContextRef = Rc<RefCell<ParserContext>>;
 
@@ -136,40 +136,66 @@ impl ParserContext {
     parser.source[self.offset.start..end_offset].to_string()
   }
 
-  pub fn capture_matcher_references(&self, matcher: MatcherRef) {
-    let m = matcher.borrow();
+  // pub fn capture_matcher_references(&self, matcher: MatcherRef) {
+  //   let m = matcher.borrow();
 
-    if m.has_custom_name() {
-      let name = m.get_name();
+  //   if m.has_custom_name() {
+  //     let name = m.get_name();
 
-      if self.debug_mode > 1 {
-        println!("Registering matcher `{}`", name);
-      }
+  //     if self.debug_mode > 1 {
+  //       println!("Registering matcher `{}`", name);
+  //     }
+
+  //     self
+  //       .scope
+  //       .borrow_mut()
+  //       .set(name, VariableType::Matcher(matcher.clone()));
+  //   }
+
+  //   match m.get_children() {
+  //     Some(children) => {
+  //       for child in children {
+  //         self.capture_matcher_references(child.clone());
+  //       }
+  //     }
+  //     None => {}
+  //   }
+  // }
+
+  pub fn register_matchers(&self, matchers: Vec<MatcherRef>) {
+    for matcher in matchers {
+      let _matcher = matcher.borrow();
+      let name = _matcher.get_name();
 
       self
         .scope
         .borrow_mut()
         .set(name, VariableType::Matcher(matcher.clone()));
     }
+  }
 
-    match m.get_children() {
-      Some(children) => {
-        for child in children {
-          self.capture_matcher_references(child.clone());
-        }
-      }
-      None => {}
+  pub fn register_matchers_with_names(&self, matchers: HashMap<&str, MatcherRef>) {
+    for (name, matcher) in matchers {
+      let _matcher = matcher.borrow();
+
+      self
+        .scope
+        .borrow_mut()
+        .set(name, VariableType::Matcher(matcher.clone()));
     }
   }
 
-  pub fn register_matchers(&self, matchers: Vec<MatcherRef>) {
-    for matcher in matchers {
-      self.capture_matcher_references(matcher.clone());
-    }
+  pub fn register_matcher_with_name(&self, name: &str, matcher: MatcherRef) {
+    self
+      .scope
+      .borrow_mut()
+      .set(name, VariableType::Matcher(matcher.clone()));
   }
 
   pub fn register_matcher(&self, matcher: MatcherRef) {
-    self.capture_matcher_references(matcher.clone());
+    let _matcher = matcher.borrow();
+    let name = _matcher.get_name();
+    self.register_matcher_with_name(name, matcher.clone());
   }
 
   pub fn get_registered_matcher(&self, name: &str) -> Option<MatcherRef> {
@@ -226,11 +252,14 @@ impl ParserContext {
     context: ParserContextRef,
     matcher: MatcherRef,
   ) -> Result<TokenRef, MatcherFailure> {
-    context.borrow().capture_matcher_references(matcher.clone());
+    //context.borrow().capture_matcher_references(matcher.clone());
 
     let scope = context.borrow().scope.clone();
 
-    match matcher.borrow().exec(context.clone(), scope) {
+    match matcher
+      .borrow()
+      .exec(matcher.clone(), context.clone(), scope)
+    {
       Ok(success) => match success {
         MatcherSuccess::Token(ref token) => {
           Self::collect_errors(token.clone(), token.clone(), true);

@@ -54,14 +54,8 @@ where
       custom_name: true,
     })))
   }
-}
 
-impl<T> Matcher for EqualsPattern<T>
-where
-  T: Fetchable,
-  T: std::fmt::Debug,
-{
-  fn exec(
+  fn _exec(
     &self,
     context: ParserContextRef,
     scope: ScopeContextRef,
@@ -124,6 +118,26 @@ where
       )),
     }
   }
+}
+
+impl<T> Matcher for EqualsPattern<T>
+where
+  T: Fetchable,
+  T: 'static,
+  T: std::fmt::Debug,
+{
+  fn exec(
+    &self,
+    this_matcher: MatcherRef,
+    context: ParserContextRef,
+    scope: ScopeContextRef,
+  ) -> Result<MatcherSuccess, MatcherFailure> {
+    self.before_exec(this_matcher.clone(), context.clone(), scope.clone());
+    let result = self._exec(context.clone(), scope.clone());
+    self.after_exec(this_matcher.clone(), context.clone(), scope.clone());
+
+    result
+  }
 
   fn has_custom_name(&self) -> bool {
     self.custom_name
@@ -165,9 +179,7 @@ macro_rules! Equals {
 #[cfg(test)]
 mod tests {
   use crate::{
-    matcher::{MatcherFailure},
-    parser::Parser,
-    parser_context::ParserContext,
+    matcher::MatcherFailure, parser::Parser, parser_context::ParserContext,
     source_range::SourceRange,
   };
 

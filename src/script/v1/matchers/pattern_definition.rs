@@ -1,45 +1,59 @@
 #[macro_export]
 macro_rules! ScriptPatternDefinition {
   () => {
-    $crate::Program!("PatternDefinition";
-      // ? Optional, and ! Not modifiers come first, outside
-      // and also inside. The purpose is to inform the parser
-      // if they go outside of the loop, or if they go inside
-      // the loop. Both at the same time (inside and outside)
-      // is valid syntax.
+    $crate::Map!(
+      $crate::Program!("PatternDefinition";
+        // ? Optional, and ! Not modifiers come first, outside
+        // and also inside. The purpose is to inform the parser
+        // if they go outside of the loop, or if they go inside
+        // the loop. Both at the same time (inside and outside)
+        // is valid syntax.
 
-      // Check for both "optional" and "not",
-      // which can not both be used at the same time
-      $crate::Assert!(
-        $crate::Matches!(r"\?!|!\?"),
-        "Can not use ? and ! at the same time in this context. Use one or the other, not both."
+        // Check for both "optional" and "not",
+        // which can not both be used at the same time
+        $crate::Assert!(
+          $crate::Matches!(r"\?!|!\?"),
+          "Can not use ? and ! at the same time in this context. Use one or the other, not both."
+        ),
+        $crate::Optional!($crate::Switch!(
+          $crate::Equals!("OuterOptionalModifier"; "?"),
+          $crate::Equals!("OuterNotModifier"; "!"),
+        )),
+        $crate::Discard!($crate::Equals!("<")),
+        // Check for both "optional" and "not",
+        // which can not both be used at the same time
+        $crate::Assert!(
+          $crate::Matches!(r"\?!|!\?"),
+          "Can not use ? and ! at the same time in this context. Use one or the other, not both."
+        ),
+        $crate::Optional!($crate::Switch!(
+          $crate::Equals!("InnerOptionalModifier"; "?"),
+          $crate::Equals!("InnerNotModifier"; "!"),
+        )),
+        $crate::ScriptWSN0!(?),
+        $crate::ScriptMatcher!(),
+        $crate::ScriptWSN0!(?),
+        $crate::ScriptAttributes!(),
+        $crate::Discard!($crate::Equals!(">")),
+        $crate::Optional!($crate::ScriptRepeatSpecifier!()),
       ),
-      $crate::Optional!($crate::Switch!(
-        $crate::Equals!("OuterOptionalModifier"; "?"),
-        $crate::Equals!("OuterNotModifier"; "!"),
-      )),
-      $crate::Discard!($crate::Equals!("<")),
-      // Check for both "optional" and "not",
-      // which can not both be used at the same time
-      $crate::Assert!(
-        $crate::Matches!(r"\?!|!\?"),
-        "Can not use ? and ! at the same time in this context. Use one or the other, not both."
-      ),
-      $crate::Optional!($crate::Switch!(
-        $crate::Equals!("InnerOptionalModifier"; "?"),
-        $crate::Equals!("InnerNotModifier"; "!"),
-      )),
-      $crate::ScriptWSN0!(?),
-      $crate::ScriptMatcher!(),
-      $crate::ScriptWSN0!(?),
-      $crate::Optional!(
-        $crate::Loop!("Attributes";
-          $crate::ScriptAttribute!(),
-          $crate::ScriptWSN0!(?),
-        )
-      ),
-      $crate::Discard!($crate::Equals!(">")),
-      $crate::Optional!($crate::ScriptRepeatSpecifier!()),
+      |token| {
+        let mut token = token.borrow_mut();
+
+        if let Some(attribute_token) = token.find_child("Attributes") {
+          for attribute in attribute_token.borrow().get_children() {
+            let _attribute = attribute.borrow();
+            let children = _attribute.get_children();
+
+            let name = &children[0];
+            let value = &children[1];
+
+            token.set_attribute(name.borrow().get_value(), value.borrow().get_value());
+          }
+        }
+
+        None
+      }
     )
   };
 }
@@ -47,7 +61,7 @@ macro_rules! ScriptPatternDefinition {
 #[cfg(test)]
 mod tests {
   use crate::{
-    matcher::{MatcherFailure},
+    matcher::MatcherFailure,
     parser::Parser,
     parser_context::{ParserContext, ParserContextRef},
     source_range::SourceRange,
@@ -89,7 +103,7 @@ mod tests {
 
       let second = token.get_children()[1].borrow();
       assert_eq!(second.get_name(), "RegexMatcher");
-      assert_eq!(*second.get_captured_range(), SourceRange::new(3, 9));
+      assert_eq!(*second.get_captured_range(), SourceRange::new(2, 9));
       assert_eq!(*second.get_matched_range(), SourceRange::new(2, 9));
       assert_eq!(second.get_value(), "test");
       assert_eq!(second.get_matched_value(), "/test/i");
@@ -130,7 +144,7 @@ mod tests {
 
       let second = token.get_children()[1].borrow();
       assert_eq!(second.get_name(), "RegexMatcher");
-      assert_eq!(*second.get_captured_range(), SourceRange::new(3, 9));
+      assert_eq!(*second.get_captured_range(), SourceRange::new(2, 9));
       assert_eq!(*second.get_matched_range(), SourceRange::new(2, 9));
       assert_eq!(second.get_value(), "test");
       assert_eq!(second.get_matched_value(), "/test/i");
@@ -156,6 +170,9 @@ mod tests {
       assert_eq!(*attr2.get_matched_range(), SourceRange::new(23, 37));
       assert_eq!(attr2.get_value(), "attr2 = 'derp");
       assert_eq!(attr2.get_matched_value(), "attr2 = 'derp'");
+
+      assert_eq!(token.get_attribute("attr1"), Some(&"test".to_string()));
+      assert_eq!(token.get_attribute("attr2"), Some(&"derp".to_string()));
     } else {
       unreachable!("Test failed!");
     };
@@ -263,6 +280,37 @@ mod tests {
       assert_eq!(*first.get_matched_range(), SourceRange::new(2, 13));
       assert_eq!(first.get_value(), "[',']','");
       assert_eq!(first.get_matched_value(), "%'[',']',''");
+    } else {
+      unreachable!("Test failed!");
+    };
+  }
+
+  #[test]
+  fn it_works5() {
+    let parser = Parser::new(r"</\s+/>");
+    let parser_context = ParserContext::new(&parser, "Test");
+
+    register_matchers(&parser_context);
+
+    let matcher = ScriptPatternDefinition!();
+
+    let result = ParserContext::tokenize(parser_context, matcher);
+
+    if let Ok(token) = result {
+      let token = token.borrow();
+      assert_eq!(token.get_name(), "PatternDefinition");
+      assert_eq!(*token.get_captured_range(), SourceRange::new(1, 6));
+      assert_eq!(*token.get_matched_range(), SourceRange::new(0, 7));
+      assert_eq!(token.get_value(), r"/\s+/");
+      assert_eq!(token.get_matched_value(), r"</\s+/>");
+      assert_eq!(token.get_children().len(), 1);
+
+      let first = token.get_children()[0].borrow();
+      assert_eq!(first.get_name(), "RegexMatcher");
+      assert_eq!(*first.get_captured_range(), SourceRange::new(1, 6));
+      assert_eq!(*first.get_matched_range(), SourceRange::new(1, 6));
+      assert_eq!(first.get_value(), r"\s+");
+      assert_eq!(first.get_matched_value(), r"/\s+/");
     } else {
       unreachable!("Test failed!");
     };

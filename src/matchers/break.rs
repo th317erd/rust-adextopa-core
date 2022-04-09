@@ -16,10 +16,8 @@ impl BreakPattern {
       loop_name: loop_name.to_string(),
     })))
   }
-}
 
-impl Matcher for BreakPattern {
-  fn exec(
+  fn _exec(
     &self,
     _: ParserContextRef,
     _: ScopeContextRef,
@@ -29,13 +27,28 @@ impl Matcher for BreakPattern {
       Box::new(MatcherSuccess::None),
     )))
   }
+}
+
+impl Matcher for BreakPattern {
+  fn exec(
+    &self,
+    this_matcher: MatcherRef,
+    context: ParserContextRef,
+    scope: ScopeContextRef,
+  ) -> Result<MatcherSuccess, MatcherFailure> {
+    self.before_exec(this_matcher.clone(), context.clone(), scope.clone());
+    let result = self._exec(context.clone(), scope.clone());
+    self.after_exec(this_matcher.clone(), context.clone(), scope.clone());
+
+    result
+  }
 
   fn get_name(&self) -> &str {
     "Break"
   }
 
   fn set_name(&mut self, _: &str) {
-    panic!("Can not set `name` on a `Break` matcher");
+    // panic!("Can not set `name` on a `Break` matcher");
   }
 
   fn get_children(&self) -> Option<Vec<MatcherRef>> {
@@ -72,6 +85,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Break!("Test");
     let result = matcher.borrow().exec(
+      matcher.clone(),
       parser_context.clone(),
       parser_context.borrow().scope.clone(),
     );

@@ -109,15 +109,28 @@ impl FetchPattern {
       name: name.to_string(),
     }
   }
-}
 
-impl Matcher for FetchPattern {
-  fn exec(
+  fn _exec(
     &self,
     _: ParserContextRef,
     _: ScopeContextRef,
   ) -> Result<MatcherSuccess, MatcherFailure> {
     Ok(MatcherSuccess::Skip(0))
+  }
+}
+
+impl Matcher for FetchPattern {
+  fn exec(
+    &self,
+    this_matcher: MatcherRef,
+    context: ParserContextRef,
+    scope: ScopeContextRef,
+  ) -> Result<MatcherSuccess, MatcherFailure> {
+    self.before_exec(this_matcher.clone(), context.clone(), scope.clone());
+    let result = self._exec(context.clone(), scope.clone());
+    self.after_exec(this_matcher.clone(), context.clone(), scope.clone());
+
+    result
   }
 
   fn is_consuming(&self) -> bool {

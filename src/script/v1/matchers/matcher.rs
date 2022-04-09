@@ -15,7 +15,7 @@ macro_rules! ScriptMatcher {
 #[cfg(test)]
 mod tests {
   use crate::{
-    matcher::{MatcherFailure},
+    matcher::MatcherFailure,
     parser::Parser,
     parser_context::{ParserContext, ParserContextRef},
     source_range::SourceRange,
@@ -64,7 +64,7 @@ mod tests {
 
       let third = token.get_children()[2].borrow();
       assert_eq!(third.get_name(), "RegexMatcher");
-      assert_eq!(*third.get_captured_range(), SourceRange::new(19, 25));
+      assert_eq!(*third.get_captured_range(), SourceRange::new(18, 25));
       assert_eq!(*third.get_matched_range(), SourceRange::new(18, 25));
       assert_eq!(third.get_value(), "test");
       assert_eq!(third.get_matched_value(), "/test/i");
@@ -98,6 +98,29 @@ mod tests {
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 7));
       assert_eq!(token.get_value(), "test");
       assert_eq!(token.get_matched_value(), "='test'");
+    } else {
+      unreachable!("Test failed!");
+    };
+  }
+
+  #[test]
+  fn it_works3() {
+    let parser = Parser::new(r"/\s+/");
+    let parser_context = ParserContext::new(&parser, "Test");
+
+    register_matchers(&parser_context);
+
+    let matcher = ScriptMatcher!();
+
+    let result = ParserContext::tokenize(parser_context, matcher);
+
+    if let Ok(token) = result {
+      let token = token.borrow();
+      assert_eq!(token.get_name(), "RegexMatcher");
+      assert_eq!(*token.get_captured_range(), SourceRange::new(0, 5));
+      assert_eq!(*token.get_matched_range(), SourceRange::new(0, 5));
+      assert_eq!(token.get_value(), r"\s+");
+      assert_eq!(token.get_matched_value(), r"/\s+/");
     } else {
       unreachable!("Test failed!");
     };

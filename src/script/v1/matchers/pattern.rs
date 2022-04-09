@@ -19,7 +19,7 @@ macro_rules! ScriptPattern {
 #[cfg(test)]
 mod tests {
   use crate::{
-    matcher::{MatcherFailure},
+    matcher::MatcherFailure,
     parser::Parser,
     parser_context::{ParserContext, ParserContextRef},
     source_range::SourceRange,
@@ -61,7 +61,7 @@ mod tests {
 
       let second = token.get_children()[1].borrow();
       assert_eq!(second.get_name(), "RegexMatcher");
-      assert_eq!(*second.get_captured_range(), SourceRange::new(3, 9));
+      assert_eq!(*second.get_captured_range(), SourceRange::new(2, 9));
       assert_eq!(*second.get_matched_range(), SourceRange::new(2, 9));
       assert_eq!(second.get_value(), "test");
       assert_eq!(second.get_matched_value(), "/test/i");

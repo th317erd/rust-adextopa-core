@@ -63,8 +63,8 @@ impl std::fmt::Debug for ProgramPattern {
 }
 
 impl ProgramPattern {
-  pub fn new_blank_program(stop_on_first: MatchAction) -> MatcherRef {
-    let name = match stop_on_first {
+  pub fn new_blank_program(on_first_match: MatchAction) -> MatcherRef {
+    let name = match on_first_match {
       MatchAction::Stop => "Switch",
       MatchAction::Continue => "Program",
     };
@@ -73,7 +73,7 @@ impl ProgramPattern {
       patterns: Vec::new(),
       iterate_range: None,
       name: name.to_string(),
-      on_first_match: stop_on_first,
+      on_first_match,
       custom_name: false,
     })))
   }
@@ -91,8 +91,8 @@ impl ProgramPattern {
     })))
   }
 
-  pub fn new_program(patterns: Vec<MatcherRef>, stop_on_first: MatchAction) -> MatcherRef {
-    let name = match stop_on_first {
+  pub fn new_program(patterns: Vec<MatcherRef>, on_first_match: MatchAction) -> MatcherRef {
+    let name = match on_first_match {
       MatchAction::Stop => "Switch",
       MatchAction::Continue => "Program",
     };
@@ -101,7 +101,7 @@ impl ProgramPattern {
       patterns,
       iterate_range: None,
       name: name.to_string(),
-      on_first_match: stop_on_first,
+      on_first_match,
       custom_name: false,
     })))
   }
@@ -122,13 +122,13 @@ impl ProgramPattern {
   pub fn new_program_with_name(
     patterns: Vec<MatcherRef>,
     name: String,
-    stop_on_first: MatchAction,
+    on_first_match: MatchAction,
   ) -> MatcherRef {
     Rc::new(RefCell::new(Box::new(Self {
       patterns,
       name,
       iterate_range: None,
-      on_first_match: stop_on_first,
+      on_first_match,
       custom_name: true,
     })))
   }
@@ -148,6 +148,420 @@ impl ProgramPattern {
       on_first_match: MatchAction::Continue,
       custom_name: true,
     })))
+  }
+
+  fn _exec(
+    &self,
+    context: ParserContextRef,
+    scope: ScopeContextRef,
+  ) -> Result<MatcherSuccess, MatcherFailure> {
+    let context = context.borrow();
+    let sub_context = context.clone_with_name(self.get_name());
+    let start_offset = sub_context.borrow().offset.start;
+    let program_token = StandardToken::new(
+      &sub_context.borrow().parser,
+      self.name.to_string(),
+      SourceRange::new_blank(),
+    );
+    let mut children = Vec::<TokenRef>::with_capacity(self.patterns.len());
+    let mut captured_range = SourceRange::new(usize::MAX, 0);
+    let mut matched_range = SourceRange::new(usize::MAX, 0);
+    let is_loop = match &self.iterate_range {
+      Some(_) => true,
+      None => false,
+    };
+    let iterate_range = match &self.iterate_range {
+      Some(range) => range.clone(),
+      None => (0..1),
+    };
+    let mut iteration_result: Option<MatcherSuccess>;
+    let mut loop_count = 0;
+
+    for _ in iterate_range {
+      iteration_result = None;
+
+      if sub_context.borrow().debug_mode_level() > 1 {
+        println!("{{{}/Iterating}}", program_token.borrow().get_name());
+      }
+
+      for pattern in &self.patterns {
+        let result = pattern.borrow().exec(
+          pattern.clone(),
+          std::rc::Rc::new(std::cell::RefCell::new(sub_context.borrow().clone())),
+          scope.clone(),
+        );
+
+        match result {
+          Ok(success) => match success {
+            MatcherSuccess::Token(token) => {
+              if token.borrow().should_discard() {
+                continue;
+              }
+
+              match self.on_first_match {
+                MatchAction::Stop => {
+                  if sub_context.borrow().debug_mode_level() > 1 {
+                    println!(
+                      "{{{}/Finalizing}}: First match success (Token)",
+                      program_token.borrow().get_name(),
+                    );
+                  }
+
+                  return Ok(MatcherSuccess::Token(token.clone()));
+                }
+                _ => {}
+              }
+
+              let is_consuming = pattern.borrow().is_consuming();
+
+              handle_token(
+                self,
+                &program_token,
+                &sub_context,
+                &mut children,
+                &mut captured_range,
+                &mut matched_range,
+                &token,
+                is_consuming,
+                is_consuming,
+              );
+            }
+            MatcherSuccess::ExtractChildren(token) => {
+              if token.borrow().should_discard() {
+                continue;
+              }
+
+              match self.on_first_match {
+                MatchAction::Stop => {
+                  if sub_context.borrow().debug_mode_level() > 1 {
+                    println!(
+                      "{{{}/Finalizing}}: First match success (ExtractChildren)",
+                      program_token.borrow().get_name(),
+                    );
+                  }
+
+                  return Ok(MatcherSuccess::ExtractChildren(token.clone()));
+                }
+                _ => {}
+              }
+
+              let is_consuming = pattern.borrow().is_consuming();
+
+              handle_extract_token(
+                self,
+                &program_token,
+                &sub_context,
+                &mut children,
+                &mut captured_range,
+                &mut matched_range,
+                &token,
+                is_consuming,
+              );
+            }
+            MatcherSuccess::Skip(amount) => {
+              if amount > 0 {
+                match self.on_first_match {
+                  MatchAction::Stop => {
+                    if sub_context.borrow().debug_mode_level() > 1 {
+                      println!(
+                        "{{{}/Finalizing}}: First match success (Skip)",
+                        program_token.borrow().get_name(),
+                      );
+                    }
+
+                    return Ok(MatcherSuccess::Skip(amount));
+                  }
+                  _ => {}
+                }
+              }
+
+              if pattern.borrow().is_consuming() {
+                handle_skip(
+                  self,
+                  &sub_context,
+                  &mut captured_range,
+                  &mut matched_range,
+                  start_offset,
+                  amount,
+                );
+              }
+
+              continue;
+            }
+            _ => {
+              iteration_result = Some(success);
+              break;
+            }
+          },
+          Err(failure) => {
+            let sub_context = sub_context.borrow();
+            if sub_context.is_debug_mode() {
+              if sub_context.debug_mode_level() > 1 {
+                print!("{{{}/Failure}} ", program_token.borrow().get_name());
+              }
+
+              println!(
+                "`{}` Failure! -->|{}|--> @[{}-{}]",
+                self.get_name(),
+                sub_context.debug_range(10),
+                sub_context.offset.start,
+                sub_context.offset.end
+              );
+            }
+
+            match failure {
+              MatcherFailure::Fail => match self.on_first_match {
+                MatchAction::Stop => {
+                  continue;
+                }
+                _ => {
+                  if is_loop {
+                    if sub_context.debug_mode_level() > 1 {
+                      println!(
+                        "{{{}/Finalizing}}: Failure",
+                        program_token.borrow().get_name()
+                      );
+                    }
+
+                    return finalize_program_token(
+                      program_token,
+                      children,
+                      captured_range,
+                      matched_range,
+                      &self.iterate_range,
+                      loop_count,
+                      false,
+                    );
+                  }
+
+                  return Err(MatcherFailure::Fail);
+                }
+              },
+              MatcherFailure::Error(error) => {
+                return Err(MatcherFailure::Error(error));
+              }
+            }
+          }
+        }
+      }
+
+      match iteration_result {
+        Some(action) => match action {
+          MatcherSuccess::Break((loop_name, data)) => {
+            match self.on_first_match {
+              MatchAction::Stop => {
+                if sub_context.borrow().debug_mode_level() > 1 {
+                  println!(
+                    "{{{}/Finalizing}}: First match success (Break)",
+                    program_token.borrow().get_name(),
+                  );
+                }
+
+                return Ok(MatcherSuccess::Break((loop_name, data)));
+              }
+              _ => {}
+            }
+
+            match &*data {
+              MatcherSuccess::Token(token) => {
+                handle_token(
+                  self,
+                  &program_token,
+                  &sub_context,
+                  &mut children,
+                  &mut captured_range,
+                  &mut matched_range,
+                  &token,
+                  false,
+                  true,
+                );
+
+                Box::new(MatcherSuccess::None)
+              }
+              MatcherSuccess::ExtractChildren(token) => {
+                handle_extract_token(
+                  self,
+                  &program_token,
+                  &sub_context,
+                  &mut children,
+                  &mut captured_range,
+                  &mut matched_range,
+                  &token,
+                  true,
+                );
+
+                Box::new(MatcherSuccess::None)
+              }
+              MatcherSuccess::Skip(amount) => {
+                handle_skip(
+                  self,
+                  &sub_context,
+                  &mut captured_range,
+                  &mut matched_range,
+                  start_offset,
+                  *amount,
+                );
+
+                Box::new(MatcherSuccess::None)
+              }
+              _ => data,
+            };
+
+            if is_loop && (loop_name == self.name || loop_name == "") {
+              if sub_context.borrow().debug_mode_level() > 1 {
+                println!(
+                  "{{{}/Finalizing}}: Consuming Break `{}`",
+                  program_token.borrow().get_name(),
+                  loop_name
+                );
+              }
+
+              // This is the loop that should break, so cease propagating the Break
+              return finalize_program_token(
+                program_token,
+                children,
+                captured_range,
+                matched_range,
+                &self.iterate_range,
+                loop_count,
+                false,
+              );
+            } else {
+              if sub_context.borrow().debug_mode_level() > 1 {
+                println!(
+                  "{{{}/Finalizing}}: Proxying Break `{}`",
+                  program_token.borrow().get_name(),
+                  loop_name
+                );
+              }
+
+              match finalize_program_token(
+                program_token,
+                children,
+                captured_range,
+                matched_range,
+                &self.iterate_range,
+                loop_count,
+                false,
+              ) {
+                Ok(final_token) => {
+                  return Ok(MatcherSuccess::Break((loop_name, Box::new(final_token))));
+                }
+                Err(error) => {
+                  return Err(error);
+                }
+              }
+            }
+          }
+          MatcherSuccess::Continue((loop_name, data)) => {
+            match self.on_first_match {
+              MatchAction::Stop => {
+                if sub_context.borrow().debug_mode_level() > 1 {
+                  println!(
+                    "{{{}/Finalizing}}: First match success (Continue)",
+                    program_token.borrow().get_name(),
+                  );
+                }
+
+                return Ok(MatcherSuccess::Break((loop_name, data)));
+              }
+              _ => {}
+            }
+
+            match &*data {
+              MatcherSuccess::Token(token) => {
+                handle_token(
+                  self,
+                  &program_token,
+                  &sub_context,
+                  &mut children,
+                  &mut captured_range,
+                  &mut matched_range,
+                  &token,
+                  false,
+                  true,
+                );
+
+                Box::new(MatcherSuccess::None)
+              }
+              MatcherSuccess::ExtractChildren(token) => {
+                handle_extract_token(
+                  self,
+                  &program_token,
+                  &sub_context,
+                  &mut children,
+                  &mut captured_range,
+                  &mut matched_range,
+                  &token,
+                  true,
+                );
+
+                Box::new(MatcherSuccess::None)
+              }
+              MatcherSuccess::Skip(amount) => {
+                handle_skip(
+                  self,
+                  &sub_context,
+                  &mut captured_range,
+                  &mut matched_range,
+                  start_offset,
+                  *amount,
+                );
+
+                Box::new(MatcherSuccess::None)
+              }
+              _ => data,
+            };
+
+            // This is not the correct Loop, or is a Program, so propagate Continue
+            if is_loop && (loop_name == self.name || loop_name == "") {
+            } else {
+              if sub_context.borrow().debug_mode_level() > 1 {
+                println!(
+                  "{{{}/Finalizing}}: Proxying Continue `{}`",
+                  program_token.borrow().get_name(),
+                  loop_name
+                );
+              }
+
+              return finalize_program_token(
+                program_token,
+                children,
+                captured_range,
+                matched_range,
+                &self.iterate_range,
+                loop_count,
+                false,
+              );
+            }
+          }
+          MatcherSuccess::Stop => {
+            break;
+          }
+          _ => unreachable!(),
+        },
+        None => {}
+      }
+
+      loop_count += 1;
+    }
+
+    if sub_context.borrow().debug_mode_level() > 1 {
+      println!(
+        "{{{}/Finalizing}}: Completed!",
+        program_token.borrow().get_name(),
+      );
+    }
+
+    finalize_program_token(
+      program_token,
+      children,
+      captured_range,
+      matched_range,
+      &self.iterate_range,
+      loop_count,
+      true,
+    )
   }
 }
 
@@ -451,358 +865,15 @@ fn handle_skip(
 impl Matcher for ProgramPattern {
   fn exec(
     &self,
+    this_matcher: MatcherRef,
     context: ParserContextRef,
     scope: ScopeContextRef,
   ) -> Result<MatcherSuccess, MatcherFailure> {
-    let context = context.borrow();
-    let sub_context = context.clone_with_name(self.get_name());
-    let start_offset = sub_context.borrow().offset.start;
-    let program_token = StandardToken::new(
-      &sub_context.borrow().parser,
-      self.name.to_string(),
-      SourceRange::new_blank(),
-    );
-    let mut children = Vec::<TokenRef>::with_capacity(self.patterns.len());
-    let mut captured_range = SourceRange::new(usize::MAX, 0);
-    let mut matched_range = SourceRange::new(usize::MAX, 0);
-    let is_loop = match &self.iterate_range {
-      Some(_) => true,
-      None => false,
-    };
-    let iterate_range = match &self.iterate_range {
-      Some(range) => range.clone(),
-      None => (0..1),
-    };
-    let mut iteration_result: Option<MatcherSuccess>;
-    let mut loop_count = 0;
+    self.before_exec(this_matcher.clone(), context.clone(), scope.clone());
+    let result = self._exec(context.clone(), scope.clone());
+    self.after_exec(this_matcher.clone(), context.clone(), scope.clone());
 
-    for _ in iterate_range {
-      iteration_result = None;
-
-      for pattern in &self.patterns {
-        let result = pattern.borrow().exec(
-          std::rc::Rc::new(std::cell::RefCell::new(sub_context.borrow().clone())),
-          scope.clone(),
-        );
-
-        match result {
-          Ok(success) => match success {
-            MatcherSuccess::Token(token) => {
-              if token.borrow().should_discard() {
-                continue;
-              }
-
-              match self.on_first_match {
-                MatchAction::Stop => {
-                  return Ok(MatcherSuccess::Token(token.clone()));
-                }
-                _ => {}
-              }
-
-              let is_consuming = pattern.borrow().is_consuming();
-
-              handle_token(
-                self,
-                &program_token,
-                &sub_context,
-                &mut children,
-                &mut captured_range,
-                &mut matched_range,
-                &token,
-                is_consuming,
-                is_consuming,
-              );
-            }
-            MatcherSuccess::ExtractChildren(token) => {
-              if token.borrow().should_discard() {
-                continue;
-              }
-
-              match self.on_first_match {
-                MatchAction::Stop => {
-                  return Ok(MatcherSuccess::ExtractChildren(token.clone()));
-                }
-                _ => {}
-              }
-
-              let is_consuming = pattern.borrow().is_consuming();
-
-              handle_extract_token(
-                self,
-                &program_token,
-                &sub_context,
-                &mut children,
-                &mut captured_range,
-                &mut matched_range,
-                &token,
-                is_consuming,
-              );
-            }
-            MatcherSuccess::Skip(amount) => {
-              if amount > 0 {
-                match self.on_first_match {
-                  MatchAction::Stop => {
-                    return Ok(MatcherSuccess::Skip(amount));
-                  }
-                  _ => {}
-                }
-              }
-
-              if pattern.borrow().is_consuming() {
-                handle_skip(
-                  self,
-                  &sub_context,
-                  &mut captured_range,
-                  &mut matched_range,
-                  start_offset,
-                  amount,
-                );
-              }
-
-              continue;
-            }
-            _ => {
-              iteration_result = Some(success);
-              break;
-            }
-          },
-          Err(failure) => {
-            let sub_context = sub_context.borrow();
-            if sub_context.is_debug_mode() {
-              if sub_context.debug_mode_level() > 1 {
-                print!("{{{}/Failure}} ", program_token.borrow().get_name());
-              }
-
-              println!(
-                "`{}` Failure! -->|{}|--> @[{}-{}]",
-                self.get_name(),
-                sub_context.debug_range(10),
-                sub_context.offset.start,
-                sub_context.offset.end
-              );
-            }
-
-            match failure {
-              MatcherFailure::Fail => match self.on_first_match {
-                MatchAction::Stop => {
-                  continue;
-                }
-                _ => {
-                  if is_loop {
-                    return finalize_program_token(
-                      program_token,
-                      children,
-                      captured_range,
-                      matched_range,
-                      &self.iterate_range,
-                      loop_count,
-                      false,
-                    );
-                  }
-
-                  return Err(MatcherFailure::Fail);
-                }
-              },
-              MatcherFailure::Error(error) => {
-                return Err(MatcherFailure::Error(error));
-              }
-            }
-          }
-        }
-      }
-
-      match iteration_result {
-        Some(action) => match action {
-          MatcherSuccess::Break((loop_name, data)) => {
-            if is_loop && (loop_name == self.name || loop_name == "") {
-              match &*data {
-                MatcherSuccess::Token(token) => {
-                  handle_token(
-                    self,
-                    &program_token,
-                    &sub_context,
-                    &mut children,
-                    &mut captured_range,
-                    &mut matched_range,
-                    &token,
-                    false,
-                    true,
-                  );
-
-                  Box::new(MatcherSuccess::None)
-                }
-                MatcherSuccess::ExtractChildren(token) => {
-                  handle_extract_token(
-                    self,
-                    &program_token,
-                    &sub_context,
-                    &mut children,
-                    &mut captured_range,
-                    &mut matched_range,
-                    &token,
-                    true,
-                  );
-
-                  Box::new(MatcherSuccess::None)
-                }
-                MatcherSuccess::Skip(amount) => {
-                  handle_skip(
-                    self,
-                    &sub_context,
-                    &mut captured_range,
-                    &mut matched_range,
-                    start_offset,
-                    *amount,
-                  );
-
-                  Box::new(MatcherSuccess::None)
-                }
-                _ => data,
-              };
-
-              // This is the loop that should break, so cease propagating the Break
-              return finalize_program_token(
-                program_token,
-                children,
-                captured_range,
-                matched_range,
-                &self.iterate_range,
-                loop_count,
-                false,
-              );
-            } else {
-              match &*data {
-                MatcherSuccess::Skip(amount) => {
-                  handle_skip(
-                    self,
-                    &sub_context,
-                    &mut captured_range,
-                    &mut matched_range,
-                    start_offset,
-                    *amount,
-                  );
-                }
-                _ => {}
-              }
-
-              match finalize_program_token(
-                program_token,
-                children,
-                captured_range,
-                matched_range,
-                &self.iterate_range,
-                loop_count,
-                false,
-              ) {
-                Ok(final_token) => {
-                  return Ok(MatcherSuccess::Break((loop_name, Box::new(final_token))));
-                }
-                Err(_) => {
-                  return Ok(MatcherSuccess::Break((loop_name, data)));
-                }
-              }
-            }
-          }
-          MatcherSuccess::Continue((loop_name, data)) => {
-            // This is not the correct Loop, or is a Program, so propagate Continue
-            if is_loop && (loop_name == self.name || loop_name == "") {
-              match &*data {
-                MatcherSuccess::Token(token) => {
-                  handle_token(
-                    self,
-                    &program_token,
-                    &sub_context,
-                    &mut children,
-                    &mut captured_range,
-                    &mut matched_range,
-                    &token,
-                    false,
-                    true,
-                  );
-
-                  Box::new(MatcherSuccess::None)
-                }
-                MatcherSuccess::ExtractChildren(token) => {
-                  handle_extract_token(
-                    self,
-                    &program_token,
-                    &sub_context,
-                    &mut children,
-                    &mut captured_range,
-                    &mut matched_range,
-                    &token,
-                    true,
-                  );
-
-                  Box::new(MatcherSuccess::None)
-                }
-                MatcherSuccess::Skip(amount) => {
-                  handle_skip(
-                    self,
-                    &sub_context,
-                    &mut captured_range,
-                    &mut matched_range,
-                    start_offset,
-                    *amount,
-                  );
-
-                  Box::new(MatcherSuccess::None)
-                }
-                _ => data,
-              };
-            } else {
-              match &*data {
-                MatcherSuccess::Skip(amount) => {
-                  handle_skip(
-                    self,
-                    &sub_context,
-                    &mut captured_range,
-                    &mut matched_range,
-                    start_offset,
-                    *amount,
-                  );
-                }
-                _ => {}
-              }
-
-              match finalize_program_token(
-                program_token,
-                children,
-                captured_range,
-                matched_range,
-                &self.iterate_range,
-                loop_count,
-                false,
-              ) {
-                Ok(final_token) => {
-                  return Ok(MatcherSuccess::Continue((loop_name, Box::new(final_token))));
-                }
-                Err(_) => {
-                  return Ok(MatcherSuccess::Continue((loop_name, data)));
-                }
-              }
-            }
-          }
-          MatcherSuccess::Stop => {
-            break;
-          }
-          _ => unreachable!(),
-        },
-        None => {}
-      }
-
-      loop_count += 1;
-    }
-
-    finalize_program_token(
-      program_token,
-      children,
-      captured_range,
-      matched_range,
-      &self.iterate_range,
-      loop_count,
-      true,
-    )
+    result
   }
 
   fn has_custom_name(&self) -> bool {

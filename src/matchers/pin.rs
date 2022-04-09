@@ -294,15 +294,8 @@ where
   pub fn new(offset: T, pattern: Option<MatcherRef>) -> MatcherRef {
     Rc::new(RefCell::new(Box::new(Self { pattern, offset })))
   }
-}
 
-impl<T> Matcher for PinPattern<T>
-where
-  T: Fetchable,
-
-  T: std::fmt::Debug,
-{
-  fn exec(
+  fn _exec(
     &self,
     context: ParserContextRef,
     scope: ScopeContextRef,
@@ -338,7 +331,9 @@ where
     let end_offset = sub_context.borrow().offset.end;
 
     match &self.pattern {
-      Some(matcher) => matcher.borrow().exec(sub_context.clone(), scope.clone()),
+      Some(matcher) => matcher
+        .borrow()
+        .exec(matcher.clone(), sub_context.clone(), scope.clone()),
       None => Ok(MatcherSuccess::Token(PinToken::new_with_matched_range(
         &sub_context.borrow().parser,
         self.get_name().to_string(),
@@ -346,6 +341,26 @@ where
         SourceRange::new(start_offset, end_offset),
       ))),
     }
+  }
+}
+
+impl<T> Matcher for PinPattern<T>
+where
+  T: Fetchable,
+  T: 'static,
+  T: std::fmt::Debug,
+{
+  fn exec(
+    &self,
+    this_matcher: MatcherRef,
+    context: ParserContextRef,
+    scope: ScopeContextRef,
+  ) -> Result<MatcherSuccess, MatcherFailure> {
+    self.before_exec(this_matcher.clone(), context.clone(), scope.clone());
+    let result = self._exec(context.clone(), scope.clone());
+    self.after_exec(this_matcher.clone(), context.clone(), scope.clone());
+
+    result
   }
 
   fn is_consuming(&self) -> bool {
@@ -360,8 +375,12 @@ where
     "Pin"
   }
 
-  fn set_name(&mut self, _: &str) {
-    panic!("Can not set `name` on a `Pin` matcher");
+  fn set_name(&mut self, name: &str) {
+    // panic!("Can not set `name` on a `Pin` matcher");
+    match self.pattern {
+      Some(ref matcher) => matcher.borrow_mut().set_name(name),
+      None => {}
+    };
   }
 
   fn get_children(&self) -> Option<Vec<MatcherRef>> {

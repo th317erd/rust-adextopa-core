@@ -1,44 +1,83 @@
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
+use crate::scope::Scope;
 use crate::scope_context::ScopeContextRef;
 use std::cell::RefCell;
 use std::rc::Rc;
 
 #[derive(Debug)]
 pub struct SetScopePattern {
-  scope: ScopeContextRef,
+  scope: Option<ScopeContextRef>,
   matcher: MatcherRef,
 }
 
 impl SetScopePattern {
-  pub fn new(scope: ScopeContextRef, matcher: MatcherRef) -> MatcherRef {
+  pub fn new(matcher: MatcherRef) -> MatcherRef {
     Rc::new(RefCell::new(Box::new(Self {
-      scope: scope.clone(),
+      scope: None,
       matcher,
     })))
+  }
+
+  pub fn new_with_scope(scope: ScopeContextRef, matcher: MatcherRef) -> MatcherRef {
+    Rc::new(RefCell::new(Box::new(Self {
+      scope: Some(scope.clone()),
+      matcher,
+    })))
+  }
+
+  fn _exec(
+    &self,
+    context: ParserContextRef,
+    _: ScopeContextRef,
+  ) -> Result<MatcherSuccess, MatcherFailure> {
+    let scope = match &self.scope {
+      Some(scope) => scope.clone(),
+      None => {
+        // Push a new scope onto the stack
+        let scope = Scope::new();
+        context.borrow().scope.borrow_mut().push(scope.clone());
+
+        context.borrow().scope.clone()
+      }
+    };
+
+    let result = self.matcher.borrow().exec(
+      self.matcher.clone(),
+      context.borrow().clone_with_name(self.get_name()),
+      scope,
+    );
+
+    if self.scope.is_none() {
+      // Pop scope from stack
+      context.borrow().scope.borrow_mut().pop();
+    }
+
+    result
   }
 }
 
 impl Matcher for SetScopePattern {
   fn exec(
     &self,
+    this_matcher: MatcherRef,
     context: ParserContextRef,
-    _: ScopeContextRef,
+    scope: ScopeContextRef,
   ) -> Result<MatcherSuccess, MatcherFailure> {
-    println!("Using new scope!");
+    self.before_exec(this_matcher.clone(), context.clone(), scope.clone());
+    let result = self._exec(context.clone(), scope.clone());
+    self.after_exec(this_matcher.clone(), context.clone(), scope.clone());
 
-    self.matcher.borrow().exec(
-      context.borrow().clone_with_name(self.get_name()),
-      self.scope.clone(),
-    )
+    result
   }
 
   fn get_name(&self) -> &str {
     "SetScope"
   }
 
-  fn set_name(&mut self, _: &str) {
-    panic!("Can not set `name` on a `SetScope` matcher");
+  fn set_name(&mut self, name: &str) {
+    // panic!("Can not set `name` on a `SetScope` matcher");
+    self.matcher.borrow_mut().set_name(name);
   }
 
   fn set_child(&mut self, index: usize, matcher: MatcherRef) {
@@ -65,7 +104,11 @@ impl Matcher for SetScopePattern {
 #[macro_export]
 macro_rules! SetScope {
   ($scope:expr, $arg:expr) => {
-    $crate::matchers::set_scope::SetScopePattern::new($scope, $arg)
+    $crate::matchers::set_scope::SetScopePattern::new_with_scope($scope, $arg)
+  };
+
+  ($arg:expr) => {
+    $crate::matchers::set_scope::SetScopePattern::new($arg)
   };
 }
 
@@ -98,9 +141,17 @@ mod tests {
         unreachable!("Test failed!");
       }
 
-      match parser_context.borrow().get_scope_variable("StoredValue") {
-        Some(VariableType::Matcher(matcher)) => {
-          assert_eq!(matcher.borrow().get_name(), "StoredValue")
+      assert_eq!(
+        parser_context
+          .borrow()
+          .get_scope_variable("StoredValue")
+          .is_none(),
+        true
+      );
+
+      match new_scope.borrow().get("StoredValue") {
+        Some(VariableType::Token(token)) => {
+          assert_eq!(token.borrow().get_name(), "Equals")
         }
         _ => unreachable!("Test failed!"),
       }

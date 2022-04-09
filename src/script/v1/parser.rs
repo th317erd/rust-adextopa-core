@@ -2,14 +2,14 @@ use std::{collections::HashMap, path::Path};
 
 use crate::{
   matcher::MatcherRef,
-  matchers::{
-    program::{MatchAction, ProgramPattern},
-    register::RegisterPattern,
-  },
+  matchers::program::{MatchAction, ProgramPattern},
   parser::{Parser, ParserRef},
   parser_context::{ParserContext, ParserContextRef},
+  scope::VariableType,
+  scope_context::{ScopeContext, ScopeContextRef},
   token::TokenRef,
-  Loop, Not, Optional, ScriptProgramMatcher, ScriptSwitchMatcher, SetScope, Visit,
+  Flatten, Loop, Map, Not, Optional, Ref, ScriptProgramMatcher, ScriptSwitchMatcher, SetScope,
+  Visit,
 };
 
 use super::matchers::repeat_specifier::get_repeat_specifier_range;
@@ -261,19 +261,34 @@ fn build_matcher_from_tokens(
   parser_context: ParserContextRef,
   name: String,
   from_file: Option<&str>,
-) -> Result<MatcherRef, String> {
+) -> Result<(MatcherRef, ScopeContextRef), String> {
   if root_token.borrow().get_name() != "Script" {
     return Err("Expected provided token to be a `Script` token".to_string());
   }
 
-  let root_matcher = ProgramPattern::new_program_with_name(Vec::new(), name, MatchAction::Continue);
-  let register_matchers = RegisterPattern::new_blank();
+  println!("Building matcher: {}", name);
 
-  root_matcher
-    .borrow_mut()
-    .add_pattern(register_matchers.clone());
+  let root_matcher = ProgramPattern::new_program_with_name(Vec::new(), name, MatchAction::Continue);
+  let scoped_matcher = ProgramPattern::new_program(Vec::new(), MatchAction::Continue);
+  let scope_context = ScopeContext::new();
+
+  root_matcher.borrow_mut().add_pattern(SetScope!(
+    scope_context.clone(),
+    Flatten!(scoped_matcher.clone())
+  ));
 
   let result = Visit!(root_token, program,
+    "AdextopaScope" => |token| {
+      let _token = token.borrow();
+
+      for (name, value) in _token.get_attributes().iter() {
+        if name == "name" {
+          root_matcher.borrow_mut().set_name(value);
+        }
+      }
+
+      Ok(())
+    },
     "AssignmentExpression" => |token| {
       // The name of the stored matcher is in the first child
       let _token = token.borrow();
@@ -287,13 +302,13 @@ fn build_matcher_from_tokens(
       if value_name == "Identifier" {
         // Identifier is assigned to identifier...
         // so this is a reference
-        register_matchers.borrow_mut().add_pattern(crate::Ref!(matcher_name; _token.get_value().clone()));
+        scope_context.borrow_mut().set(&matcher_name, VariableType::Matcher(Ref!(_token.get_value().clone())));
       } else if value_name == "PatternDefinition" {
         // This is a pattern definition, so turn it into
         // a matcher, and store it as a reference
         match construct_matcher_from_pattern_definition(parser_context.clone(), value.clone(), &matcher_name, true) {
           Ok(defined_matchers) => {
-            register_matchers.borrow_mut().add_pattern(crate::Ref!(matcher_name; defined_matchers.0.clone()));
+            scope_context.borrow_mut().set(&matcher_name, VariableType::Matcher(defined_matchers.0.clone()));
           },
           Err(error) => {
             // TODO: Better error handling
@@ -325,10 +340,9 @@ fn build_matcher_from_tokens(
       let file_name = full_path.to_str().unwrap();
 
       let import_result = compile_script_from_file_internal(file_name)?;
-      let import_parser_context = import_result.0.borrow();
-      let import_root_matcher = &import_result.1;
-      let _parser_context = parser_context.borrow();
-      let mut register_matchers = register_matchers.borrow_mut();
+      let import_root_matcher = import_result.1;
+      let import_scope_context = import_result.2;
+      //let mut register_matchers = register_matcher.borrow_mut();
 
       for import_identifier in import_identifiers {
         let import_identifier = import_identifier.borrow();
@@ -341,15 +355,42 @@ fn build_matcher_from_tokens(
 
         if identifier == "_" {
           println!("Registering root matcher from import: {}", import_name);
-          register_matchers.add_pattern(crate::Ref!(import_name; SetScope!(import_parser_context.scope.clone(), import_root_matcher.clone())));
-        } else {
-          let reference_matcher = import_parser_context.get_registered_matcher(&identifier);
-          if reference_matcher.is_none() {
-            return Err(format!("Failed to import `{}` from '{}': Not found", &identifier, file_name))
+          if import_name == "_" {
+            eprintln!("Error root import '_' must be named using 'import {{ _ as Name }}'");
+            return Err("Error root import '_' must be named using 'import {{ _ as Name }}'".to_string());
           }
 
-          println!("Registering matcher from import: {}", import_name);
-          register_matchers.add_pattern(crate::Ref!(import_name; SetScope!(import_parser_context.scope.clone(), reference_matcher.unwrap().clone())));
+          // let token_name = import_name.clone();
+
+          // let map_matcher = Map!(import_root_matcher.clone(), move |token| {
+          //   let mut token = token.borrow_mut();
+          //   token.set_name(&token_name);
+          //   None
+          // });
+
+          import_root_matcher.borrow_mut().set_name(&import_name);
+
+          // This should work all on its own, because this is the root pattern
+          // and it implements its own scope when called
+          scope_context.borrow_mut().set(&import_name, VariableType::Matcher(import_root_matcher.clone()));
+        } else {
+          let reference_matcher = import_scope_context.borrow().get(&identifier);
+
+          match reference_matcher {
+            Some(VariableType::Matcher(ref matcher)) => {
+              let token_name = import_name.clone();
+
+              let map_matcher = Map!(matcher.clone(), move |token| {
+                let mut token = token.borrow_mut();
+                token.set_name(&token_name);
+                None
+              });
+
+              // TODO: This will not work until we get the full scope used by the parser
+              scope_context.borrow_mut().set(&import_name, VariableType::Matcher(SetScope!(import_scope_context.clone(), map_matcher)));
+            },
+            _ => return Err(format!("Failed to import `{}` from '{}': Not found", &identifier, file_name)),
+          }
         }
       }
 
@@ -359,6 +400,8 @@ fn build_matcher_from_tokens(
       let token = token.borrow();
       let children = token.get_children();
 
+      println!("PatternScopeToken: {:?}", token);
+
       for child in children {
         let _child = child.borrow();
         let child_name = _child.get_name();
@@ -366,7 +409,8 @@ fn build_matcher_from_tokens(
         if child_name == "PatternDefinitionCaptured" || child_name == "PatternDefinition" {
           match construct_matcher_from_pattern(parser_context.clone(), child.clone()) {
             Ok(defined_matchers) => {
-              root_matcher.borrow_mut().add_pattern(defined_matchers.0);
+              println!("Adding pattern to program: {}", defined_matchers.0.borrow().get_name());
+              scoped_matcher.borrow_mut().add_pattern(defined_matchers.0);
             },
             Err(error) => {
               // TODO: Better error handling
@@ -381,7 +425,7 @@ fn build_matcher_from_tokens(
   );
 
   match result {
-    Ok(_) => Ok(root_matcher),
+    Ok(_) => Ok((root_matcher, scope_context)),
     Err(error) => panic!("{}", error),
   }
 }
@@ -390,7 +434,7 @@ pub fn compile_script(
   parser: ParserRef,
   name: String,
   from_file: Option<&str>,
-) -> Result<(ParserContextRef, MatcherRef), String> {
+) -> Result<(ParserContextRef, MatcherRef, ScopeContextRef), String> {
   let parser_context = ParserContext::new(&parser, &name);
 
   (*parser_context)
@@ -403,13 +447,7 @@ pub fn compile_script(
   match result {
     Ok(token) => {
       match build_matcher_from_tokens(token.clone(), parser_context.clone(), name, from_file) {
-        Ok(ref matcher) => {
-          parser_context
-            .borrow()
-            .capture_matcher_references(matcher.clone());
-
-          Ok((parser_context.clone(), matcher.clone()))
-        }
+        Ok(result) => Ok((parser_context, result.0, result.1)),
         Err(error) => Err(error),
       }
     }
@@ -434,7 +472,7 @@ pub fn compile_script_from_str(source: &str, name: String) -> Result<MatcherRef,
 
 fn compile_script_from_file_internal(
   file_name: &str,
-) -> Result<(ParserContextRef, MatcherRef), String> {
+) -> Result<(ParserContextRef, MatcherRef, ScopeContextRef), String> {
   let full_path = Path::new(file_name).canonicalize().unwrap();
   let full_file_name = full_path.to_str().unwrap();
 
@@ -460,7 +498,7 @@ mod tests {
     parser_context::{ParserContext, ParserContextRef},
     script::current::parser::construct_matcher_from_pattern,
     source_range::SourceRange,
-    ScriptPattern, ScriptPatternDefinition, ScriptProgramMatcher, ScriptSwitchMatcher,
+    Debug, ScriptPattern, ScriptPatternDefinition, ScriptProgramMatcher, ScriptSwitchMatcher,
   };
 
   use super::{compile_script_from_file, construct_matcher_from_pattern_definition};
@@ -481,10 +519,7 @@ mod tests {
       if let Ok(token) = result {
         let token = token.borrow();
 
-        assert_eq!(
-          token.get_name(),
-          "./src/script/v1/tests/script/test_word.axo"
-        );
+        assert_eq!(token.get_name(), "Word");
         assert_eq!(*token.get_captured_range(), SourceRange::new(0, 4));
         assert_eq!(*token.get_matched_range(), SourceRange::new(0, 4));
         assert_eq!(token.get_value(), "test");
@@ -497,6 +532,7 @@ mod tests {
         assert_eq!(*first.get_matched_range(), SourceRange::new(0, 4));
         assert_eq!(first.get_value(), "test");
         assert_eq!(first.get_matched_value(), "test");
+        assert_eq!(first.get_children().len(), 0);
 
         assert_eq!(first.get_attribute("hello"), Some(&"world".to_string()));
       } else {
@@ -507,48 +543,67 @@ mod tests {
     };
   }
 
-  // #[test]
-  // fn it_compiles_a_script_with_an_import_and_returns_a_matcher() {
-  //   if let Ok(compiled_matcher) =
-  //     compile_script_from_file("./src/script/v1/tests/script/test_import.axo")
-  //   {
-  //     let parser = Parser::new("hello world");
-  //     let parser_context = ParserContext::new(&parser, "Test");
+  #[test]
+  fn it_compiles_a_script_with_an_import_and_returns_a_matcher() {
+    if let Ok(compiled_matcher) =
+      compile_script_from_file("./src/script/v1/tests/script/test_import.axo")
+    {
+      let parser = Parser::new("hello world");
+      let parser_context = ParserContext::new(&parser, "Test");
 
-  //     // println!("MATCHER: {:?}", compiled_matcher);
-  //     // let compiled_matcher = Debug!(compiled_matcher);
+      println!("MATCHER: {:?}", compiled_matcher);
+      let compiled_matcher = Debug!(3; compiled_matcher);
 
-  //     let result = ParserContext::tokenize(parser_context, compiled_matcher.clone());
+      let result = ParserContext::tokenize(parser_context, compiled_matcher.clone());
 
-  //     if let Ok(token) = result {
-  //       let token = token.borrow();
+      if let Ok(token) = result {
+        let token = token.borrow();
 
-  //       assert_eq!(
-  //         token.get_name(),
-  //         "./src/script/v1/tests/script/test_import.axo"
-  //       );
-  //       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 5));
-  //       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 5));
-  //       assert_eq!(token.get_value(), "hello");
-  //       assert_eq!(token.get_matched_value(), "hello");
-  //       assert_eq!(token.get_children().len(), 1);
+        assert_eq!(token.get_name(), "TestImport");
+        assert_eq!(*token.get_captured_range(), SourceRange::new(0, 11));
+        assert_eq!(*token.get_matched_range(), SourceRange::new(0, 11));
+        assert_eq!(token.get_value(), "hello world");
+        assert_eq!(token.get_matched_value(), "hello world");
+        assert_eq!(token.get_children().len(), 2);
 
-  //       let first = token.get_children()[0].borrow();
-  //       assert_eq!(first.get_name(), "Word");
-  //       assert_eq!(*first.get_captured_range(), SourceRange::new(0, 4));
-  //       assert_eq!(*first.get_matched_range(), SourceRange::new(0, 4));
-  //       assert_eq!(first.get_value(), "test");
-  //       assert_eq!(first.get_matched_value(), "test");
+        let first = token.get_children()[0].borrow();
+        assert_eq!(first.get_name(), "Word");
+        assert_eq!(*first.get_captured_range(), SourceRange::new(0, 5));
+        assert_eq!(*first.get_matched_range(), SourceRange::new(0, 5));
+        assert_eq!(first.get_value(), "hello");
+        assert_eq!(first.get_matched_value(), "hello");
+        assert_eq!(first.get_children().len(), 1);
 
-  //       assert_eq!(first.get_attribute("hello"), Some(&"world".to_string()));
-  //     } else {
-  //       println!("ERROR: {:?}", result);
-  //       unreachable!("Test failed!");
-  //     };
-  //   } else {
-  //     unreachable!("Test failed!");
-  //   };
-  // }
+        let first_child = first.get_children()[0].borrow();
+        assert_eq!(first_child.get_name(), "Word");
+        assert_eq!(*first_child.get_captured_range(), SourceRange::new(0, 5));
+        assert_eq!(*first_child.get_matched_range(), SourceRange::new(0, 5));
+        assert_eq!(first_child.get_value(), "hello");
+        assert_eq!(first_child.get_matched_value(), "hello");
+        assert_eq!(first_child.get_children().len(), 0);
+
+        let second = token.get_children()[1].borrow();
+        assert_eq!(second.get_name(), "Chunk");
+        assert_eq!(*second.get_captured_range(), SourceRange::new(6, 11));
+        assert_eq!(*second.get_matched_range(), SourceRange::new(6, 11));
+        assert_eq!(second.get_value(), "world");
+        assert_eq!(second.get_matched_value(), "world");
+        assert_eq!(second.get_children().len(), 0);
+
+        assert_eq!(
+          first_child.get_attribute("hello"),
+          Some(&"world".to_string())
+        );
+
+        assert_eq!(second.get_attribute("hello"), Some(&"world".to_string()));
+      } else {
+        println!("ERROR: {:?}", result);
+        unreachable!("Test failed!");
+      };
+    } else {
+      unreachable!("Test failed!");
+    };
+  }
 
   fn register_matchers(parser_context: &ParserContextRef) {
     (*parser_context)

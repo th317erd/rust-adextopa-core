@@ -31,10 +31,8 @@ impl MatchesPattern {
       custom_name: true,
     })))
   }
-}
 
-impl Matcher for MatchesPattern {
-  fn exec(
+  fn _exec(
     &self,
     context: ParserContextRef,
     _: ScopeContextRef,
@@ -103,6 +101,21 @@ impl Matcher for MatchesPattern {
 
       Err(MatcherFailure::Fail)
     }
+  }
+}
+
+impl Matcher for MatchesPattern {
+  fn exec(
+    &self,
+    this_matcher: MatcherRef,
+    context: ParserContextRef,
+    scope: ScopeContextRef,
+  ) -> Result<MatcherSuccess, MatcherFailure> {
+    self.before_exec(this_matcher.clone(), context.clone(), scope.clone());
+    let result = self._exec(context.clone(), scope.clone());
+    self.after_exec(this_matcher.clone(), context.clone(), scope.clone());
+
+    result
   }
 
   fn has_custom_name(&self) -> bool {

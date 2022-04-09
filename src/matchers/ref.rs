@@ -53,15 +53,8 @@ where
       custom_name: true,
     })))
   }
-}
 
-impl<T> Matcher for RefPattern<T>
-where
-  T: Fetchable,
-  T: 'static,
-  T: std::fmt::Debug,
-{
-  fn exec(
+  fn _exec(
     &self,
     context: ParserContextRef,
     scope: ScopeContextRef,
@@ -76,7 +69,9 @@ where
         let possible_matcher = scope.borrow().get(target_name);
 
         if let Some(VariableType::Matcher(ref matcher)) = possible_matcher {
-          matcher.borrow().exec(sub_context, scope.clone())
+          matcher
+            .borrow()
+            .exec(matcher.clone(), sub_context, scope.clone())
         } else {
           return Err(MatcherFailure::Error(format!(
             "`Ref` matcher unable to locate target reference `{}`",
@@ -84,8 +79,32 @@ where
           )));
         }
       }
-      FetchableType::Matcher(matcher) => matcher.borrow().exec(sub_context, scope.clone()),
+      FetchableType::Matcher(matcher) => {
+        matcher
+          .borrow()
+          .exec(matcher.clone(), sub_context, scope.clone())
+      }
     }
+  }
+}
+
+impl<T> Matcher for RefPattern<T>
+where
+  T: Fetchable,
+  T: 'static,
+  T: std::fmt::Debug,
+{
+  fn exec(
+    &self,
+    this_matcher: MatcherRef,
+    context: ParserContextRef,
+    scope: ScopeContextRef,
+  ) -> Result<MatcherSuccess, MatcherFailure> {
+    self.before_exec(this_matcher.clone(), context.clone(), scope.clone());
+    let result = self._exec(context.clone(), scope.clone());
+    self.after_exec(this_matcher.clone(), context.clone(), scope.clone());
+
+    result
   }
 
   fn has_custom_name(&self) -> bool {

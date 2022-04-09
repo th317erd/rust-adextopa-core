@@ -32,18 +32,14 @@ where
   pub fn new(matcher: MatcherRef, map_func: F) -> MatcherRef {
     Rc::new(RefCell::new(Box::new(Self { matcher, map_func })))
   }
-}
 
-impl<F> Matcher for MapPattern<F>
-where
-  F: Fn(TokenRef) -> Option<String>,
-{
-  fn exec(
+  fn _exec(
     &self,
     context: ParserContextRef,
     scope: ScopeContextRef,
   ) -> Result<MatcherSuccess, MatcherFailure> {
     let result = self.matcher.borrow().exec(
+      self.matcher.clone(),
       context.borrow().clone_with_name(self.get_name()),
       scope.clone(),
     );
@@ -68,13 +64,33 @@ where
       Err(failure) => Err(failure),
     }
   }
+}
+
+impl<F> Matcher for MapPattern<F>
+where
+  F: Fn(TokenRef) -> Option<String>,
+  F: 'static,
+{
+  fn exec(
+    &self,
+    this_matcher: MatcherRef,
+    context: ParserContextRef,
+    scope: ScopeContextRef,
+  ) -> Result<MatcherSuccess, MatcherFailure> {
+    self.before_exec(this_matcher.clone(), context.clone(), scope.clone());
+    let result = self._exec(context.clone(), scope.clone());
+    self.after_exec(this_matcher.clone(), context.clone(), scope.clone());
+
+    result
+  }
 
   fn get_name(&self) -> &str {
     "Map"
   }
 
-  fn set_name(&mut self, _: &str) {
-    panic!("Can not set `name` on a `Map` matcher");
+  fn set_name(&mut self, name: &str) {
+    // panic!("Can not set `name` on a `Map` matcher");
+    self.matcher.borrow_mut().set_name(name);
   }
 
   fn set_child(&mut self, index: usize, matcher: MatcherRef) {

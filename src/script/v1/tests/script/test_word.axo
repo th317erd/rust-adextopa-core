@@ -1,4 +1,4 @@
-<!--[adextopa:v1]
+<!--[adextopa version='1' name='Word']
   # Simply match against "test"
 
   Word = </\w+/i hello='world'>

@@ -18,7 +18,7 @@ macro_rules! Script {
 #[cfg(test)]
 mod tests {
   use crate::{
-    matcher::{MatcherFailure},
+    matcher::MatcherFailure,
     parser::Parser,
     parser_context::{ParserContext, ParserContextRef},
     source_range::SourceRange,
@@ -65,7 +65,7 @@ mod tests {
 
   #[test]
   fn it_works2() {
-    let source = " \n\n<!--[adextopa:v1]--> <='test'>\n\t(</test/i>)\n";
+    let source = " \n\n<!--[adextopa version='1']--> <='test'>\n\t(</test/i>)\n";
     let parser = Parser::new(source);
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Script!();
@@ -77,23 +77,23 @@ mod tests {
     if let Ok(token) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Script");
-      assert_eq!(*token.get_captured_range(), SourceRange::new(18, 44));
-      assert_eq!(*token.get_matched_range(), SourceRange::new(0, 47));
-      assert_eq!(token.get_value(), "1]--> <='test'>\n\t(</test/i");
+      assert_eq!(*token.get_captured_range(), SourceRange::new(17, 53));
+      assert_eq!(*token.get_matched_range(), SourceRange::new(0, 56));
+      assert_eq!(token.get_value(), "version='1']--> <='test'>\n\t(</test/i");
       assert_eq!(token.get_matched_value(), source);
       assert_eq!(token.get_children().len(), 2);
 
       let first = token.get_children()[0].borrow();
       assert_eq!(first.get_name(), "AdextopaScope");
-      assert_eq!(*first.get_captured_range(), SourceRange::new(18, 19));
-      assert_eq!(*first.get_matched_range(), SourceRange::new(3, 23));
-      assert_eq!(first.get_value(), "1");
-      assert_eq!(first.get_matched_value(), "<!--[adextopa:v1]-->");
+      assert_eq!(*first.get_captured_range(), SourceRange::new(17, 27));
+      assert_eq!(*first.get_matched_range(), SourceRange::new(3, 32));
+      assert_eq!(first.get_value(), "version='1");
+      assert_eq!(first.get_matched_value(), "<!--[adextopa version='1']-->");
 
       let second = token.get_children()[1].borrow();
       assert_eq!(second.get_name(), "PatternScope");
-      assert_eq!(*second.get_captured_range(), SourceRange::new(27, 44));
-      assert_eq!(*second.get_matched_range(), SourceRange::new(23, 47));
+      assert_eq!(*second.get_captured_range(), SourceRange::new(36, 53));
+      assert_eq!(*second.get_matched_range(), SourceRange::new(32, 56));
       assert_eq!(second.get_value(), "test'>\n\t(</test/i");
       assert_eq!(second.get_matched_value(), " <='test'>\n\t(</test/i>)\n");
     } else {

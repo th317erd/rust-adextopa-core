@@ -47,6 +47,7 @@ mod tests {
     let matcher = ScriptSwitchMatcher!();
 
     let result = matcher.borrow().exec(
+      matcher.clone(),
       parser_context.clone(),
       parser_context.borrow().scope.clone(),
     );
@@ -69,9 +70,9 @@ mod tests {
 
       let second = token.get_children()[1].borrow();
       assert_eq!(second.get_name(), "PatternDefinitionCaptured");
-      assert_eq!(*second.get_captured_range(), SourceRange::new(18, 24));
+      assert_eq!(*second.get_captured_range(), SourceRange::new(17, 24));
       assert_eq!(*second.get_matched_range(), SourceRange::new(15, 26));
-      assert_eq!(second.get_value(), "test/i");
+      assert_eq!(second.get_value(), "/test/i");
       assert_eq!(second.get_matched_value(), "(</test/i>)");
     } else {
       unreachable!("Test failed!");
@@ -85,6 +86,7 @@ mod tests {
     let matcher = ScriptSwitchMatcher!();
 
     if let Err(MatcherFailure::Fail) = matcher.borrow().exec(
+      matcher.clone(),
       parser_context.clone(),
       parser_context.borrow().scope.clone(),
     ) {
