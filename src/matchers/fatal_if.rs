@@ -1,11 +1,11 @@
 #[macro_export]
-macro_rules! Assert {
+macro_rules! FatalIf {
   ($matcher:expr, $message:expr) => {
-    $crate::ProxyChildren!("Assert";
+    $crate::ProxyChildren!("Panic";
       $crate::Optional!(
-        $crate::Program!("Assert";
+        $crate::Program!("Panic";
           $crate::Discard!($matcher),
-          $crate::Error!($message),
+          $crate::Panic!($message),
         )
       )
     )

@@ -7,10 +7,10 @@ macro_rules! ScriptAttribute {
       $crate::ScriptWS0!(?),
       $crate::Discard!($crate::Equals!("=")),
       $crate::ScriptWS0!(?),
-      $crate::PanicNot!($crate::Equals!("'"), "Malformed attribute detected. Attribute value is not single-quoted. The proper format for an attribute is: name='value'"),
+      $crate::FatalIfNot!($crate::Equals!("'"), "Malformed attribute detected. Attribute value is not single-quoted. The proper format for an attribute is: name='value'"),
       $crate::ScriptString!("Value"),
       $crate::Pin!($crate::Fetch!("AttributeStartOffset.range");
-        $crate::Assert!(
+        $crate::AssertIf!(
           $crate::Matches!(r"_[\w+_]+"),
           "Attribute names can not start with an underscore"
         )
@@ -22,9 +22,7 @@ macro_rules! ScriptAttribute {
 #[cfg(test)]
 mod tests {
   use crate::{
-    matcher::{MatcherFailure},
-    parser::Parser,
-    parser_context::ParserContext,
+    matcher::MatcherFailure, parser::Parser, parser_context::ParserContext,
     source_range::SourceRange,
   };
 

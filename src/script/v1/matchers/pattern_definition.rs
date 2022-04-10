@@ -11,7 +11,7 @@ macro_rules! ScriptPatternDefinition {
 
         // Check for both "optional" and "not",
         // which can not both be used at the same time
-        $crate::Assert!(
+        $crate::AssertIf!(
           $crate::Matches!(r"\?!|!\?"),
           "Can not use ? and ! at the same time in this context. Use one or the other, not both."
         ),
@@ -22,7 +22,7 @@ macro_rules! ScriptPatternDefinition {
         $crate::Discard!($crate::Equals!("<")),
         // Check for both "optional" and "not",
         // which can not both be used at the same time
-        $crate::Assert!(
+        $crate::AssertIf!(
           $crate::Matches!(r"\?!|!\?"),
           "Can not use ? and ! at the same time in this context. Use one or the other, not both."
         ),

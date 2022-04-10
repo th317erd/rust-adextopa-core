@@ -1,9 +1,9 @@
 #[macro_export]
-macro_rules! AssertNot {
+macro_rules! AssertIfNot {
   ($matcher:expr, $message:expr) => {
-    $crate::ProxyChildren!("Assert";
+    $crate::ProxyChildren!("AssertIf";
       $crate::Optional!(
-        $crate::Program!("Assert";
+        $crate::Program!("AssertIf";
           $crate::Discard!($crate::Not!($matcher)),
           $crate::Error!($message),
         )
