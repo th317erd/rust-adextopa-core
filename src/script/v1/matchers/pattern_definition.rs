@@ -52,7 +52,7 @@ macro_rules! ScriptPatternDefinition {
           }
         }
 
-        None
+        Ok(())
       }
     )
   };

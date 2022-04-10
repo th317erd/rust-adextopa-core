@@ -186,7 +186,7 @@ fn construct_matcher_from_pattern_definition(
           token.borrow_mut().set_attribute(key, value);
         }
 
-        None
+        Ok(())
       });
     }
   }
@@ -383,7 +383,8 @@ fn build_matcher_from_tokens(
               let map_matcher = Map!(matcher.clone(), move |token| {
                 let mut token = token.borrow_mut();
                 token.set_name(&token_name);
-                None
+
+                Ok(())
               });
 
               // TODO: This will not work until we get the full scope used by the parser

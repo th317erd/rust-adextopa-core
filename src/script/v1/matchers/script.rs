@@ -10,7 +10,7 @@ macro_rules! Script {
       ),
       $crate::ScriptWSN0!(?),
       $crate::Optional!($crate::ScriptAdextopaScope!()),
-      $crate::ScriptPatternScope!(),
+      $crate::Optional!($crate::ScriptPatternScope!()),
     )
   };
 }

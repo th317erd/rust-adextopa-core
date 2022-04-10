@@ -42,15 +42,15 @@ macro_rules! ScriptAdextopaScope {
 
         let version = token.get_attribute("version");
         if version.is_none() {
-          return Some("Adextopa scope must have a 'version' attribute".to_string());
+          return Err("Adextopa scope must have a 'version' attribute".to_string());
         }
 
         let version = version.unwrap().as_str();
         if let Err(_) = version.parse::<usize>() {
-          return Some("Adextopa 'version' attribute must be a valid integer number".to_string());
+          return Err("Adextopa 'version' attribute must be a valid integer number".to_string());
         }
 
-        None
+        Ok(())
       }
     )
   };

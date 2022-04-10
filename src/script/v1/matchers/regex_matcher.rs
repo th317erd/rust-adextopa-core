@@ -52,7 +52,7 @@ macro_rules! ScriptRegexMatcher {
         let parser = token.borrow().get_parser();
         token.borrow_mut().set_value(&range.to_string(&parser));
 
-        None
+        Ok(())
       }
     )
   };

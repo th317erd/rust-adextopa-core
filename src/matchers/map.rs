@@ -7,7 +7,7 @@ use std::rc::Rc;
 
 pub struct MapPattern<F>
 where
-  F: Fn(TokenRef) -> Option<String>,
+  F: Fn(TokenRef) -> Result<(), String>,
 {
   matcher: MatcherRef,
   map_func: F,
@@ -15,7 +15,7 @@ where
 
 impl<F> std::fmt::Debug for MapPattern<F>
 where
-  F: Fn(TokenRef) -> Option<String>,
+  F: Fn(TokenRef) -> Result<(), String>,
 {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     f.debug_struct("MapPattern")
@@ -26,7 +26,7 @@ where
 
 impl<F> MapPattern<F>
 where
-  F: Fn(TokenRef) -> Option<String>,
+  F: Fn(TokenRef) -> Result<(), String>,
   F: 'static,
 {
   pub fn new(matcher: MatcherRef, map_func: F) -> MatcherRef {
@@ -47,7 +47,7 @@ where
     match result {
       Ok(success) => match success {
         MatcherSuccess::Token(token) => {
-          if let Some(result) = (self.map_func)(token.clone()) {
+          if let Err(result) = (self.map_func)(token.clone()) {
             return Ok(MatcherSuccess::Token(
               crate::matchers::error::new_error_token_with_range(
                 context,
@@ -68,7 +68,7 @@ where
 
 impl<F> Matcher for MapPattern<F>
 where
-  F: Fn(TokenRef) -> Option<String>,
+  F: Fn(TokenRef) -> Result<(), String>,
   F: 'static,
 {
   fn exec(
@@ -143,7 +143,7 @@ mod tests {
       ));
       token.set_attribute("was_mapped", "true");
 
-      None
+      Ok(())
     });
 
     if let Ok(token) = ParserContext::tokenize(parser_context, matcher) {
@@ -163,7 +163,7 @@ mod tests {
     let parser = Parser::new("Testing 1234");
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Map!(Equals!("Testing"), |_| {
-      Some("There was a big fat error!".to_string())
+      Err("There was a big fat error!".to_string())
     });
 
     if let Ok(token) = ParserContext::tokenize(parser_context, matcher) {
@@ -186,7 +186,7 @@ mod tests {
   fn it_fails_to_match() {
     let parser = Parser::new("Testing 1234");
     let parser_context = ParserContext::new(&parser, "Test");
-    let matcher = Map!(Equals!("testing"), |_| { None });
+    let matcher = Map!(Equals!("testing"), |_| { Ok(()) });
 
     assert_eq!(
       Err(MatcherFailure::Fail),
