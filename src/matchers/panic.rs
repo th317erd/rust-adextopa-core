@@ -1,7 +1,7 @@
 #[macro_export]
 macro_rules! Panic {
   ($matcher:expr, $message:expr) => {
-    $crate::Flatten!("Panic";
+    $crate::ProxyChildren!("Panic";
       $crate::Optional!(
         $crate::Program!("Panic";
           $crate::Discard!($matcher),

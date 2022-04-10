@@ -3,7 +3,7 @@ macro_rules! ScriptSwitchMatcher {
   () => {
     $crate::Program!("SwitchMatcher";
       $crate::Discard!($crate::Equals!("[")),
-      $crate::Flatten!(
+      $crate::ProxyChildren!(
         $crate::Loop!(
           $crate::ScriptWSN0!(?),
           $crate::Switch!(

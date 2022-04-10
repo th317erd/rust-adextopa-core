@@ -109,7 +109,7 @@ impl Matcher for FlattenPattern {
 }
 
 #[macro_export]
-macro_rules! Flatten {
+macro_rules! ProxyChildren {
   ($name:literal; $arg:expr) => {
     $crate::matchers::flatten::FlattenPattern::new_with_name($arg, $name)
   };
@@ -122,8 +122,8 @@ macro_rules! Flatten {
 #[cfg(test)]
 mod tests {
   use crate::{
-    parser::Parser, parser_context::ParserContext, source_range::SourceRange, Flatten, Loop,
-    Matches, Switch,
+    parser::Parser, parser_context::ParserContext, source_range::SourceRange, Loop, Matches,
+    ProxyChildren, Switch,
   };
 
   #[test]
@@ -132,7 +132,7 @@ mod tests {
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Loop!(
       "Loop";
-      Flatten!(Loop!(
+      ProxyChildren!(Loop!(
         Switch!(
           Matches!("Whitespace"; r"\s+"),
           Matches!("Word"; r"[a-zA-Z_]\w+"),

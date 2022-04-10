@@ -3,7 +3,7 @@ macro_rules! ScriptProgramMatcher {
   () => {
     $crate::Program!("ProgramMatcher";
       $crate::Discard!($crate::Equals!("{")),
-      $crate::Flatten!(
+      $crate::ProxyChildren!(
         $crate::Loop!(
           $crate::ScriptWSN0!(?),
           $crate::ScriptPattern!(),

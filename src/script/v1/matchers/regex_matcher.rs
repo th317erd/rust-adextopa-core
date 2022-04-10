@@ -4,7 +4,7 @@ macro_rules! ScriptRegexMatcher {
     $crate::Map!(
       $crate::Program!("RegexMatcher";
         $crate::Equals!("RegexStart"; "/"),
-        $crate::Flatten!(
+        $crate::ProxyChildren!(
           $crate::Loop!("RegexCaptureLoop";
             // Match all characters up to: \, /, or [
             $crate::Matches!("Part"; r"[^/\\\[]*"),
@@ -13,7 +13,7 @@ macro_rules! ScriptRegexMatcher {
               // Is this an escape sequence?
               $crate::Matches!("Part"; r"\\."),
               // Is this the final closing / of the regex? ... if so, break
-              $crate::Flatten!(
+              $crate::ProxyChildren!(
                 $crate::Program!(
                   $crate::Equals!("RegexEnd"; "/"),
                   $crate::Matches!("Flags"; r"[imsU]*"),

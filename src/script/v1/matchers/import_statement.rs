@@ -6,7 +6,7 @@ macro_rules! ScriptImportStatement {
       $crate::ScriptWS0!(?),
       $crate::Program!("ImportIdentifiers";
         $crate::Discard!($crate::Equals!("{")),
-        $crate::Flatten!(
+        $crate::ProxyChildren!(
           $crate::Loop!("IdentifiersLoop";
             $crate::ScriptWSN0!(?),
             $crate::Switch!(
@@ -19,7 +19,7 @@ macro_rules! ScriptImportStatement {
               $crate::Program!("ImportIdentifier";
                 $crate::ScriptIdentifier!("ImportName"),
                 $crate::Optional!(
-                  $crate::Flatten!(
+                  $crate::ProxyChildren!(
                     $crate::Program!(
                       $crate::Discard!($crate::Matches!(r"\s+as\s+")),
                       $crate::ScriptIdentifier!("ImportAsName"),
@@ -45,9 +45,7 @@ macro_rules! ScriptImportStatement {
 #[cfg(test)]
 mod tests {
   use crate::{
-    matcher::{MatcherFailure},
-    parser::Parser,
-    parser_context::ParserContext,
+    matcher::MatcherFailure, parser::Parser, parser_context::ParserContext,
     source_range::SourceRange,
   };
 

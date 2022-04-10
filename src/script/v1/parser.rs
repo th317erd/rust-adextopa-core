@@ -8,8 +8,8 @@ use crate::{
   scope::VariableType,
   scope_context::{ScopeContext, ScopeContextRef},
   token::TokenRef,
-  Flatten, Loop, Map, Not, Optional, Ref, ScriptProgramMatcher, ScriptSwitchMatcher, SetScope,
-  Visit,
+  Loop, Map, Not, Optional, ProxyChildren, Ref, ScriptProgramMatcher, ScriptSwitchMatcher,
+  SetScope, Visit,
 };
 
 use super::matchers::repeat_specifier::get_repeat_specifier_range;
@@ -274,7 +274,7 @@ fn build_matcher_from_tokens(
 
   root_matcher.borrow_mut().add_pattern(SetScope!(
     scope_context.clone(),
-    Flatten!(scoped_matcher.clone())
+    ProxyChildren!(scoped_matcher.clone())
   ));
 
   let result = Visit!(root_token, program,
