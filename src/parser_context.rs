@@ -11,10 +11,15 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 pub type ParserContextRef = Rc<RefCell<ParserContext>>;
 
+lazy_static::lazy_static! {
+  static ref NEWLINES: regex::Regex = regex::Regex::new(r"(\r\n|\n|\r)").expect("Could not compile needed Regex for `parser_context`");
+}
+
 #[derive(Clone)]
 pub struct ParserContext {
   pub(crate) debug_mode: usize,
   pub(crate) scope: ScopeContextRef,
+  pub(crate) token_stack: Vec<TokenRef>,
   pub offset: SourceRange,
   pub parser: ParserRef,
   pub name: String,
@@ -24,6 +29,7 @@ impl ParserContext {
   pub fn new(parser: &ParserRef, name: &str) -> ParserContextRef {
     std::rc::Rc::new(std::cell::RefCell::new(ParserContext {
       scope: ScopeContext::new(),
+      token_stack: vec![],
       offset: SourceRange::new(0, parser.borrow().source.len()),
       parser: parser.clone(),
       debug_mode: 0,
@@ -34,6 +40,7 @@ impl ParserContext {
   pub fn new_with_offset(parser: &ParserRef, offset: SourceRange, name: &str) -> ParserContextRef {
     std::rc::Rc::new(std::cell::RefCell::new(ParserContext {
       scope: ScopeContext::new(),
+      token_stack: vec![],
       offset,
       parser: parser.clone(),
       debug_mode: 0,
@@ -161,6 +168,79 @@ impl ParserContext {
   //     None => {}
   //   }
   // }
+
+  pub fn push_token_to_stack(&mut self, token: TokenRef) {
+    self.token_stack.push(token.clone())
+  }
+
+  pub fn pop_token_from_stack(&mut self) {
+    self.token_stack.pop();
+  }
+
+  pub fn get_top_token_from_stack(&self) -> Option<TokenRef> {
+    if self.token_stack.len() == 0 {
+      return None;
+    }
+
+    Some(self.token_stack[self.token_stack.len() - 1].clone())
+  }
+
+  pub fn get_line(&self, range: &SourceRange) -> usize {
+    let parser = self.parser.borrow();
+    let source = parser.source.as_str();
+
+    return NEWLINES.find_iter(&source[0..range.end]).count() + 1;
+  }
+
+  pub fn get_column(&self, range: &SourceRange) -> usize {
+    let parser = self.parser.borrow();
+    let source = parser.source.as_str();
+    let mut last_newline = 0;
+
+    for item in NEWLINES.find_iter(&source[0..range.end]) {
+      let end_position = item.end();
+
+      if end_position > range.start {
+        break;
+      }
+
+      last_newline = end_position;
+    }
+
+    return (range.start - last_newline) + 1;
+  }
+
+  pub fn get_line_and_column(&self, range: &SourceRange) -> (usize, usize) {
+    let parser = self.parser.borrow();
+    let source = parser.source.as_str();
+    let mut last_newline = 0;
+    let mut line_count = 1;
+
+    for item in NEWLINES.find_iter(&source[0..range.end]) {
+      let end_position = item.end();
+
+      if end_position > range.start {
+        break;
+      }
+
+      last_newline = end_position;
+      line_count += 1;
+    }
+
+    return (line_count, (range.start - last_newline) + 1);
+  }
+
+  pub fn get_error_as_string(&self, message: &str, range: &SourceRange) -> String {
+    let (line, column) = self.get_line_and_column(range);
+    let parser = self.parser.borrow();
+    let filename = &parser.filename;
+
+    format!("Error: {}@[{}:{}]: {}", filename, line, column, message)
+  }
+
+  pub fn display_error(&self, message: &str, range: &SourceRange) {
+    println!("{}", self.get_error_as_string(message, range));
+  }
 
   pub fn register_matchers(&self, matchers: Vec<MatcherRef>) {
     for matcher in matchers {
@@ -293,5 +373,74 @@ impl ParserContext {
       },
       Err(error) => Err(error),
     }
+  }
+}
+
+#[cfg(test)]
+mod test {
+  use super::ParserContext;
+  use crate::{parser::Parser, source_range::SourceRange};
+
+  #[test]
+  fn get_line_works() {
+    let parser = Parser::new("Test 1\nTest 2\r\nTest 3\rTest 4");
+    let parser_context = ParserContext::new(&parser, "Test");
+
+    assert_eq!(parser_context.borrow().get_line(&SourceRange::new(4, 6)), 1);
+    assert_eq!(parser_context.borrow().get_line(&SourceRange::new(8, 9)), 2);
+    assert_eq!(
+      parser_context.borrow().get_line(&SourceRange::new(13, 14)),
+      3
+    );
+    assert_eq!(
+      parser_context.borrow().get_line(&SourceRange::new(23, 24)),
+      4
+    );
+  }
+
+  #[test]
+  fn get_column_works() {
+    let parser = Parser::new("Test 1\nTest 2\r\nTest 3\rTest 4");
+    let parser_context = ParserContext::new(&parser, "Test");
+
+    assert_eq!(
+      parser_context.borrow().get_column(&SourceRange::new(0, 2)),
+      1
+    );
+    assert_eq!(
+      parser_context.borrow().get_column(&SourceRange::new(8, 9)),
+      2
+    );
+    assert_eq!(
+      parser_context
+        .borrow()
+        .get_column(&SourceRange::new(13, 15)),
+      7
+    );
+  }
+
+  #[test]
+  fn get_line_and_column_works() {
+    let parser = Parser::new("Test 1\nTest 2\r\nTest 3\rTest 4");
+    let parser_context = ParserContext::new(&parser, "Test");
+
+    assert_eq!(
+      parser_context
+        .borrow()
+        .get_line_and_column(&SourceRange::new(0, 2)),
+      (1, 1)
+    );
+    assert_eq!(
+      parser_context
+        .borrow()
+        .get_line_and_column(&SourceRange::new(8, 9)),
+      (2, 2)
+    );
+    assert_eq!(
+      parser_context
+        .borrow()
+        .get_line_and_column(&SourceRange::new(13, 15)),
+      (2, 7)
+    );
   }
 }

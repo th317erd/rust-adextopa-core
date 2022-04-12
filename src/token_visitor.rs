@@ -1,11 +1,11 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::token::TokenRef;
+use crate::{parse_error::ParseError, token::TokenRef};
 
 pub struct TokenVisitor<'a> {
   hooks: Vec<(
     &'a str,
-    Rc<RefCell<Box<dyn FnMut(TokenRef) -> Result<(), String> + 'a>>>,
+    Rc<RefCell<Box<dyn FnMut(TokenRef) -> Result<(), ParseError> + 'a>>>,
   )>,
 }
 
@@ -17,7 +17,7 @@ impl<'a> TokenVisitor<'a> {
   pub fn add_visitor(
     &mut self,
     name: &'a str,
-    func: Box<dyn FnMut(TokenRef) -> Result<(), String> + 'a>,
+    func: Box<dyn FnMut(TokenRef) -> Result<(), ParseError> + 'a>,
   ) {
     self.hooks.push((name, Rc::new(RefCell::new(func))));
   }
@@ -25,7 +25,7 @@ impl<'a> TokenVisitor<'a> {
   fn find_hook(
     &mut self,
     name: &str,
-  ) -> Option<Rc<RefCell<Box<dyn FnMut(TokenRef) -> Result<(), String> + 'a>>>> {
+  ) -> Option<Rc<RefCell<Box<dyn FnMut(TokenRef) -> Result<(), ParseError> + 'a>>>> {
     for hook in &mut self.hooks {
       if hook.0 == name {
         return Some(hook.1.clone());
@@ -37,20 +37,20 @@ impl<'a> TokenVisitor<'a> {
 
   fn _visit(
     &mut self,
-    default_hook: Option<Rc<RefCell<Box<dyn FnMut(TokenRef) -> Result<(), String> + 'a>>>>,
+    default_hook: Option<Rc<RefCell<Box<dyn FnMut(TokenRef) -> Result<(), ParseError> + 'a>>>>,
     token: TokenRef,
-  ) -> Result<(), String> {
+  ) -> Result<(), ParseError> {
     let _token = token.borrow();
 
     if let Some(ref hook) = self.find_hook(_token.get_name()) {
       match (hook.clone().borrow_mut())(token.clone()) {
-        Err(err) => return Err(err),
+        Err(error) => return Err(error),
         Ok(_) => {}
       }
     } else if default_hook.is_some() {
       let dh = default_hook.as_ref().unwrap();
       match (dh.clone().borrow_mut())(token.clone()) {
-        Err(err) => return Err(err),
+        Err(error) => return Err(error),
         Ok(_) => {}
       }
     }
@@ -71,7 +71,7 @@ impl<'a> TokenVisitor<'a> {
     Ok(())
   }
 
-  pub fn visit(&mut self, token: TokenRef) -> Result<(), String> {
+  pub fn visit(&mut self, token: TokenRef) -> Result<(), ParseError> {
     let default_hook = self.find_hook("*");
     self._visit(default_hook, token)
   }

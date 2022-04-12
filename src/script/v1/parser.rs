@@ -1,8 +1,9 @@
-use std::{collections::HashMap, path::Path};
+use std::{cell::RefCell, collections::HashMap, path::Path};
 
 use crate::{
   matcher::MatcherRef,
   matchers::program::{MatchAction, ProgramPattern},
+  parse_error::ParseError,
   parser::{Parser, ParserRef},
   parser_context::{ParserContext, ParserContextRef},
   scope::VariableType,
@@ -261,16 +262,17 @@ fn build_matcher_from_tokens(
   parser_context: ParserContextRef,
   name: String,
   from_file: Option<&str>,
-) -> Result<(MatcherRef, ScopeContextRef), String> {
+) -> Result<(MatcherRef, ScopeContextRef), Vec<ParseError>> {
   if root_token.borrow().get_name() != "Script" {
-    return Err("Expected provided token to be a `Script` token".to_string());
+    return Err(vec![ParseError::new(
+      "Expected provided token to be a `Script` token",
+    )]);
   }
-
-  println!("Building matcher: {}", name);
 
   let root_matcher = ProgramPattern::new_program_with_name(Vec::new(), name, MatchAction::Continue);
   let scoped_matcher = ProgramPattern::new_program(Vec::new(), MatchAction::Continue);
   let scope_context = ScopeContext::new();
+  let parse_errors = RefCell::new(Vec::<ParseError>::new());
 
   root_matcher.borrow_mut().add_pattern(SetScope!(
     scope_context.clone(),
@@ -278,6 +280,13 @@ fn build_matcher_from_tokens(
   ));
 
   let result = Visit!(root_token, program,
+    "Error" => |token| {
+      let _token = token.borrow();
+
+      parse_errors.borrow_mut().push(ParseError::new_with_range(_token.get_attribute("__message").unwrap(), _token.get_matched_range().clone()));
+
+      Ok(())
+    },
     "AdextopaScope" => |token| {
       let _token = token.borrow();
 
@@ -321,12 +330,7 @@ fn build_matcher_from_tokens(
     },
     "ImportStatement" => |token| {
       if from_file.is_none() {
-        // TODO: Better error handling
-        let error = "Error found import statement, but it is forbidden to use imports when not parsing from a file";
-
-        eprintln!("{}", error);
-
-        return Err(error.to_string());
+        return Err(ParseError::new_with_range("Found import statement, but it is forbidden to use imports when not parsing from a file", token.borrow().get_matched_range().clone()));
       }
 
       let from_file = from_file.as_ref().unwrap();
@@ -339,14 +343,27 @@ fn build_matcher_from_tokens(
       let full_path = Path::new(from_file).parent().unwrap().join(path).canonicalize().unwrap();
       let file_name = full_path.to_str().unwrap();
 
-      let import_result = compile_script_from_file_internal(file_name)?;
+      let import_result = match compile_script_from_file_internal(file_name) {
+        Ok(result) => result,
+        Err(errors) => {
+          let mut _parse_errors = parse_errors.borrow_mut();
+
+          for error in errors {
+            _parse_errors.push(error);
+          }
+
+          return Err(ParseError::new(""));
+        },
+      };
+
       let import_root_matcher = import_result.1;
       let import_scope_context = import_result.2;
       //let mut register_matchers = register_matcher.borrow_mut();
 
       for import_identifier in import_identifiers {
         let import_identifier = import_identifier.borrow();
-        let identifier = import_identifier.find_child("ImportName").unwrap().borrow().get_value().to_string();
+        let identifier_token = import_identifier.find_child("ImportName").unwrap();
+        let identifier = identifier_token.borrow().get_value().to_string();
         let as_name = import_identifier.find_child("ImportAsName");
         let import_name = match as_name {
           Some(child) => child.borrow().get_value().to_string(),
@@ -354,19 +371,9 @@ fn build_matcher_from_tokens(
         };
 
         if identifier == "_" {
-          println!("Registering root matcher from import: {}", import_name);
           if import_name == "_" {
-            eprintln!("Error root import '_' must be named using 'import {{ _ as Name }}'");
-            return Err("Error root import '_' must be named using 'import {{ _ as Name }}'".to_string());
+            return Err(ParseError::new_with_range("Error root import '_' must be named using 'import {{ _ as Name }}'", identifier_token.borrow().get_matched_range().clone()));
           }
-
-          // let token_name = import_name.clone();
-
-          // let map_matcher = Map!(import_root_matcher.clone(), move |token| {
-          //   let mut token = token.borrow_mut();
-          //   token.set_name(&token_name);
-          //   None
-          // });
 
           import_root_matcher.borrow_mut().set_name(&import_name);
 
@@ -390,7 +397,7 @@ fn build_matcher_from_tokens(
               // TODO: This will not work until we get the full scope used by the parser
               scope_context.borrow_mut().set(&import_name, VariableType::Matcher(SetScope!(import_scope_context.clone(), map_matcher)));
             },
-            _ => return Err(format!("Failed to import `{}` from '{}': Not found", &identifier, file_name)),
+            _ => return Err(ParseError::new_with_range(&format!("Failed to import `{}` from '{}': Not found", &identifier, file_name), identifier_token.borrow().get_matched_range().clone())),
           }
         }
       }
@@ -427,7 +434,13 @@ fn build_matcher_from_tokens(
 
   match result {
     Ok(_) => Ok((root_matcher, scope_context)),
-    Err(error) => panic!("{}", error),
+    Err(error) => {
+      if error.message != "" {
+        parse_errors.borrow_mut().push(error);
+      }
+
+      Err(parse_errors.into_inner())
+    }
   }
 }
 
@@ -435,7 +448,7 @@ pub fn compile_script(
   parser: ParserRef,
   name: String,
   from_file: Option<&str>,
-) -> Result<(ParserContextRef, MatcherRef, ScopeContextRef), String> {
+) -> Result<(ParserContextRef, MatcherRef, ScopeContextRef), Vec<ParseError>> {
   let parser_context = ParserContext::new(&parser, &name);
 
   (*parser_context)
@@ -449,31 +462,34 @@ pub fn compile_script(
     Ok(token) => {
       match build_matcher_from_tokens(token.clone(), parser_context.clone(), name, from_file) {
         Ok(result) => Ok((parser_context, result.0, result.1)),
-        Err(error) => Err(error),
+        Err(errors) => Err(errors),
       }
     }
     Err(error) => match error {
       crate::matcher::MatcherFailure::Fail => {
-        return Err("Invalid syntax".to_string());
+        return Err(vec![ParseError::new("Failed to parse script with an unknown error. This is likely a bug. Please report this issue to the adextopa maintainers.")]);
       }
-      crate::matcher::MatcherFailure::Error(error) => {
-        return Err(format!("Error: {}", error));
+      crate::matcher::MatcherFailure::Error(message, range) => {
+        return match range {
+          Some(range) => Err(vec![ParseError::new_with_range(&message, range.clone())]),
+          None => Err(vec![ParseError::new(&message)]),
+        };
       }
     },
   }
 }
 
-pub fn compile_script_from_str(source: &str, name: String) -> Result<MatcherRef, String> {
+pub fn compile_script_from_str(source: &str, name: String) -> Result<MatcherRef, Vec<ParseError>> {
   let parser = Parser::new(source);
   match compile_script(parser, name, None) {
     Ok(result) => Ok(result.1),
-    Err(error) => Err(error),
+    Err(errors) => Err(errors),
   }
 }
 
 fn compile_script_from_file_internal(
   file_name: &str,
-) -> Result<(ParserContextRef, MatcherRef, ScopeContextRef), String> {
+) -> Result<(ParserContextRef, MatcherRef, ScopeContextRef), Vec<ParseError>> {
   let full_path = Path::new(file_name).canonicalize().unwrap();
   let full_file_name = full_path.to_str().unwrap();
 
@@ -481,20 +497,21 @@ fn compile_script_from_file_internal(
   compile_script(parser, file_name.to_string(), Some(full_file_name))
 }
 
-pub fn compile_script_from_file(file_name: &str) -> Result<MatcherRef, String> {
+pub fn compile_script_from_file(file_name: &str) -> Result<MatcherRef, Vec<ParseError>> {
   let full_path = Path::new(file_name).canonicalize().unwrap();
   let full_file_name = full_path.to_str().unwrap();
 
   let parser = Parser::new_from_file(full_file_name).unwrap();
   match compile_script(parser, file_name.to_string(), Some(full_file_name)) {
     Ok(result) => Ok(result.1),
-    Err(error) => Err(error),
+    Err(errors) => Err(errors),
   }
 }
 
 #[cfg(test)]
 mod tests {
   use crate::{
+    matcher::MatcherFailure,
     parser::Parser,
     parser_context::{ParserContext, ParserContextRef},
     script::current::parser::construct_matcher_from_pattern,
@@ -754,6 +771,17 @@ mod tests {
         child.to_string(),
         "SequencePattern { start: \"[\", end: \"]\", escape: \"\\\\\", name: \"Sequence\", custom_name: false }"
       );
+    } else {
+      unreachable!("Test failed!");
+    };
+  }
+
+  #[test]
+  fn it_can_capture_and_display_errors_properly() {
+    if let Err(errors) =
+      compile_script_from_file("./src/script/v1/tests/script/test_attribute_error1.axo")
+    {
+      //assert_eq!(error, "test");
     } else {
       unreachable!("Test failed!");
     };

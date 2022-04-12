@@ -43,7 +43,7 @@ impl NotPattern {
       Err(failure) => match failure {
         // Succeed on fail
         MatcherFailure::Fail => Ok(MatcherSuccess::Skip(0)),
-        MatcherFailure::Error(err) => Err(MatcherFailure::Error(err)),
+        MatcherFailure::Error(message, range) => Err(MatcherFailure::Error(message, range)),
       },
     }
   }

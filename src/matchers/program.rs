@@ -185,11 +185,17 @@ impl ProgramPattern {
       }
 
       for pattern in &self.patterns {
+        sub_context
+          .borrow_mut()
+          .push_token_to_stack(program_token.clone());
+
         let result = pattern.borrow().exec(
           pattern.clone(),
           std::rc::Rc::new(std::cell::RefCell::new(sub_context.borrow().clone())),
           scope.clone(),
         );
+
+        sub_context.borrow_mut().pop_token_from_stack();
 
         match result {
           Ok(success) => match success {
@@ -337,8 +343,8 @@ impl ProgramPattern {
                   return Err(MatcherFailure::Fail);
                 }
               },
-              MatcherFailure::Error(error) => {
-                return Err(MatcherFailure::Error(error));
+              MatcherFailure::Error(message, range) => {
+                return Err(MatcherFailure::Error(message, range));
               }
             }
           }

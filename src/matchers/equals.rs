@@ -115,6 +115,7 @@ where
       FetchableType::Matcher(_) => Err(MatcherFailure::Error(
         "`Equals` matcher received another matcher as a pattern... this makes no sense... aborting..."
           .to_string(),
+        None
       )),
     }
   }

@@ -86,6 +86,7 @@ where
       FetchableType::Matcher(_) => return Err(MatcherFailure::Error(
         "`Sequence` matcher received another matcher as a `start_pattern`... this makes no sense... aborting..."
           .to_string(),
+        None
       )),
     };
 
@@ -99,6 +100,7 @@ where
       FetchableType::Matcher(_) => return Err(MatcherFailure::Error(
         "`Sequence` matcher received another matcher as a `end_pattern`... this makes no sense... aborting..."
           .to_string(),
+        None
       )),
     };
     if end_pattern.len() == 0 {
@@ -111,6 +113,7 @@ where
       FetchableType::Matcher(_) => return Err(MatcherFailure::Error(
         "`Sequence` matcher received another matcher as a `end_pattern`... this makes no sense... aborting..."
           .to_string(),
+        None
       )),
     };
 

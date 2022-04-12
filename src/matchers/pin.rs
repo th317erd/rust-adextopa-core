@@ -307,6 +307,7 @@ where
       FetchableType::Matcher(_) => return Err(MatcherFailure::Error(
         "`Pin` matcher received another matcher as an offset... this makes no sense... aborting..."
           .to_string(),
+        None,
       )),
     };
 

@@ -1,9 +1,11 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use super::token::TokenRef;
 use crate::parser_context::ParserContextRef;
 use crate::scope::VariableType;
 use crate::scope_context::ScopeContextRef;
-use std::cell::RefCell;
-use std::rc::Rc;
+use crate::source_range::SourceRange;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum MatcherSuccess {
@@ -19,7 +21,7 @@ pub enum MatcherSuccess {
 #[derive(Debug, PartialEq, Clone)]
 pub enum MatcherFailure {
   Fail,
-  Error(String),
+  Error(String, Option<SourceRange>),
 }
 
 pub type MatcherRef = Rc<RefCell<Box<dyn Matcher>>>;

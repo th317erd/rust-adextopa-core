@@ -1,9 +1,9 @@
 #[macro_export]
 macro_rules! FatalIf {
   ($matcher:expr, $message:expr) => {
-    $crate::ProxyChildren!("Panic";
+    $crate::ProxyChildren!("FatalIf";
       $crate::Optional!(
-        $crate::Program!("Panic";
+        $crate::Program!("FatalIf";
           $crate::Discard!($matcher),
           $crate::Panic!($message),
         )

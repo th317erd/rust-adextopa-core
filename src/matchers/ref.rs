@@ -73,10 +73,13 @@ where
             .borrow()
             .exec(matcher.clone(), sub_context, scope.clone())
         } else {
-          return Err(MatcherFailure::Error(format!(
-            "`Ref` matcher unable to locate target reference `{}`",
-            target_name
-          )));
+          return Err(MatcherFailure::Error(
+            format!(
+              "`Ref` matcher unable to locate target reference `{}`",
+              target_name,
+            ),
+            None,
+          ));
         }
       }
       FetchableType::Matcher(matcher) => {

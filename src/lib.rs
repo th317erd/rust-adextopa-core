@@ -1,5 +1,6 @@
 pub mod matcher;
 pub mod matchers;
+pub mod parse_error;
 pub mod parser;
 pub mod parser_context;
 pub mod scope;

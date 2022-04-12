@@ -1,16 +1,29 @@
 #[macro_export]
 macro_rules! Script {
   () => {
-    $crate::Program!("Script";
-      $crate::Optional!(
-        $crate::Loop!("PreHead";
-          $crate::ScriptWSN0!(?),
-          $crate::ScriptComment!(),
-        )
+    $crate::Map!(
+      $crate::Program!("Script";
+        $crate::Optional!(
+          $crate::Loop!("PreHead";
+            $crate::ScriptWSN0!(?),
+            $crate::ScriptComment!(),
+          )
+        ),
+        $crate::ScriptWSN0!(?),
+        $crate::Optional!($crate::ScriptAdextopaScope!()),
+        $crate::Optional!($crate::ScriptPatternScope!()),
       ),
-      $crate::ScriptWSN0!(?),
-      $crate::Optional!($crate::ScriptAdextopaScope!()),
-      $crate::Optional!($crate::ScriptPatternScope!()),
+      |token| {
+        let token = token.borrow();
+        let adextopa_scope = token.find_child("AdextopaScope");
+        let pattern_scope = token.find_child("PatternScope");
+
+        if adextopa_scope.is_none() && pattern_scope.is_none() {
+          return Err("Nothing to parse. No scopes found.".to_string());
+        }
+
+        Ok(())
+      }
     )
   };
 }
@@ -103,7 +116,7 @@ mod tests {
 
   #[test]
   fn it_fails1() {
-    let parser = Parser::new("<!--[adextopa:v1]-->");
+    let parser = Parser::new("derp");
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Script!();
 
@@ -113,5 +126,34 @@ mod tests {
       Err(MatcherFailure::Fail),
       ParserContext::tokenize(parser_context, matcher)
     );
+  }
+
+  #[test]
+  fn it_fails_when_empty() {
+    let source = "# there is nothing here but a comment";
+    let parser = Parser::new(source);
+    let parser_context = ParserContext::new(&parser, "Test");
+    let matcher = Script!();
+
+    register_matchers(&parser_context);
+
+    let result = ParserContext::tokenize(parser_context, matcher);
+
+    if let Ok(token) = result {
+      let token = token.borrow();
+      assert_eq!(token.get_name(), "Error");
+      assert_eq!(*token.get_captured_range(), SourceRange::new(0, 37));
+      assert_eq!(*token.get_matched_range(), SourceRange::new(0, 37));
+      assert_eq!(token.get_value(), source);
+      assert_eq!(token.get_matched_value(), source);
+      assert_eq!(token.get_children().len(), 0);
+
+      assert_eq!(
+        token.get_attribute("__message"),
+        Some(&"Nothing to parse. No scopes found.".to_string())
+      );
+    } else {
+      unreachable!("Test failed!");
+    };
   }
 }

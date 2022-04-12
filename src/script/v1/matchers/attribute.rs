@@ -7,7 +7,7 @@ macro_rules! ScriptAttribute {
       $crate::ScriptWS0!(?),
       $crate::Discard!($crate::Equals!("=")),
       $crate::ScriptWS0!(?),
-      $crate::FatalIfNot!($crate::Equals!("'"), "Malformed attribute detected. Attribute value is not single-quoted. The proper format for an attribute is: name='value'"),
+      $crate::FatalIf!($crate::Matches!(r"[^'\s]+"), "Malformed attribute detected. Attribute value is not single-quoted. The proper format for an attribute is: name='value'"),
       $crate::ScriptString!("Value"),
       $crate::Pin!($crate::Fetch!("AttributeStartOffset.range");
         $crate::AssertIf!(
@@ -118,7 +118,8 @@ mod tests {
     assert_eq!(
       Err(MatcherFailure::Error(
         "Malformed attribute detected. Attribute value is not single-quoted. The proper format for an attribute is: name='value'"
-          .to_string()
+          .to_string(),
+        Some(SourceRange::new(0, 10))
       )),
       result
     );

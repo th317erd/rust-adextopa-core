@@ -6,7 +6,7 @@ use std::rc::Rc;
 
 pub struct CatchPattern<F>
 where
-  F: Fn(MatcherFailure) -> Result<MatcherSuccess, MatcherFailure>,
+  F: Fn(ParserContextRef, MatcherFailure) -> Result<MatcherSuccess, MatcherFailure>,
 {
   matcher: MatcherRef,
   catch_func: F,
@@ -14,7 +14,7 @@ where
 
 impl<F> std::fmt::Debug for CatchPattern<F>
 where
-  F: Fn(MatcherFailure) -> Result<MatcherSuccess, MatcherFailure>,
+  F: Fn(ParserContextRef, MatcherFailure) -> Result<MatcherSuccess, MatcherFailure>,
 {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     f.debug_struct("CatchPattern")
@@ -25,7 +25,7 @@ where
 
 impl<F> CatchPattern<F>
 where
-  F: Fn(MatcherFailure) -> Result<MatcherSuccess, MatcherFailure>,
+  F: Fn(ParserContextRef, MatcherFailure) -> Result<MatcherSuccess, MatcherFailure>,
   F: 'static,
 {
   pub fn new(matcher: MatcherRef, catch_func: F) -> MatcherRef {
@@ -40,22 +40,23 @@ where
     context: ParserContextRef,
     scope: ScopeContextRef,
   ) -> Result<MatcherSuccess, MatcherFailure> {
-    let result = self.matcher.borrow().exec(
-      self.matcher.clone(),
-      context.borrow().clone_with_name(self.get_name()),
-      scope.clone(),
-    );
+    let sub_context = context.borrow().clone_with_name(self.get_name());
+    let result =
+      self
+        .matcher
+        .borrow()
+        .exec(self.matcher.clone(), sub_context.clone(), scope.clone());
 
     match result {
       Ok(success) => Ok(success),
-      Err(failure) => (self.catch_func)(failure),
+      Err(failure) => (self.catch_func)(sub_context.clone(), failure),
     }
   }
 }
 
 impl<F> Matcher for CatchPattern<F>
 where
-  F: Fn(MatcherFailure) -> Result<MatcherSuccess, MatcherFailure>,
+  F: Fn(ParserContextRef, MatcherFailure) -> Result<MatcherSuccess, MatcherFailure>,
   F: 'static,
 {
   fn exec(
@@ -119,7 +120,7 @@ mod tests {
   fn it_does_nothing_on_success() {
     let parser = Parser::new("Testing 1234");
     let parser_context = ParserContext::new(&parser, "Test");
-    let matcher = Catch!(Equals!("Testing"), |_| {
+    let matcher = Catch!(Equals!("Testing"), |_, _| {
       unreachable!("Test failed!");
     });
 
@@ -139,13 +140,16 @@ mod tests {
   fn it_can_catch_a_failure() {
     let parser = Parser::new("Testing 1234");
     let parser_context = ParserContext::new(&parser, "Test");
-    let matcher = Catch!(Equals!("Derp"), |_| {
+    let matcher = Catch!(Equals!("Derp"), |context, _| {
       Err(MatcherFailure::Error(
         "There was a big fat error!".to_string(),
+        Some(context.borrow().offset),
       ))
     });
 
-    if let Err(MatcherFailure::Error(failure)) = ParserContext::tokenize(parser_context, matcher) {
+    if let Err(MatcherFailure::Error(failure, failure_range)) =
+      ParserContext::tokenize(parser_context, matcher)
+    {
       assert_eq!(failure, "There was a big fat error!".to_string());
     } else {
       unreachable!("Test failed!");
@@ -156,17 +160,19 @@ mod tests {
   fn it_can_catch_an_error() {
     let parser = Parser::new("Testing 1234");
     let parser_context = ParserContext::new(&parser, "Test");
-    let matcher = Catch!(Panic!("Holy malarky! I failed!"), |failure| {
-      Err(MatcherFailure::Error(format!(
-        "There was a big fat error!: {:?}",
-        failure
-      )))
+    let matcher = Catch!(Panic!("Holy malarky! I failed!"), |context, failure| {
+      Err(MatcherFailure::Error(
+        format!("There was a big fat error!: {:?}", failure),
+        Some(context.borrow().offset),
+      ))
     });
 
-    if let Err(MatcherFailure::Error(failure)) = ParserContext::tokenize(parser_context, matcher) {
+    if let Err(MatcherFailure::Error(failure, failure_range)) =
+      ParserContext::tokenize(parser_context, matcher)
+    {
       assert_eq!(
         failure,
-        "There was a big fat error!: Error(\"Holy malarky! I failed!\")".to_string()
+        "There was a big fat error!: Error(\"Holy malarky! I failed!\", Some(SourceRange { start: 0, end: 0 }))".to_string()
       );
     } else {
       unreachable!("Test failed!");

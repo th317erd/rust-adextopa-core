@@ -4,6 +4,7 @@ use std::rc::Rc;
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
 use crate::scope_context::ScopeContextRef;
+use crate::source_range::SourceRange;
 
 #[derive(Debug)]
 pub struct PanicPattern {
@@ -19,10 +20,21 @@ impl PanicPattern {
 
   fn _exec(
     &self,
-    _: ParserContextRef,
+    context: ParserContextRef,
     _: ScopeContextRef,
   ) -> Result<MatcherSuccess, MatcherFailure> {
-    Err(MatcherFailure::Error(self.message.to_string()))
+    let range = match context.borrow().get_top_token_from_stack() {
+      Some(token) => {
+        let start = token.borrow().get_matched_range().start;
+        SourceRange::new(start, context.borrow().offset.start)
+      }
+      None => {
+        let start = context.borrow().offset.start;
+        SourceRange::new(start, start)
+      }
+    };
+
+    Err(MatcherFailure::Error(self.message.to_string(), Some(range)))
   }
 }
 
@@ -86,7 +98,9 @@ mod tests {
       Matches!(r"\d+")
     );
 
-    if let Err(MatcherFailure::Error(message)) = ParserContext::tokenize(parser_context, matcher) {
+    if let Err(MatcherFailure::Error(message, range)) =
+      ParserContext::tokenize(parser_context, matcher)
+    {
       assert_eq!(message, "There was an error!");
     } else {
       unreachable!("Test failed!");

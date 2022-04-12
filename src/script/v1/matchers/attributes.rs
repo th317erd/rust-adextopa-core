@@ -106,7 +106,8 @@ mod tests {
     assert_eq!(
       Err(MatcherFailure::Error(
         "Malformed attribute detected. Attribute value is not single-quoted. The proper format for an attribute is: name='value'"
-          .to_string()
+          .to_string(),
+        Some(SourceRange::new(0, 10))
       )),
       result
     );
