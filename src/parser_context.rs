@@ -185,61 +185,90 @@ impl ParserContext {
     Some(self.token_stack[self.token_stack.len() - 1].clone())
   }
 
-  pub fn get_line(&self, range: &SourceRange) -> usize {
+  pub fn get_lines(&self, range: &SourceRange) -> (usize, usize) {
     let parser = self.parser.borrow();
     let source = parser.source.as_str();
 
-    return NEWLINES.find_iter(&source[0..range.end]).count() + 1;
+    let first_line = NEWLINES.find_iter(&source[0..range.start]).count() + 1;
+    let last_line = NEWLINES.find_iter(&source[0..range.end]).count() + 1;
+
+    return (first_line, last_line);
   }
 
-  pub fn get_column(&self, range: &SourceRange) -> usize {
+  pub fn get_columns(&self, range: &SourceRange) -> (usize, usize) {
     let parser = self.parser.borrow();
     let source = parser.source.as_str();
     let mut last_newline = 0;
+    let mut first_column = 0;
+    let mut last_column = 0;
 
     for item in NEWLINES.find_iter(&source[0..range.end]) {
       let end_position = item.end();
 
-      if end_position > range.start {
+      if first_column == 0 && end_position > range.start {
+        first_column = (range.start - last_newline) + 1;
+      }
+
+      if end_position > range.end {
+        last_column = (range.end - last_newline) + 1;
         break;
       }
 
       last_newline = end_position;
     }
 
-    return (range.start - last_newline) + 1;
-  }
-
-  pub fn get_line_and_column(&self, range: &SourceRange) -> (usize, usize) {
-    let parser = self.parser.borrow();
-    let source = parser.source.as_str();
-    let mut last_newline = 0;
-    let mut line_count = 1;
-
-    for item in NEWLINES.find_iter(&source[0..range.end]) {
-      let end_position = item.end();
-
-      if end_position > range.start {
-        break;
+    if first_column == 0 {
+      if last_newline != 0 {
+        first_column = (range.start - last_newline) + 1;
+      } else {
+        first_column = range.start + 1;
       }
-
-      last_newline = end_position;
-      line_count += 1;
     }
 
-    return (line_count, (range.start - last_newline) + 1);
+    if last_column == 0 {
+      if last_newline != 0 {
+        last_column = (range.end - last_newline) + 1;
+      } else {
+        last_column = range.end + 1;
+      }
+    }
+
+    if first_column > last_column {
+      last_column = first_column;
+    }
+
+    return (first_column, last_column);
+  }
+
+  pub fn get_lines_and_columns(&self, range: &SourceRange) -> ((usize, usize), (usize, usize)) {
+    return (self.get_lines(range), self.get_columns(range));
   }
 
   pub fn get_error_as_string(&self, message: &str, range: &SourceRange) -> String {
-    let (line, column) = self.get_line_and_column(range);
+    let (lines, columns) = self.get_lines_and_columns(range);
     let parser = self.parser.borrow();
     let filename = &parser.filename;
 
-    format!("Error: {}@[{}:{}]: {}", filename, line, column, message)
+    let line_str = if lines.0 == lines.1 {
+      format!("{}", lines.0)
+    } else {
+      format!("{}-{}", lines.0, lines.1)
+    };
+
+    let column_str = if columns.0 == columns.1 {
+      format!("{}", columns.0)
+    } else {
+      format!("{}-{}", columns.0, columns.1)
+    };
+
+    format!(
+      "Error: {}@[{}:{}]: {}",
+      filename, line_str, column_str, message
+    )
   }
 
-  pub fn display_error(&self, message: &str, range: &SourceRange) {
-    println!("{}", self.get_error_as_string(message, range));
+  pub fn display_error(&self, message: &str, _: &SourceRange) {
+    println!("{}", message);
   }
 
   pub fn register_matchers(&self, matchers: Vec<MatcherRef>) {
@@ -361,15 +390,9 @@ impl ParserContext {
             Self::collect_errors(token.clone(), token.clone(), true);
             return Ok(token.clone());
           }
-          _ => {
-            println!("Failing here 1!");
-            Err(MatcherFailure::Fail)
-          }
+          _ => Err(MatcherFailure::Fail),
         },
-        _ => {
-          println!("Failing here 2! {:?}", success);
-          Err(MatcherFailure::Fail)
-        }
+        _ => Err(MatcherFailure::Fail),
       },
       Err(error) => Err(error),
     }
@@ -386,15 +409,21 @@ mod test {
     let parser = Parser::new("Test 1\nTest 2\r\nTest 3\rTest 4");
     let parser_context = ParserContext::new(&parser, "Test");
 
-    assert_eq!(parser_context.borrow().get_line(&SourceRange::new(4, 6)), 1);
-    assert_eq!(parser_context.borrow().get_line(&SourceRange::new(8, 9)), 2);
     assert_eq!(
-      parser_context.borrow().get_line(&SourceRange::new(13, 14)),
-      3
+      parser_context.borrow().get_lines(&SourceRange::new(4, 6)),
+      (1, 1)
     );
     assert_eq!(
-      parser_context.borrow().get_line(&SourceRange::new(23, 24)),
-      4
+      parser_context.borrow().get_lines(&SourceRange::new(8, 9)),
+      (2, 2)
+    );
+    assert_eq!(
+      parser_context.borrow().get_lines(&SourceRange::new(14, 15)),
+      (3, 3)
+    );
+    assert_eq!(
+      parser_context.borrow().get_lines(&SourceRange::new(23, 24)),
+      (4, 4)
     );
   }
 
@@ -404,18 +433,18 @@ mod test {
     let parser_context = ParserContext::new(&parser, "Test");
 
     assert_eq!(
-      parser_context.borrow().get_column(&SourceRange::new(0, 2)),
-      1
+      parser_context.borrow().get_columns(&SourceRange::new(0, 2)),
+      (1, 3)
     );
     assert_eq!(
-      parser_context.borrow().get_column(&SourceRange::new(8, 9)),
-      2
+      parser_context.borrow().get_columns(&SourceRange::new(8, 9)),
+      (2, 3)
     );
     assert_eq!(
       parser_context
         .borrow()
-        .get_column(&SourceRange::new(13, 15)),
-      7
+        .get_columns(&SourceRange::new(13, 15)),
+      (7, 7)
     );
   }
 
@@ -427,20 +456,26 @@ mod test {
     assert_eq!(
       parser_context
         .borrow()
-        .get_line_and_column(&SourceRange::new(0, 2)),
-      (1, 1)
+        .get_lines_and_columns(&SourceRange::new(0, 2)),
+      ((1, 1), (1, 3))
     );
     assert_eq!(
       parser_context
         .borrow()
-        .get_line_and_column(&SourceRange::new(8, 9)),
-      (2, 2)
+        .get_lines_and_columns(&SourceRange::new(8, 9)),
+      ((2, 2), (2, 3))
     );
     assert_eq!(
       parser_context
         .borrow()
-        .get_line_and_column(&SourceRange::new(13, 15)),
-      (2, 7)
+        .get_lines_and_columns(&SourceRange::new(15, 17)),
+      ((3, 3), (1, 3))
+    );
+    assert_eq!(
+      parser_context
+        .borrow()
+        .get_lines_and_columns(&SourceRange::new(0, 19)),
+      ((1, 3), (1, 5))
     );
   }
 }

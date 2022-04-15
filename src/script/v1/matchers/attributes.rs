@@ -13,8 +13,8 @@ macro_rules! ScriptAttributes {
 #[cfg(test)]
 mod tests {
   use crate::{
-    matcher::MatcherFailure, parser::Parser, parser_context::ParserContext,
-    source_range::SourceRange,
+    matcher::MatcherFailure, parse_error::ParseError, parser::Parser,
+    parser_context::ParserContext, source_range::SourceRange,
   };
 
   #[test]
@@ -88,7 +88,7 @@ mod tests {
       assert_eq!(second.get_children().len(), 0);
       assert_eq!(
         second.get_attribute("__message"),
-        Some(&"Attribute names can not start with an underscore".to_string())
+        Some(&"Error: @[1:6]: Attribute names can not start with an underscore".to_string())
       );
     } else {
       unreachable!("Test failed!");
@@ -105,9 +105,10 @@ mod tests {
 
     assert_eq!(
       Err(MatcherFailure::Error(
-        "Malformed attribute detected. Attribute value is not single-quoted. The proper format for an attribute is: name='value'"
-          .to_string(),
-        Some(SourceRange::new(0, 10))
+        ParseError::new_with_range(
+          "Error: @[1:7-11]: Malformed attribute detected. Attribute value is not single-quoted. The proper format for an attribute is: name='value'",
+          SourceRange::new(6, 10)
+        )
       )),
       result
     );

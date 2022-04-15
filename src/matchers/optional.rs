@@ -27,7 +27,7 @@ impl OptionalPattern {
       Ok(success) => Ok(success),
       Err(failure) => match failure {
         MatcherFailure::Fail => Ok(MatcherSuccess::Skip(0)),
-        MatcherFailure::Error(message, range) => Err(MatcherFailure::Error(message, range)),
+        MatcherFailure::Error(error) => Err(MatcherFailure::Error(error)),
       },
     }
   }

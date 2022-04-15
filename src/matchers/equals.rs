@@ -3,6 +3,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
+use crate::parse_error::ParseError;
 use crate::parser_context::ParserContextRef;
 use crate::scope_context::ScopeContextRef;
 use crate::token::StandardToken;
@@ -113,9 +114,9 @@ where
         }
       }
       FetchableType::Matcher(_) => Err(MatcherFailure::Error(
-        "`Equals` matcher received another matcher as a pattern... this makes no sense... aborting..."
-          .to_string(),
-        None
+        ParseError::new(
+        &format!("`Equals` ({}) matcher received another matcher as a pattern... this makes no sense... aborting...", self.get_name())
+        )
       )),
     }
   }
@@ -150,7 +151,7 @@ where
 
   fn set_name(&mut self, name: &str) {
     self.name = name.to_string();
-    self.custom_name = true;
+    self.custom_name = name != "Equals";
   }
 
   fn get_children(&self) -> Option<Vec<MatcherRef>> {

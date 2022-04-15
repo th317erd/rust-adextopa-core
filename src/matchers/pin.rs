@@ -4,6 +4,7 @@ use std::rc::Rc;
 
 use super::fetch::{Fetchable, FetchableType};
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
+use crate::parse_error::ParseError;
 use crate::parser::ParserRef;
 use crate::parser_context::ParserContextRef;
 use crate::scope_context::ScopeContextRef;
@@ -283,6 +284,8 @@ where
 {
   pattern: Option<MatcherRef>,
   offset: T,
+  name: String,
+  custom_name: bool,
 }
 
 impl<T> PinPattern<T>
@@ -291,8 +294,22 @@ where
   T: 'static,
   T: std::fmt::Debug,
 {
-  pub fn new(offset: T, pattern: Option<MatcherRef>) -> MatcherRef {
-    Rc::new(RefCell::new(Box::new(Self { pattern, offset })))
+  pub fn new(pattern: Option<MatcherRef>, offset: T) -> MatcherRef {
+    Rc::new(RefCell::new(Box::new(Self {
+      pattern,
+      offset,
+      name: "Pin".to_string(),
+      custom_name: false,
+    })))
+  }
+
+  pub fn new_with_name(pattern: Option<MatcherRef>, name: &str, offset: T) -> MatcherRef {
+    Rc::new(RefCell::new(Box::new(Self {
+      pattern,
+      offset,
+      name: name.to_string(),
+      custom_name: true,
+    })))
   }
 
   fn _exec(
@@ -304,11 +321,9 @@ where
     let offset_value_fetchable = self.offset.fetch_value(sub_context.clone(), scope.clone());
     let offset_value = match offset_value_fetchable {
       FetchableType::String(value) => value,
-      FetchableType::Matcher(_) => return Err(MatcherFailure::Error(
-        "`Pin` matcher received another matcher as an offset... this makes no sense... aborting..."
-          .to_string(),
-        None,
-      )),
+      FetchableType::Matcher(_) => return Err(MatcherFailure::Error(ParseError::new(
+        "`Pin` matcher received another matcher as an offset... this makes no sense... aborting...",
+      ))),
     };
 
     let offset_value_parts: Vec<&str> = offset_value.split("..").collect();
@@ -369,19 +384,16 @@ where
   }
 
   fn has_custom_name(&self) -> bool {
-    false
+    self.custom_name
   }
 
   fn get_name(&self) -> &str {
-    "Pin"
+    &self.name
   }
 
   fn set_name(&mut self, name: &str) {
-    // panic!("Can not set `name` on a `Pin` matcher");
-    match self.pattern {
-      Some(ref matcher) => matcher.borrow_mut().set_name(name),
-      None => {}
-    };
+    self.name = name.to_string();
+    self.custom_name = name != "Pin";
   }
 
   fn get_children(&self) -> Option<Vec<MatcherRef>> {
@@ -402,24 +414,28 @@ where
 
 #[macro_export]
 macro_rules! Pin {
-  ($offset:literal; $arg:expr) => {
-    $crate::matchers::pin::PinPattern::new($offset, Some($arg))
+  ($name:expr, $offset:expr; $arg:expr) => {
+    $crate::matchers::pin::PinPattern::new_with_name(Some($arg), $name, $offset)
   };
 
-  ($offset:expr; $arg:expr) => {
-    $crate::matchers::pin::PinPattern::new($offset, Some($arg))
+  ($name:expr; $arg:expr) => {
+    $crate::matchers::pin::PinPattern::new_with_name(Some($arg), $name, "")
+  };
+
+  ($name:expr, $offset:expr;) => {
+    $crate::matchers::pin::PinPattern::new_with_name(None, $name, $offset)
+  };
+
+  ($name:expr;) => {
+    $crate::matchers::pin::PinPattern::new_with_name(None, $name, "")
   };
 
   ($arg:expr) => {
-    $crate::matchers::pin::PinPattern::new("", Some($arg))
-  };
-
-  ($offset:literal) => {
-    $crate::matchers::pin::PinPattern::new($offset, None)
+    $crate::matchers::pin::PinPattern::new(Some($arg), "")
   };
 
   () => {
-    $crate::matchers::pin::PinPattern::new("", None)
+    $crate::matchers::pin::PinPattern::new(None, "")
   };
 }
 
@@ -434,7 +450,7 @@ mod tests {
   fn it_shouldnt_update_context_offset() {
     let parser = Parser::new("Testing 1234");
     let parser_context = ParserContext::new(&parser, "Test");
-    let matcher = Pin!("8"; Equals!("1234"));
+    let matcher = Pin!("Pin", "8"; Equals!("1234"));
 
     if let Ok(token) = ParserContext::tokenize(parser_context.clone(), matcher) {
       let token = token.borrow();
@@ -458,7 +474,7 @@ mod tests {
     let matcher = Program!(
       Store!("stored_offset"; Pin!()),
       Equals!("Testing"),
-      Pin!(Fetch!("stored_offset.range"); Equals!("Testing")),
+      Pin!("Pin", Fetch!("stored_offset.range"); Equals!("Testing")),
       Discard!(Matches!(r"\s+")),
       Matches!(r"\d+"),
     );
@@ -497,7 +513,7 @@ mod tests {
   fn it_should_be_able_to_specify_a_relative_offset1() {
     let parser = Parser::new("Testing 1234");
     let parser_context = ParserContext::new(&parser, "Test");
-    let matcher = Pin!("+8"; Equals!("1234"));
+    let matcher = Pin!("Pin", "+8"; Equals!("1234"));
 
     if let Ok(token) = ParserContext::tokenize(parser_context.clone(), matcher) {
       let token = token.borrow();
@@ -518,7 +534,7 @@ mod tests {
   fn it_should_be_able_to_specify_a_relative_offset2() {
     let parser = Parser::new("Testing 1234");
     let parser_context = ParserContext::new(&parser, "Test");
-    let matcher = Program!(Equals!("Testing"), Pin!("-7"; Equals!("Testing")));
+    let matcher = Program!(Equals!("Testing"), Pin!("Pin", "-7"; Equals!("Testing")));
 
     if let Ok(token) = ParserContext::tokenize(parser_context.clone(), matcher) {
       let token = token.borrow();
@@ -548,7 +564,7 @@ mod tests {
   fn it_should_fail_with_too_tight_a_range() {
     let parser = Parser::new("Testing 1234");
     let parser_context = ParserContext::new(&parser, "Test");
-    let matcher = Pin!("0..4"; Equals!("Testing"));
+    let matcher = Pin!("Pin", "0..4"; Equals!("Testing"));
 
     assert_eq!(
       Err(MatcherFailure::Fail),

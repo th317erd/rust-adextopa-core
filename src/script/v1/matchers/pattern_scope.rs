@@ -9,17 +9,17 @@ macro_rules! ScriptPatternScope {
           $crate::ScriptPattern!(),
         ),
       ),
-      |token| {
-        let token = token.borrow();
-        let token_range = token.get_matched_range();
-        let parser = token.get_parser();
+      |token, context, __| {
+        let _token = token.borrow();
+        let token_range = _token.get_matched_range();
+        let parser = _token.get_parser();
         let source = &parser.borrow().source;
 
         if token_range.end < source.len() {
-          return Err(format!("Syntax error. Expected a pattern defintion, but instead found: {}", &source[token_range.end..]));
+          return $crate::ErrorTokenResult!(context.clone(), &format!("Syntax error. Expected a pattern defintion, but instead found: {}", &source[token_range.end..]));
         }
 
-        Ok(())
+        $crate::TokenResult!(token.clone())
       }
     )
   };

@@ -112,8 +112,8 @@ macro_rules! Catch {
 #[cfg(test)]
 mod tests {
   use crate::{
-    matcher::MatcherFailure, parser::Parser, parser_context::ParserContext,
-    source_range::SourceRange, Equals, Panic,
+    matcher::MatcherFailure, parse_error::ParseError, parser::Parser,
+    parser_context::ParserContext, source_range::SourceRange, Equals, Panic,
   };
 
   #[test]
@@ -141,16 +141,14 @@ mod tests {
     let parser = Parser::new("Testing 1234");
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Catch!(Equals!("Derp"), |context, _| {
-      Err(MatcherFailure::Error(
-        "There was a big fat error!".to_string(),
-        Some(context.borrow().offset),
-      ))
+      Err(MatcherFailure::Error(ParseError::new_with_range(
+        "There was a big fat error!",
+        context.borrow().offset,
+      )))
     });
 
-    if let Err(MatcherFailure::Error(failure, failure_range)) =
-      ParserContext::tokenize(parser_context, matcher)
-    {
-      assert_eq!(failure, "There was a big fat error!".to_string());
+    if let Err(MatcherFailure::Error(failure)) = ParserContext::tokenize(parser_context, matcher) {
+      assert_eq!(failure.message, "There was a big fat error!");
     } else {
       unreachable!("Test failed!");
     };
@@ -161,18 +159,16 @@ mod tests {
     let parser = Parser::new("Testing 1234");
     let parser_context = ParserContext::new(&parser, "Test");
     let matcher = Catch!(Panic!("Holy malarky! I failed!"), |context, failure| {
-      Err(MatcherFailure::Error(
-        format!("There was a big fat error!: {:?}", failure),
-        Some(context.borrow().offset),
-      ))
+      Err(MatcherFailure::Error(ParseError::new_with_range(
+        &format!("There was a big fat error!: {:?}", failure),
+        context.borrow().offset,
+      )))
     });
 
-    if let Err(MatcherFailure::Error(failure, failure_range)) =
-      ParserContext::tokenize(parser_context, matcher)
-    {
+    if let Err(MatcherFailure::Error(failure)) = ParserContext::tokenize(parser_context, matcher) {
       assert_eq!(
-        failure,
-        "There was a big fat error!: Error(\"Holy malarky! I failed!\", Some(SourceRange { start: 0, end: 0 }))".to_string()
+        failure.message,
+        "There was a big fat error!: Error(ParseError { message: \"Error: @[1:1]: Holy malarky! I failed!\", range: Some(SourceRange { start: 0, end: 0 }) })"
       );
     } else {
       unreachable!("Test failed!");

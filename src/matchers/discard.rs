@@ -253,8 +253,8 @@ mod tests {
       assert_eq!(first.get_matched_value(), "Testing");
       assert_eq!(first.get_children().len(), 0);
       assert_eq!(
-        first.attribute_equals("__message", "This is an error"),
-        true
+        first.get_attribute("__message"),
+        Some(&"Error: @[1:8]: This is an error".to_string())
       );
     } else {
       unreachable!("Test failed!");

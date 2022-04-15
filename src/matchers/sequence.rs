@@ -2,6 +2,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
+use crate::parse_error::ParseError;
 use crate::parser_context::ParserContextRef;
 use crate::scope_context::ScopeContextRef;
 use crate::source_range::SourceRange;
@@ -83,11 +84,9 @@ where
     let start_fetchable = self.start.fetch_value(sub_context.clone(), scope.clone());
     let start_pattern = match start_fetchable {
       FetchableType::String(ref value) => value,
-      FetchableType::Matcher(_) => return Err(MatcherFailure::Error(
-        "`Sequence` matcher received another matcher as a `start_pattern`... this makes no sense... aborting..."
-          .to_string(),
-        None
-      )),
+      FetchableType::Matcher(_) => return Err(MatcherFailure::Error(ParseError::new(
+        &format!("`Sequence` ({}) matcher received another matcher as a `start_pattern`... this makes no sense... aborting...", self.get_name())
+      ))),
     };
 
     if start_pattern.len() == 0 {
@@ -97,11 +96,9 @@ where
     let end_fetchable = self.end.fetch_value(sub_context.clone(), scope.clone());
     let end_pattern = match end_fetchable {
       FetchableType::String(ref value) => value,
-      FetchableType::Matcher(_) => return Err(MatcherFailure::Error(
-        "`Sequence` matcher received another matcher as a `end_pattern`... this makes no sense... aborting..."
-          .to_string(),
-        None
-      )),
+      FetchableType::Matcher(_) => return Err(MatcherFailure::Error(ParseError::new(
+        &format!("`Sequence` ({}) matcher received another matcher as a `end_pattern`... this makes no sense... aborting...", self.get_name())
+      ))),
     };
     if end_pattern.len() == 0 {
       panic!("Sequence `end` pattern of \"\" makes no sense");
@@ -110,11 +107,9 @@ where
     let escape_fetchable = self.escape.fetch_value(sub_context.clone(), scope.clone());
     let escape_pattern = match escape_fetchable {
       FetchableType::String(ref value) => value,
-      FetchableType::Matcher(_) => return Err(MatcherFailure::Error(
-        "`Sequence` matcher received another matcher as a `end_pattern`... this makes no sense... aborting..."
-          .to_string(),
-        None
-      )),
+      FetchableType::Matcher(_) => return Err(MatcherFailure::Error(ParseError::new(
+        &format!("`Sequence` ({}) matcher received another matcher as a `end_pattern`... this makes no sense... aborting...", self.get_name())
+      ))),
     };
 
     if debug_mode > 1 {
@@ -260,7 +255,7 @@ where
 
   fn set_name(&mut self, name: &str) {
     self.name = name.to_string();
-    self.custom_name = true;
+    self.custom_name = name != "Sequence";
   }
 
   fn get_children(&self) -> Option<Vec<MatcherRef>> {

@@ -5,17 +5,22 @@ use crate::token::TokenRef;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-pub struct MapPattern<F>
+pub struct MapPattern<SF, FF>
 where
-  F: Fn(TokenRef) -> Result<(), String>,
+  SF: Fn(TokenRef, ParserContextRef, ScopeContextRef) -> Result<MatcherSuccess, MatcherFailure>,
+  FF:
+    Fn(MatcherFailure, ParserContextRef, ScopeContextRef) -> Result<MatcherSuccess, MatcherFailure>,
 {
   matcher: MatcherRef,
-  map_func: F,
+  success_func: SF,
+  failure_func: Option<FF>,
 }
 
-impl<F> std::fmt::Debug for MapPattern<F>
+impl<SF, FF> std::fmt::Debug for MapPattern<SF, FF>
 where
-  F: Fn(TokenRef) -> Result<(), String>,
+  SF: Fn(TokenRef, ParserContextRef, ScopeContextRef) -> Result<MatcherSuccess, MatcherFailure>,
+  FF:
+    Fn(MatcherFailure, ParserContextRef, ScopeContextRef) -> Result<MatcherSuccess, MatcherFailure>,
 {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     f.debug_struct("MapPattern")
@@ -24,13 +29,42 @@ where
   }
 }
 
-impl<F> MapPattern<F>
+impl<SF, FF> MapPattern<SF, FF>
 where
-  F: Fn(TokenRef) -> Result<(), String>,
-  F: 'static,
+  SF: Fn(TokenRef, ParserContextRef, ScopeContextRef) -> Result<MatcherSuccess, MatcherFailure>,
+  FF:
+    Fn(MatcherFailure, ParserContextRef, ScopeContextRef) -> Result<MatcherSuccess, MatcherFailure>,
+  SF: 'static,
+  FF: 'static,
 {
-  pub fn new(matcher: MatcherRef, map_func: F) -> MatcherRef {
-    Rc::new(RefCell::new(Box::new(Self { matcher, map_func })))
+  pub fn new(matcher: MatcherRef, success_func: SF, failure_func: FF) -> MatcherRef {
+    Rc::new(RefCell::new(Box::new(Self {
+      matcher,
+      success_func,
+      failure_func: Some(failure_func),
+    })))
+  }
+
+  fn handle_success(
+    &self,
+    context: ParserContextRef,
+    scope: ScopeContextRef,
+    token: TokenRef,
+  ) -> Result<MatcherSuccess, MatcherFailure> {
+    (self.success_func)(token.clone(), context.clone(), scope.clone())
+  }
+
+  fn handle_failure(
+    &self,
+    context: ParserContextRef,
+    scope: ScopeContextRef,
+    failure: MatcherFailure,
+  ) -> Result<MatcherSuccess, MatcherFailure> {
+    if self.failure_func.is_none() {
+      return Err(failure);
+    }
+
+    (self.failure_func.as_ref().unwrap())(failure, context.clone(), scope.clone())
   }
 
   fn _exec(
@@ -38,38 +72,35 @@ where
     context: ParserContextRef,
     scope: ScopeContextRef,
   ) -> Result<MatcherSuccess, MatcherFailure> {
-    let result = self.matcher.borrow().exec(
-      self.matcher.clone(),
-      context.borrow().clone_with_name(self.get_name()),
-      scope.clone(),
-    );
+    let sub_context = context.borrow().clone_with_name(self.get_name());
+    let result =
+      self
+        .matcher
+        .borrow()
+        .exec(self.matcher.clone(), sub_context.clone(), scope.clone());
 
     match result {
       Ok(success) => match success {
         MatcherSuccess::Token(token) => {
-          if let Err(result) = (self.map_func)(token.clone()) {
-            return Ok(MatcherSuccess::Token(
-              crate::matchers::error::new_error_token_with_range(
-                context,
-                result.as_str(),
-                token.borrow().get_matched_range().clone(),
-              ),
-            ));
-          }
-
-          Ok(MatcherSuccess::Token(token))
+          self.handle_success(sub_context.clone(), scope.clone(), token.clone())
+        }
+        MatcherSuccess::ExtractChildren(token) => {
+          self.handle_success(sub_context.clone(), scope.clone(), token.clone())
         }
         _ => Ok(success),
       },
-      Err(failure) => Err(failure),
+      Err(failure) => self.handle_failure(sub_context.clone(), scope.clone(), failure),
     }
   }
 }
 
-impl<F> Matcher for MapPattern<F>
+impl<SF, FF> Matcher for MapPattern<SF, FF>
 where
-  F: Fn(TokenRef) -> Result<(), String>,
-  F: 'static,
+  SF: Fn(TokenRef, ParserContextRef, ScopeContextRef) -> Result<MatcherSuccess, MatcherFailure>,
+  FF:
+    Fn(MatcherFailure, ParserContextRef, ScopeContextRef) -> Result<MatcherSuccess, MatcherFailure>,
+  SF: 'static,
+  FF: 'static,
 {
   fn exec(
     &self,
@@ -116,8 +147,12 @@ where
 
 #[macro_export]
 macro_rules! Map {
-  ($matcher:expr, $map_func:expr) => {
-    $crate::matchers::map::MapPattern::new($matcher, $map_func)
+  ($matcher:expr, $success_func:expr, $failure_func:expr) => {
+    $crate::matchers::map::MapPattern::new($matcher, $success_func, $failure_func)
+  };
+
+  ($matcher:expr, $success_func:expr) => {
+    $crate::matchers::map::MapPattern::new($matcher, $success_func, |failure, _, __| Err(failure))
   };
 }
 
@@ -125,25 +160,25 @@ macro_rules! Map {
 mod tests {
   use crate::{
     matcher::MatcherFailure, parser::Parser, parser_context::ParserContext,
-    source_range::SourceRange, Equals,
+    source_range::SourceRange, Equals, ErrorTokenResult, TokenResult,
   };
 
   #[test]
   fn it_can_mutate_a_token() {
     let parser = Parser::new("Testing 1234");
     let parser_context = ParserContext::new(&parser, "Test");
-    let matcher = Map!(Equals!("Testing"), |token| {
+    let matcher = Map!(Equals!("Testing"), |token, _, __| {
       let captured_range = token.borrow().get_captured_range().clone();
-      let mut token = token.borrow_mut();
+      let mut _token = token.borrow_mut();
 
-      token.set_name("WOW");
-      token.set_captured_range(SourceRange::new(
+      _token.set_name("WOW");
+      _token.set_captured_range(SourceRange::new(
         captured_range.start + 1,
         captured_range.end - 1,
       ));
-      token.set_attribute("was_mapped", "true");
+      _token.set_attribute("was_mapped", "true");
 
-      Ok(())
+      TokenResult!(token.clone())
     });
 
     if let Ok(token) = ParserContext::tokenize(parser_context, matcher) {
@@ -162,8 +197,12 @@ mod tests {
   fn it_can_return_an_error() {
     let parser = Parser::new("Testing 1234");
     let parser_context = ParserContext::new(&parser, "Test");
-    let matcher = Map!(Equals!("Testing"), |_| {
-      Err("There was a big fat error!".to_string())
+    let matcher = Map!(Equals!("Testing"), |token, context, ___| {
+      ErrorTokenResult!(
+        context.clone(),
+        "There was a big fat error!",
+        &token.borrow().get_matched_range()
+      )
     });
 
     if let Ok(token) = ParserContext::tokenize(parser_context, matcher) {
@@ -175,7 +214,7 @@ mod tests {
       assert_eq!(token.get_matched_value(), "Testing");
       assert_eq!(
         token.get_attribute("__message").unwrap(),
-        "There was a big fat error!"
+        "Error: @[1:1-8]: There was a big fat error!"
       );
     } else {
       unreachable!("Test failed!");
@@ -186,7 +225,9 @@ mod tests {
   fn it_fails_to_match() {
     let parser = Parser::new("Testing 1234");
     let parser_context = ParserContext::new(&parser, "Test");
-    let matcher = Map!(Equals!("testing"), |_| { Ok(()) });
+    let matcher = Map!(Equals!("testing"), |token, _, __| {
+      TokenResult!(token.clone())
+    });
 
     assert_eq!(
       Err(MatcherFailure::Fail),

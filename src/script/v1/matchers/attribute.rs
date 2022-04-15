@@ -9,7 +9,7 @@ macro_rules! ScriptAttribute {
       $crate::ScriptWS0!(?),
       $crate::FatalIf!($crate::Matches!(r"[^'\s]+"), "Malformed attribute detected. Attribute value is not single-quoted. The proper format for an attribute is: name='value'"),
       $crate::ScriptString!("Value"),
-      $crate::Pin!($crate::Fetch!("AttributeStartOffset.range");
+      $crate::Pin!("Pin", $crate::Fetch!("AttributeStartOffset.range");
         $crate::AssertIf!(
           $crate::Matches!(r"_[\w+_]+"),
           "Attribute names can not start with an underscore"
@@ -22,8 +22,8 @@ macro_rules! ScriptAttribute {
 #[cfg(test)]
 mod tests {
   use crate::{
-    matcher::MatcherFailure, parser::Parser, parser_context::ParserContext,
-    source_range::SourceRange,
+    matcher::MatcherFailure, parse_error::ParseError, parser::Parser,
+    parser_context::ParserContext, source_range::SourceRange,
   };
 
   #[test]
@@ -100,7 +100,7 @@ mod tests {
       assert_eq!(third.get_matched_value(), "_test");
       assert_eq!(
         third.get_attribute("__message").unwrap(),
-        "Attribute names can not start with an underscore"
+        "Error: @[1:6]: Attribute names can not start with an underscore"
       );
     } else {
       unreachable!("Test failed!");
@@ -117,9 +117,10 @@ mod tests {
 
     assert_eq!(
       Err(MatcherFailure::Error(
-        "Malformed attribute detected. Attribute value is not single-quoted. The proper format for an attribute is: name='value'"
-          .to_string(),
-        Some(SourceRange::new(0, 10))
+        ParseError::new_with_range(
+          "Error: @[1:7-11]: Malformed attribute detected. Attribute value is not single-quoted. The proper format for an attribute is: name='value'",
+          SourceRange::new(6, 10)
+        )
       )),
       result
     );

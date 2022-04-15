@@ -2,6 +2,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
+use crate::parse_error::ParseError;
 use crate::parser_context::ParserContextRef;
 use crate::scope_context::ScopeContextRef;
 use crate::source_range::SourceRange;
@@ -34,7 +35,10 @@ impl PanicPattern {
       }
     };
 
-    Err(MatcherFailure::Error(self.message.to_string(), Some(range)))
+    Err(MatcherFailure::Error(ParseError::new_with_range(
+      &context.borrow().get_error_as_string(&self.message, &range),
+      range,
+    )))
   }
 }
 
@@ -83,8 +87,8 @@ macro_rules! Panic {
 #[cfg(test)]
 mod tests {
   use crate::{
-    matcher::MatcherFailure, parser::Parser, parser_context::ParserContext, Discard, Matches,
-    Program,
+    matcher::MatcherFailure, parser::Parser, parser_context::ParserContext,
+    source_range::SourceRange, Discard, Matches, Program,
   };
 
   #[test]
@@ -98,10 +102,9 @@ mod tests {
       Matches!(r"\d+")
     );
 
-    if let Err(MatcherFailure::Error(message, range)) =
-      ParserContext::tokenize(parser_context, matcher)
-    {
-      assert_eq!(message, "There was an error!");
+    if let Err(MatcherFailure::Error(error)) = ParserContext::tokenize(parser_context, matcher) {
+      assert_eq!(error.message, "Error: @[1:1-8]: There was an error!");
+      assert_eq!(error.range, Some(SourceRange::new(0, 7)));
     } else {
       unreachable!("Test failed!");
     };

@@ -7,6 +7,7 @@ macro_rules! ScriptAdextopaScope {
         $crate::ScriptWS0!(?),
         $crate::ScriptAttributes!(),
         $crate::Discard!($crate::Equals!("]")),
+        $crate::Pin!("EndOfScopeHeader";),
         $crate::Optional!(
           $crate::Loop!("Scope";
             $crate::ScriptWSN0!(?),
@@ -25,32 +26,52 @@ macro_rules! ScriptAdextopaScope {
         ),
         $crate::Discard!($crate::Equals!("-->")),
       ),
-      |token| {
-        let mut token = token.borrow_mut();
+      |token, context, __| {
+        let mut version_attribute_token: Option<$crate::token::TokenRef> = None;
 
-        if let Some(attribute_token) = token.find_child("Attributes") {
-          for attribute in attribute_token.borrow().get_children() {
-            let _attribute = attribute.borrow();
-            let children = _attribute.get_children();
+        {
+          let mut _token = token.borrow_mut();
 
-            let name = &children[0];
-            let value = &children[1];
+          if let Some(attribute_token) = _token.find_child("Attributes") {
+            for attribute in attribute_token.borrow().get_children() {
+              let _attribute = attribute.borrow();
+              let children = _attribute.get_children();
 
-            token.set_attribute(name.borrow().get_value(), value.borrow().get_value());
+              let name = &children[0];
+              let value = &children[1];
+              let _name = name.borrow();
+              let name_value = _name.get_value();
+
+              if name_value == "version" {
+                version_attribute_token = Some(attribute.clone());
+              }
+
+              _token.set_attribute(name_value, value.borrow().get_value());
+            }
           }
         }
 
-        let version = token.get_attribute("version");
+        let _token = token.borrow();
+        let version = _token.get_attribute("version");
         if version.is_none() {
-          return Err("Adextopa scope must have a 'version' attribute".to_string());
+          let end_of_header_pin = _token.find_child("EndOfScopeHeader");
+          let range = match end_of_header_pin {
+            Some(token) => {
+              let end = token.borrow().get_matched_range().end;
+              SourceRange::new(_token.get_matched_range().start, end)
+            },
+            None => _token.get_matched_range().clone(),
+          };
+
+          return $crate::ErrorTokenResult!(context.clone(), "Adextopa scope must have a 'version' attribute", &range);
         }
 
-        let version = version.unwrap().as_str();
-        if let Err(_) = version.parse::<usize>() {
-          return Err("Adextopa 'version' attribute must be a valid integer number".to_string());
+        let version_number = version.unwrap().as_str();
+        if let Err(_) = version_number.parse::<usize>() {
+          return $crate::ErrorTokenResult!(context.clone(), "Adextopa 'version' attribute must be a valid integer number", &version_attribute_token.unwrap().borrow().get_matched_range());
         }
 
-        Ok(())
+        $crate::TokenResult!(token.clone())
       }
     )
   };
@@ -219,8 +240,8 @@ mod tests {
       assert_eq!(token.get_children().len(), 0);
 
       assert_eq!(
-        token.get_attribute("__message"),
-        Some(&"Adextopa scope must have a 'version' attribute".to_string())
+        token.get_attribute("__message").unwrap().as_str(),
+        "Error: @[1:1-30]: Adextopa scope must have a 'version' attribute"
       );
 
       assert_eq!(token.flags_enabled(crate::token::IS_ERROR), true);
@@ -243,15 +264,15 @@ mod tests {
     if let Ok(token) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Error");
-      assert_eq!(*token.get_captured_range(), SourceRange::new(0, 31));
-      assert_eq!(*token.get_matched_range(), SourceRange::new(0, 31));
-      assert_eq!(token.get_value(), source);
-      assert_eq!(token.get_matched_value(), source);
+      assert_eq!(*token.get_captured_range(), SourceRange::new(14, 27));
+      assert_eq!(*token.get_matched_range(), SourceRange::new(14, 27));
+      assert_eq!(token.get_value(), "version='1.2'");
+      assert_eq!(token.get_matched_value(), "version='1.2'");
       assert_eq!(token.get_children().len(), 0);
 
       assert_eq!(
-        token.get_attribute("__message"),
-        Some(&"Adextopa 'version' attribute must be a valid integer number".to_string())
+        token.get_attribute("__message").unwrap().as_str(),
+        "Error: @[1:15-28]: Adextopa 'version' attribute must be a valid integer number"
       );
 
       assert_eq!(token.flags_enabled(crate::token::IS_ERROR), true);
@@ -274,15 +295,15 @@ mod tests {
     if let Ok(token) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Error");
-      assert_eq!(*token.get_captured_range(), SourceRange::new(0, 28));
-      assert_eq!(*token.get_matched_range(), SourceRange::new(0, 28));
-      assert_eq!(token.get_value(), source);
-      assert_eq!(token.get_matched_value(), source);
+      assert_eq!(*token.get_captured_range(), SourceRange::new(14, 24));
+      assert_eq!(*token.get_matched_range(), SourceRange::new(14, 24));
+      assert_eq!(token.get_value(), "version=''");
+      assert_eq!(token.get_matched_value(), "version=''");
       assert_eq!(token.get_children().len(), 0);
 
       assert_eq!(
-        token.get_attribute("__message"),
-        Some(&"Adextopa 'version' attribute must be a valid integer number".to_string())
+        token.get_attribute("__message").unwrap().as_str(),
+        "Error: @[1:15-25]: Adextopa 'version' attribute must be a valid integer number"
       );
 
       assert_eq!(token.flags_enabled(crate::token::IS_ERROR), true);
@@ -305,15 +326,15 @@ mod tests {
     if let Ok(token) = result {
       let token = token.borrow();
       assert_eq!(token.get_name(), "Error");
-      assert_eq!(*token.get_captured_range(), SourceRange::new(0, 32));
-      assert_eq!(*token.get_matched_range(), SourceRange::new(0, 32));
-      assert_eq!(token.get_value(), source);
-      assert_eq!(token.get_matched_value(), source);
+      assert_eq!(*token.get_captured_range(), SourceRange::new(14, 28));
+      assert_eq!(*token.get_matched_range(), SourceRange::new(14, 28));
+      assert_eq!(token.get_value(), "version='derp'");
+      assert_eq!(token.get_matched_value(), "version='derp'");
       assert_eq!(token.get_children().len(), 0);
 
       assert_eq!(
-        token.get_attribute("__message"),
-        Some(&"Adextopa 'version' attribute must be a valid integer number".to_string())
+        token.get_attribute("__message").unwrap().as_str(),
+        "Error: @[1:15-29]: Adextopa 'version' attribute must be a valid integer number"
       );
 
       assert_eq!(token.flags_enabled(crate::token::IS_ERROR), true);

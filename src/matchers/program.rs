@@ -343,8 +343,8 @@ impl ProgramPattern {
                   return Err(MatcherFailure::Fail);
                 }
               },
-              MatcherFailure::Error(message, range) => {
-                return Err(MatcherFailure::Error(message, range));
+              MatcherFailure::Error(error) => {
+                return Err(MatcherFailure::Error(error));
               }
             }
           }

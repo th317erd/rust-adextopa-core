@@ -37,10 +37,10 @@ macro_rules! ScriptPatternDefinition {
         $crate::Discard!($crate::Equals!(">")),
         $crate::Optional!($crate::ScriptRepeatSpecifier!()),
       ),
-      |token| {
-        let mut token = token.borrow_mut();
+      |token, _, __| {
+        let mut _token = token.borrow_mut();
 
-        if let Some(attribute_token) = token.find_child("Attributes") {
+        if let Some(attribute_token) = _token.find_child("Attributes") {
           for attribute in attribute_token.borrow().get_children() {
             let _attribute = attribute.borrow();
             let children = _attribute.get_children();
@@ -48,11 +48,11 @@ macro_rules! ScriptPatternDefinition {
             let name = &children[0];
             let value = &children[1];
 
-            token.set_attribute(name.borrow().get_value(), value.borrow().get_value());
+            _token.set_attribute(name.borrow().get_value(), value.borrow().get_value());
           }
         }
 
-        Ok(())
+        $crate::TokenResult!(token.clone())
       }
     )
   };
@@ -457,11 +457,8 @@ mod tests {
       assert_eq!(first.get_value(), "?!");
       assert_eq!(first.get_matched_value(), "?!");
       assert_eq!(
-        first.get_attribute("__message"),
-        Some(
-          &"Can not use ? and ! at the same time in this context. Use one or the other, not both."
-            .to_string()
-        )
+        first.get_attribute("__message").unwrap().as_str(),
+        "Error: @[1:4]: Can not use ? and ! at the same time in this context. Use one or the other, not both."
       );
 
       let second = token.get_children()[1].borrow();
@@ -502,11 +499,8 @@ mod tests {
       assert_eq!(first.get_value(), "!?");
       assert_eq!(first.get_matched_value(), "!?");
       assert_eq!(
-        first.get_attribute("__message"),
-        Some(
-          &"Can not use ? and ! at the same time in this context. Use one or the other, not both."
-            .to_string()
-        )
+        first.get_attribute("__message").unwrap().as_str(),
+        "Error: @[1:3]: Can not use ? and ! at the same time in this context. Use one or the other, not both."
       );
 
       let second = token.get_children()[1].borrow();

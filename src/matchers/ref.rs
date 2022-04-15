@@ -2,6 +2,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
+use crate::parse_error::ParseError;
 use crate::parser_context::ParserContextRef;
 use crate::scope::VariableType;
 use crate::scope_context::ScopeContextRef;
@@ -64,8 +65,6 @@ where
 
     match target {
       FetchableType::String(ref target_name) => {
-        println!("Fetching reference {}", target_name);
-
         let possible_matcher = scope.borrow().get(target_name);
 
         if let Some(VariableType::Matcher(ref matcher)) = possible_matcher {
@@ -73,13 +72,10 @@ where
             .borrow()
             .exec(matcher.clone(), sub_context, scope.clone())
         } else {
-          return Err(MatcherFailure::Error(
-            format!(
-              "`Ref` matcher unable to locate target reference `{}`",
-              target_name,
-            ),
-            None,
-          ));
+          return Err(MatcherFailure::Error(ParseError::new(&format!(
+            "`Ref` matcher unable to locate target reference `{}`",
+            target_name,
+          ))));
         }
       }
       FetchableType::Matcher(matcher) => {

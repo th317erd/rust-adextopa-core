@@ -128,7 +128,7 @@ impl Matcher for MatchesPattern {
 
   fn set_name(&mut self, name: &str) {
     self.name = name.to_string();
-    self.custom_name = true;
+    self.custom_name = name != "Matches";
   }
 
   fn get_children(&self) -> Option<Vec<MatcherRef>> {

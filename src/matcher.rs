@@ -2,10 +2,10 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use super::token::TokenRef;
+use crate::parse_error::ParseError;
 use crate::parser_context::ParserContextRef;
 use crate::scope::VariableType;
 use crate::scope_context::ScopeContextRef;
-use crate::source_range::SourceRange;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum MatcherSuccess {
@@ -21,7 +21,7 @@ pub enum MatcherSuccess {
 #[derive(Debug, PartialEq, Clone)]
 pub enum MatcherFailure {
   Fail,
-  Error(String, Option<SourceRange>),
+  Error(ParseError),
 }
 
 pub type MatcherRef = Rc<RefCell<Box<dyn Matcher>>>;
@@ -69,4 +69,11 @@ pub trait Matcher {
   fn is_consuming(&self) -> bool {
     true
   }
+}
+
+#[macro_export]
+macro_rules! TokenResult {
+  ($token:expr) => {
+    Ok($crate::matcher::MatcherSuccess::Token($token))
+  };
 }

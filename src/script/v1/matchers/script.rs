@@ -13,16 +13,16 @@ macro_rules! Script {
         $crate::Optional!($crate::ScriptAdextopaScope!()),
         $crate::Optional!($crate::ScriptPatternScope!()),
       ),
-      |token| {
-        let token = token.borrow();
-        let adextopa_scope = token.find_child("AdextopaScope");
-        let pattern_scope = token.find_child("PatternScope");
+      |token, context, _| {
+        let _token = token.borrow();
+        let adextopa_scope = _token.find_child("AdextopaScope");
+        let pattern_scope = _token.find_child("PatternScope");
 
         if adextopa_scope.is_none() && pattern_scope.is_none() {
-          return Err("Nothing to parse. No scopes found.".to_string());
+          return $crate::ErrorTokenResult!(context.clone(), "Nothing to parse. No scopes found.", &token.borrow().get_matched_range());
         }
 
-        Ok(())
+        $crate::TokenResult!(token.clone())
       }
     )
   };
@@ -149,8 +149,8 @@ mod tests {
       assert_eq!(token.get_children().len(), 0);
 
       assert_eq!(
-        token.get_attribute("__message"),
-        Some(&"Nothing to parse. No scopes found.".to_string())
+        token.get_attribute("__message").unwrap().as_str(),
+        "Error: @[1:1-38]: Nothing to parse. No scopes found."
       );
     } else {
       unreachable!("Test failed!");

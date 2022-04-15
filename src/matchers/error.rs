@@ -14,7 +14,10 @@ pub fn new_error_token(context: ParserContextRef, message: &str) -> TokenRef {
 
   {
     let mut token = token.borrow_mut();
-    token.set_attribute("__message", message);
+    token.set_attribute(
+      "__message",
+      &context.get_error_as_string(message, &captured_range),
+    );
     token.enable_flags(crate::token::IS_ERROR);
   }
 
@@ -24,14 +27,17 @@ pub fn new_error_token(context: ParserContextRef, message: &str) -> TokenRef {
 pub fn new_error_token_with_range(
   context: ParserContextRef,
   message: &str,
-  matched_range: SourceRange,
+  matched_range: &SourceRange,
 ) -> TokenRef {
   let context = context.borrow();
-  let token = StandardToken::new(&context.parser, "Error".to_string(), matched_range);
+  let token = StandardToken::new(&context.parser, "Error".to_string(), matched_range.clone());
 
   {
     let mut token = token.borrow_mut();
-    token.set_attribute("__message", message);
+    token.set_attribute(
+      "__message",
+      &context.get_error_as_string(message, &matched_range),
+    );
     token.enable_flags(crate::token::IS_ERROR);
   }
 
@@ -102,6 +108,21 @@ macro_rules! Error {
   };
 }
 
+#[macro_export]
+macro_rules! ErrorTokenResult {
+  ($context:expr, $message:expr, $range:expr) => {
+    Ok($crate::matcher::MatcherSuccess::Token(
+      $crate::matchers::error::new_error_token_with_range($context, $message, $range),
+    ))
+  };
+
+  ($context:expr, $message:expr) => {
+    Ok($crate::matcher::MatcherSuccess::Token(
+      $crate::matchers::error::new_error_token($context, $message),
+    ))
+  };
+}
+
 #[cfg(test)]
 mod tests {
   use crate::{
@@ -137,7 +158,7 @@ mod tests {
       assert_eq!(second.get_matched_value(), "Testing");
       assert_eq!(
         second.get_attribute("__message").unwrap(),
-        "There was an error!"
+        "Error: @[1:8]: There was an error!"
       );
     } else {
       unreachable!("Test failed!");

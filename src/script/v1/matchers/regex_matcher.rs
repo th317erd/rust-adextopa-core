@@ -26,7 +26,7 @@ macro_rules! ScriptRegexMatcher {
           )
         ),
       ),
-      |token| {
+      |token, _, __| {
         let mut range = $crate::source_range::SourceRange::new(usize::MAX, usize::MAX);
 
         {
@@ -52,7 +52,7 @@ macro_rules! ScriptRegexMatcher {
         let parser = token.borrow().get_parser();
         token.borrow_mut().set_value(&range.to_string(&parser));
 
-        Ok(())
+        $crate::TokenResult!(token.clone())
       }
     )
   };
