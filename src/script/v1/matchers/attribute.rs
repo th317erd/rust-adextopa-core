@@ -100,7 +100,7 @@ mod tests {
       assert_eq!(third.get_matched_value(), "_test");
       assert_eq!(
         third.get_attribute("__message").unwrap(),
-        "Error: @[1:6]: Attribute names can not start with an underscore"
+        "Error: @[1:1-6]: Attribute names can not start with an underscore"
       );
     } else {
       unreachable!("Test failed!");

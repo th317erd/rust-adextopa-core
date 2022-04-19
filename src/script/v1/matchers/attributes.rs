@@ -88,7 +88,7 @@ mod tests {
       assert_eq!(second.get_children().len(), 0);
       assert_eq!(
         second.get_attribute("__message"),
-        Some(&"Error: @[1:6]: Attribute names can not start with an underscore".to_string())
+        Some(&"Error: @[1:1-6]: Attribute names can not start with an underscore".to_string())
       );
     } else {
       unreachable!("Test failed!");

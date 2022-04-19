@@ -457,8 +457,8 @@ mod tests {
       assert_eq!(first.get_value(), "?!");
       assert_eq!(first.get_matched_value(), "?!");
       assert_eq!(
-        first.get_attribute("__message").unwrap().as_str(),
-        "Error: @[1:4]: Can not use ? and ! at the same time in this context. Use one or the other, not both."
+        first.get_attribute("__message").unwrap(),
+        "Error: @[1:2-4]: Can not use ? and ! at the same time in this context. Use one or the other, not both."
       );
 
       let second = token.get_children()[1].borrow();
@@ -500,7 +500,7 @@ mod tests {
       assert_eq!(first.get_matched_value(), "!?");
       assert_eq!(
         first.get_attribute("__message").unwrap().as_str(),
-        "Error: @[1:3]: Can not use ? and ! at the same time in this context. Use one or the other, not both."
+        "Error: @[1:1-3]: Can not use ? and ! at the same time in this context. Use one or the other, not both."
       );
 
       let second = token.get_children()[1].borrow();
