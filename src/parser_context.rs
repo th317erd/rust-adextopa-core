@@ -86,6 +86,10 @@ impl ParserContext {
     self.scope.borrow_mut().set(name, value)
   }
 
+  pub fn get_scope(&self) -> ScopeContextRef {
+    self.scope.clone()
+  }
+
   pub fn matches_str(&self, pattern: &str) -> Option<SourceRange> {
     if pattern.len() == 0 {
       return None;
@@ -142,32 +146,6 @@ impl ParserContext {
 
     parser.source[self.offset.start..end_offset].to_string()
   }
-
-  // pub fn capture_matcher_references(&self, matcher: MatcherRef) {
-  //   let m = matcher.borrow();
-
-  //   if m.has_custom_name() {
-  //     let name = m.get_name();
-
-  //     if self.debug_mode > 1 {
-  //       println!("Registering matcher `{}`", name);
-  //     }
-
-  //     self
-  //       .scope
-  //       .borrow_mut()
-  //       .set(name, VariableType::Matcher(matcher.clone()));
-  //   }
-
-  //   match m.get_children() {
-  //     Some(children) => {
-  //       for child in children {
-  //         self.capture_matcher_references(child.clone());
-  //       }
-  //     }
-  //     None => {}
-  //   }
-  // }
 
   pub fn push_token_to_stack(&mut self, token: TokenRef) {
     self.token_stack.push(token.clone())

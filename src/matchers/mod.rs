@@ -6,6 +6,7 @@ pub mod debug;
 pub mod discard;
 pub mod equals;
 pub mod error;
+pub mod expand_range;
 pub mod fatal_if;
 pub mod fatal_if_not;
 pub mod fetch;
