@@ -1,6 +1,7 @@
 use crate::matcher::{Matcher, MatcherFailure, MatcherRef, MatcherSuccess};
 use crate::parser_context::ParserContextRef;
 use crate::scope_context::ScopeContextRef;
+use crate::token::StandardToken;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -37,9 +38,17 @@ impl ExpandRange {
       Ok(success) => match success {
         MatcherSuccess::Token(token) => {
           let matched_range = token.borrow().get_matched_range().clone();
-          token.borrow_mut().set_captured_range(matched_range);
 
-          Ok(MatcherSuccess::Token(token))
+          let wrapper_token = StandardToken::new_with_matched_range(
+            &sub_context.borrow().get_parser(),
+            "ExpandRange".to_string(),
+            matched_range.clone(),
+            matched_range,
+          );
+
+          wrapper_token.borrow_mut().add_child(token);
+
+          Ok(MatcherSuccess::ProxyChildren(wrapper_token))
         }
         MatcherSuccess::ProxyChildren(token) => {
           let matched_range = token.borrow().get_matched_range().clone();
@@ -120,11 +129,18 @@ mod tests {
 
     if let Ok(token) = ParserContext::tokenize(parser_context, matcher) {
       let token = token.borrow();
-      assert_eq!(token.get_name(), "Sequence");
+      assert_eq!(token.get_name(), "ExpandRange");
       assert_eq!(*token.get_captured_range(), SourceRange::new(0, 9));
       assert_eq!(*token.get_matched_range(), SourceRange::new(0, 9));
-      assert_eq!(token.get_value(), "Testing");
+      assert_eq!(token.get_value(), "'Testing'");
       assert_eq!(token.get_matched_value(), "'Testing'");
+
+      let first = token.get_children()[0].borrow();
+      assert_eq!(first.get_name(), "Sequence");
+      assert_eq!(*first.get_captured_range(), SourceRange::new(1, 8));
+      assert_eq!(*first.get_matched_range(), SourceRange::new(0, 9));
+      assert_eq!(first.get_value(), "Testing");
+      assert_eq!(first.get_matched_value(), "'Testing'");
     } else {
       unreachable!("Test failed!");
     };

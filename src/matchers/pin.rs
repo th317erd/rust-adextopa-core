@@ -177,6 +177,10 @@ impl Token for PinToken {
     self.children = children;
   }
 
+  fn add_child(&mut self, child: crate::token::TokenRef) {
+    self.children.push(child.clone())
+  }
+
   fn get_value(&self) -> &String {
     // Value override via attribute
     match self.get_attribute("__value") {

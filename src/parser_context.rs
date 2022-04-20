@@ -66,6 +66,10 @@ impl ParserContext {
     self.debug_mode = value;
   }
 
+  pub fn get_parser(&self) -> ParserRef {
+    self.parser.clone()
+  }
+
   pub fn set_start(&mut self, start: usize) {
     self.offset.start = start;
   }

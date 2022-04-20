@@ -119,21 +119,23 @@ where
     if let Some(source_range) = _sc.matches_str(start_pattern) {
       scan_start = source_range.end;
     } else {
-      println!(
-        "`{}` Failed to match against `{}...{} (escape {})` -->|{}|--> @[{}-{}]",
-        self.get_name(),
-        start_pattern,
-        end_pattern,
-        escape_pattern,
-        _sc
-          .debug_range(10)
-          .as_str()
-          .replace("\n", r"\n")
-          .replace("\r", r"\r")
-          .replace("\t", r"\t"),
-        _sc.offset.start,
-        std::cmp::min(_sc.offset.start + 10, _sc.offset.end),
-      );
+      if debug_mode > 0 {
+        println!(
+          "`{}` Failed to match against `{}...{} (escape {})` -->|{}|--> @[{}-{}]",
+          self.get_name(),
+          start_pattern,
+          end_pattern,
+          escape_pattern,
+          _sc
+            .debug_range(10)
+            .as_str()
+            .replace("\n", r"\n")
+            .replace("\r", r"\r")
+            .replace("\t", r"\t"),
+          _sc.offset.start,
+          std::cmp::min(_sc.offset.start + 10, _sc.offset.end),
+        );
+      }
 
       return Err(MatcherFailure::Fail);
     }

@@ -33,5 +33,9 @@ impl Parser {
     })))
   }
 
+  pub fn get_source(&self) -> &String {
+    &self.source
+  }
+
   pub fn tokenize() {}
 }

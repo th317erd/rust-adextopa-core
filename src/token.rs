@@ -129,6 +129,7 @@ pub trait Token {
   fn get_children<'b>(&'b self) -> &'b Vec<crate::token::TokenRef>;
   fn get_children_mut<'b>(&'b mut self) -> &'b mut Vec<crate::token::TokenRef>;
   fn set_children(&mut self, children: Vec<crate::token::TokenRef>);
+  fn add_child(&mut self, child: crate::token::TokenRef);
   fn get_value(&self) -> &String;
   fn set_value(&mut self, value: &str);
   fn get_captured_value(&self) -> &String;
