@@ -28,7 +28,7 @@ impl NotPattern {
       Ok(success) => match success {
         // Fail on success
         MatcherSuccess::Token(_) => return Err(MatcherFailure::Fail),
-        MatcherSuccess::ExtractChildren(_) => return Err(MatcherFailure::Fail),
+        MatcherSuccess::ProxyChildren(_) => return Err(MatcherFailure::Fail),
         MatcherSuccess::Skip(amount) => {
           // If Skip value is anything but zero, then fail
           if amount != 0 {

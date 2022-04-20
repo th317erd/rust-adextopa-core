@@ -84,7 +84,7 @@ where
         MatcherSuccess::Token(token) => {
           self.handle_success(sub_context.clone(), scope.clone(), token.clone())
         }
-        MatcherSuccess::ExtractChildren(token) => {
+        MatcherSuccess::ProxyChildren(token) => {
           self.handle_success(sub_context.clone(), scope.clone(), token.clone())
         }
         _ => Ok(success),

@@ -35,7 +35,7 @@ impl DiscardPattern {
         MatcherSuccess::Token(token) => {
           return Ok(skip_token(sub_context, start_offset, token.clone()));
         }
-        MatcherSuccess::ExtractChildren(token) => {
+        MatcherSuccess::ProxyChildren(token) => {
           return Ok(skip_token(sub_context, start_offset, token.clone()));
         }
         MatcherSuccess::Skip(offset) => Ok(MatcherSuccess::Skip(offset)),
@@ -45,7 +45,7 @@ impl DiscardPattern {
             loop_name,
             Box::new(skip_token(sub_context, start_offset, token.clone())),
           ))),
-          MatcherSuccess::ExtractChildren(token) => Ok(MatcherSuccess::Break((
+          MatcherSuccess::ProxyChildren(token) => Ok(MatcherSuccess::Break((
             loop_name,
             Box::new(skip_token(sub_context, start_offset, token.clone())),
           ))),
@@ -69,7 +69,7 @@ impl DiscardPattern {
             loop_name,
             Box::new(skip_token(sub_context, start_offset, token.clone())),
           ))),
-          MatcherSuccess::ExtractChildren(token) => Ok(MatcherSuccess::Continue((
+          MatcherSuccess::ProxyChildren(token) => Ok(MatcherSuccess::Continue((
             loop_name,
             Box::new(skip_token(sub_context, start_offset, token.clone())),
           ))),

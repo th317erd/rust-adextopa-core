@@ -41,11 +41,11 @@ impl ExpandRange {
 
           Ok(MatcherSuccess::Token(token))
         }
-        MatcherSuccess::ExtractChildren(token) => {
+        MatcherSuccess::ProxyChildren(token) => {
           let matched_range = token.borrow().get_matched_range().clone();
           token.borrow_mut().set_captured_range(matched_range);
 
-          Ok(MatcherSuccess::ExtractChildren(token))
+          Ok(MatcherSuccess::ProxyChildren(token))
         }
         _ => Ok(success),
       },

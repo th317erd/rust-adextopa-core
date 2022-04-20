@@ -352,7 +352,7 @@ impl ParserContext {
           Self::collect_errors(token.clone(), token.clone(), true);
           return Ok(token.clone());
         }
-        MatcherSuccess::ExtractChildren(token) => {
+        MatcherSuccess::ProxyChildren(token) => {
           Self::collect_errors(token.clone(), token.clone(), true);
           return Ok(token.clone());
         }

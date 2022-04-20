@@ -10,7 +10,7 @@ use crate::scope_context::ScopeContextRef;
 #[derive(Debug, PartialEq, Clone)]
 pub enum MatcherSuccess {
   Token(TokenRef),
-  ExtractChildren(TokenRef),
+  ProxyChildren(TokenRef),
   Skip(isize),
   Break((String, Box<MatcherSuccess>)),
   Continue((String, Box<MatcherSuccess>)),

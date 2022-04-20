@@ -232,7 +232,7 @@ impl ProgramPattern {
                 is_consuming,
               );
             }
-            MatcherSuccess::ExtractChildren(token) => {
+            MatcherSuccess::ProxyChildren(token) => {
               if token.borrow().should_discard() {
                 continue;
               }
@@ -241,12 +241,12 @@ impl ProgramPattern {
                 MatchAction::Stop => {
                   if sub_context.borrow().debug_mode_level() > 1 {
                     println!(
-                      "{{{}/Finalizing}}: First match success (ExtractChildren)",
+                      "{{{}/Finalizing}}: First match success (ProxyChildren)",
                       program_token.borrow().get_name(),
                     );
                   }
 
-                  return Ok(MatcherSuccess::ExtractChildren(token.clone()));
+                  return Ok(MatcherSuccess::ProxyChildren(token.clone()));
                 }
                 _ => {}
               }
@@ -384,7 +384,7 @@ impl ProgramPattern {
 
                 Box::new(MatcherSuccess::None)
               }
-              MatcherSuccess::ExtractChildren(token) => {
+              MatcherSuccess::ProxyChildren(token) => {
                 handle_extract_token(
                   self,
                   &program_token,
@@ -490,7 +490,7 @@ impl ProgramPattern {
 
                 Box::new(MatcherSuccess::None)
               }
-              MatcherSuccess::ExtractChildren(token) => {
+              MatcherSuccess::ProxyChildren(token) => {
                 handle_extract_token(
                   self,
                   &program_token,
@@ -769,7 +769,7 @@ fn handle_extract_token(
 
   if context.borrow().is_debug_mode() {
     if context.borrow().debug_mode_level() > 1 {
-      print!("{{{}/ExtractChildren}} ", program.get_name());
+      print!("{{{}/ProxyChildren}} ", program.get_name());
     }
 
     println!(
@@ -791,7 +791,7 @@ fn handle_extract_token(
 
   if context.borrow().debug_mode_level() > 0 {
     if context.borrow().debug_mode_level() > 1 {
-      print!("{{{}/ExtractChildren}} ", program.get_name());
+      print!("{{{}/ProxyChildren}} ", program.get_name());
     }
 
     let count = target_children.len();
@@ -812,7 +812,7 @@ fn handle_extract_token(
       let child = child.borrow();
 
       if context.borrow().debug_mode_level() > 1 {
-        print!("{{{}/ExtractChildren}} ", program.get_name());
+        print!("{{{}/ProxyChildren}} ", program.get_name());
       }
 
       println!(

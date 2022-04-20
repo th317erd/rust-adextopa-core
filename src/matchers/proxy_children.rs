@@ -40,18 +40,18 @@ impl ProxyChildrenPattern {
     );
 
     match result {
-      Ok(MatcherSuccess::Token(token)) => Ok(MatcherSuccess::ExtractChildren(token.clone())),
+      Ok(MatcherSuccess::Token(token)) => Ok(MatcherSuccess::ProxyChildren(token.clone())),
       Ok(MatcherSuccess::Break((loop_name, value))) => match *value {
         MatcherSuccess::Token(token) => Ok(MatcherSuccess::Break((
           loop_name,
-          Box::new(MatcherSuccess::ExtractChildren(token.clone())),
+          Box::new(MatcherSuccess::ProxyChildren(token.clone())),
         ))),
         _ => Ok(MatcherSuccess::Break((loop_name, value))),
       },
       Ok(MatcherSuccess::Continue((loop_name, value))) => match *value {
         MatcherSuccess::Token(token) => Ok(MatcherSuccess::Continue((
           loop_name,
-          Box::new(MatcherSuccess::ExtractChildren(token.clone())),
+          Box::new(MatcherSuccess::ProxyChildren(token.clone())),
         ))),
         _ => Ok(MatcherSuccess::Continue((loop_name, value))),
       },
